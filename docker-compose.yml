@@ -1,0 +1,140 @@
+# MARS local development environment.
+#
+# Mirrors the production topology so that "works locally" means something:
+# workers run as a separate service from the request-serving API, the database
+# is not exposed beyond the host, and every setting arrives through the
+# environment rather than being baked into an image.
+#
+#   docker compose up --build          start everything
+#   docker compose run --rm api alembic upgrade head
+#   docker compose down -v             stop and discard data
+#
+# Seeded only with synthetic data. Never point this at a production database.
+
+name: mars
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: mars-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mars}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mars_local_development}
+      POSTGRES_DB: ${POSTGRES_DB:-mars}
+      # Deterministic collation, so index ordering does not vary by host locale.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      # Bound to loopback: the database must not be reachable from the network.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Dependents wait for readiness, not merely for the container to start.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mars} -d ${POSTGRES_DB:-mars}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: mars-redis
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: ../infra/Dockerfile.backend
+    container_name: mars-api
+    environment:
+      MARS_ENVIRONMENT: ${MARS_ENVIRONMENT:-local}
+      MARS_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mars}:${POSTGRES_PASSWORD:-mars_local_development}@postgres:5432/${POSTGRES_DB:-mars}
+      MARS_REDIS_URL: redis://redis:6379/0
+      MARS_LOG_LEVEL: ${MARS_LOG_LEVEL:-INFO}
+      MARS_LOG_FORMAT: ${MARS_LOG_FORMAT:-console}
+      MARS_DEV_AUTH_ENABLED: ${MARS_DEV_AUTH_ENABLED:-true}
+      MARS_DEV_AUTH_SECRET: ${MARS_DEV_AUTH_SECRET:-local-development-secret-not-for-production}
+      MARS_CORS_ALLOW_ORIGINS: '["http://localhost:5173"]'
+      MARS_RELEASE_VERSION: ${MARS_RELEASE_VERSION:-0.1.0}
+      MARS_GIT_SHA: ${MARS_GIT_SHA:-local}
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Live reload during development. Removed in the production image.
+      - ./backend/src:/app/src:ro
+      - ./backend/migrations:/app/migrations:ro
+    command:
+      ["uvicorn", "mars.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/v1/health/live')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: ../infra/Dockerfile.backend
+    container_name: mars-worker
+    environment:
+      MARS_ENVIRONMENT: ${MARS_ENVIRONMENT:-local}
+      MARS_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mars}:${POSTGRES_PASSWORD:-mars_local_development}@postgres:5432/${POSTGRES_DB:-mars}
+      MARS_REDIS_URL: redis://redis:6379/0
+      MARS_LOG_LEVEL: ${MARS_LOG_LEVEL:-INFO}
+      MARS_LOG_FORMAT: ${MARS_LOG_FORMAT:-console}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src:ro
+    # Idle in phases 1-2: no ingestion, analytics or signal job exists yet. The
+    # service is present so the topology is real from the first deployment.
+    command: ["python", "-m", "mars.worker"]
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: ../infra/Dockerfile.frontend
+      target: development
+    container_name: mars-web
+    environment:
+      # Relative by default; the dev server proxies /api to the api service.
+      MARS_API_PROXY_TARGET: http://api:8000
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:5173"
+    depends_on:
+      api:
+        condition: service_started
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/index.html:/app/index.html:ro
+      - ./contracts:/contracts:ro
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    name: mars-postgres-data
+  redis-data:
+    name: mars-redis-data

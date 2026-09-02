@@ -1,0 +1,35 @@
+{
+  "schema": "mars.geography.manifest/1",
+  "generated_at": "2026-09-01T19:18:10.346773Z",
+  "note": "Supplied reference data, excluded from Git by size. These checksums are the tracked record of exactly which bytes MARS was built against. scripts/geography_audit.py --verify-only checks them.",
+  "files": [
+    {
+      "filename": "COUNTRY_BOUNDARY.json",
+      "role": "National outline and import control layer",
+      "sha256": "d1317fd9ec48b1153b15075c67006de6f5eacf6f0ff50e32ee20913e2fd2f4b2",
+      "size_bytes": 2795347,
+      "modified_utc": "2025-03-27T08:03:36Z"
+    },
+    {
+      "filename": "UGANDA_DISTRICT.json",
+      "role": "Primary district geometry (standard GeoJSON)",
+      "sha256": "5a6024f5438cf38bbf1ea822ed4bc1d900005288585bd55294b29d730d7027b8",
+      "size_bytes": 47405738,
+      "modified_utc": "2025-03-27T08:05:12Z"
+    },
+    {
+      "filename": "UGANDA_DISTRICTS.json",
+      "role": "Esri JSON provenance and equivalence witness",
+      "sha256": "9b406b469445e7be1f512a0e6f2a0726c743dc1ce7cb7452feb7ab8ce7f9cad5",
+      "size_bytes": 19842192,
+      "modified_utc": "2025-03-27T08:04:14Z"
+    },
+    {
+      "filename": "UGANDA_SUBCOUNTIES.json",
+      "role": "Hierarchy spine and subcounty geometry",
+      "sha256": "49c0d09380c5d9e7db824806217f1c8a6a072d7439342609b83dfdd2d5d29936",
+      "size_bytes": 163183068,
+      "modified_utc": "2025-03-27T08:07:20Z"
+    }
+  ]
+}

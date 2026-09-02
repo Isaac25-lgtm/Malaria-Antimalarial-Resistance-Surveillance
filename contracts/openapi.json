@@ -1,0 +1,2647 @@
+{
+  "components": {
+    "schemas": {
+      "BoundaryVersionSummary": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "import_status": {
+            "title": "Import Status",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "source_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Checksum"
+          },
+          "source_crs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Crs"
+          },
+          "source_file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source File Name"
+          },
+          "source_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Format"
+          },
+          "source_name": {
+            "title": "Source Name",
+            "type": "string"
+          },
+          "storage_crs": {
+            "title": "Storage Crs",
+            "type": "string"
+          },
+          "validation_summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Summary"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "label",
+          "source_name",
+          "source_file_name",
+          "source_checksum",
+          "source_format",
+          "source_crs",
+          "storage_crs",
+          "import_status",
+          "effective_from",
+          "effective_to",
+          "validation_summary"
+        ],
+        "title": "BoundaryVersionSummary",
+        "type": "object"
+      },
+      "ConfigurationKeySummary": {
+        "properties": {
+          "active_effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Effective From"
+          },
+          "active_version_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Version Checksum"
+          },
+          "active_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Version Number"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "requires_programme_approval": {
+            "title": "Requires Programme Approval",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "label",
+          "description",
+          "category",
+          "requires_programme_approval",
+          "active_version_number",
+          "active_version_checksum",
+          "active_effective_from"
+        ],
+        "title": "ConfigurationKeySummary",
+        "type": "object"
+      },
+      "CurrentUserResponse": {
+        "description": "The caller's own non-sensitive profile and effective authorisation.",
+        "properties": {
+          "auth_method": {
+            "title": "Auth Method",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "facility_scope_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Facility Scope Ids",
+            "type": "array"
+          },
+          "geography_scopes": {
+            "items": {
+              "$ref": "#/components/schemas/GeographyScopeSummary"
+            },
+            "title": "Geography Scopes",
+            "type": "array"
+          },
+          "has_national_scope": {
+            "title": "Has National Scope",
+            "type": "boolean"
+          },
+          "is_synthetic": {
+            "description": "True for development accounts. The interface must mark these visibly.",
+            "title": "Is Synthetic",
+            "type": "boolean"
+          },
+          "max_sensitivity": {
+            "title": "Max Sensitivity",
+            "type": "string"
+          },
+          "organisation_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organisation Label"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "display_name",
+          "email",
+          "organisation_label",
+          "roles",
+          "permissions",
+          "max_sensitivity",
+          "geography_scopes",
+          "facility_scope_ids",
+          "has_national_scope",
+          "auth_method",
+          "is_synthetic"
+        ],
+        "title": "CurrentUserResponse",
+        "type": "object"
+      },
+      "DependencyStatus": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "description": "ok | unavailable | not_installed",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ],
+        "title": "DependencyStatus",
+        "type": "object"
+      },
+      "DevelopmentLoginRequest": {
+        "description": "Request a synthetic development token. Non-production only.",
+        "properties": {
+          "username": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "title": "DevelopmentLoginRequest",
+        "type": "object"
+      },
+      "DevelopmentLoginResponse": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          },
+          "warning": {
+            "default": "Synthetic development session. Not valid in staging or production.",
+            "title": "Warning",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_at"
+        ],
+        "title": "DevelopmentLoginResponse",
+        "type": "object"
+      },
+      "DevelopmentUserSummary": {
+        "description": "A selectable synthetic user, for the development sign-in screen.",
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "scope_description": {
+            "title": "Scope Description",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "display_name",
+          "role",
+          "scope_description"
+        ],
+        "title": "DevelopmentUserSummary",
+        "type": "object"
+      },
+      "FacilityDetail": {
+        "properties": {
+          "closed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed On"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "coordinate_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coordinate Source"
+          },
+          "coordinate_validated": {
+            "title": "Coordinate Validated",
+            "type": "boolean"
+          },
+          "district_geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District Geography Unit Id"
+          },
+          "facility_level": {
+            "title": "Facility Level",
+            "type": "string"
+          },
+          "has_coordinates": {
+            "description": "True only when a validated coordinate exists. MARS never places a facility approximately.",
+            "title": "Has Coordinates",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "identifiers": {
+            "items": {
+              "$ref": "#/components/schemas/FacilityIdentifierSummary"
+            },
+            "title": "Identifiers",
+            "type": "array"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_synthetic": {
+            "title": "Is Synthetic",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "opened_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened On"
+          },
+          "organisation_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organisation Unit Id"
+          },
+          "ownership": {
+            "title": "Ownership",
+            "type": "string"
+          },
+          "subcounty_geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subcounty Geography Unit Id"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "facility_level",
+          "ownership",
+          "district_geography_unit_id",
+          "subcounty_geography_unit_id",
+          "organisation_unit_id",
+          "is_active",
+          "is_synthetic",
+          "has_coordinates",
+          "opened_on",
+          "closed_on",
+          "coordinate_source",
+          "coordinate_validated"
+        ],
+        "title": "FacilityDetail",
+        "type": "object"
+      },
+      "FacilityIdentifierSummary": {
+        "properties": {
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "external_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Name"
+          },
+          "is_primary": {
+            "title": "Is Primary",
+            "type": "boolean"
+          },
+          "source_system": {
+            "title": "Source System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_system",
+          "external_id",
+          "external_name",
+          "is_primary"
+        ],
+        "title": "FacilityIdentifierSummary",
+        "type": "object"
+      },
+      "FacilityLevel": {
+        "description": "Uganda health facility levels.\n\nValues follow the national facility-level nomenclature. The authoritative\nassignment for any given facility comes from the facility master, which has\nnot yet been supplied; ``unknown`` is the honest default.",
+        "enum": [
+          "unknown",
+          "hc_ii",
+          "hc_iii",
+          "hc_iv",
+          "general_hospital",
+          "regional_referral_hospital",
+          "national_referral_hospital",
+          "specialised_clinic"
+        ],
+        "title": "FacilityLevel",
+        "type": "string"
+      },
+      "FacilitySummary": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "district_geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District Geography Unit Id"
+          },
+          "facility_level": {
+            "title": "Facility Level",
+            "type": "string"
+          },
+          "has_coordinates": {
+            "description": "True only when a validated coordinate exists. MARS never places a facility approximately.",
+            "title": "Has Coordinates",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_synthetic": {
+            "title": "Is Synthetic",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "organisation_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organisation Unit Id"
+          },
+          "ownership": {
+            "title": "Ownership",
+            "type": "string"
+          },
+          "subcounty_geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subcounty Geography Unit Id"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "facility_level",
+          "ownership",
+          "district_geography_unit_id",
+          "subcounty_geography_unit_id",
+          "organisation_unit_id",
+          "is_active",
+          "is_synthetic",
+          "has_coordinates"
+        ],
+        "title": "FacilitySummary",
+        "type": "object"
+      },
+      "GeographyAliasSummary": {
+        "properties": {
+          "geography_unit_id": {
+            "format": "uuid",
+            "title": "Geography Unit Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "match_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Method"
+          },
+          "match_status": {
+            "title": "Match Status",
+            "type": "string"
+          },
+          "source_code": {
+            "title": "Source Code",
+            "type": "string"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          },
+          "source_system": {
+            "title": "Source System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "geography_unit_id",
+          "source_system",
+          "source_code",
+          "source_name",
+          "match_status",
+          "match_method"
+        ],
+        "title": "GeographyAliasSummary",
+        "type": "object"
+      },
+      "GeographyLevel": {
+        "description": "Administrative hierarchy levels.\n\nAll seven levels exist in the schema from the outset. Parish and village are\ndefined but will remain empty: no parish or village boundary data has been\nsupplied, and MARS does not fabricate geography.",
+        "enum": [
+          "country",
+          "region",
+          "district",
+          "county",
+          "subcounty",
+          "parish",
+          "village"
+        ],
+        "title": "GeographyLevel",
+        "type": "string"
+      },
+      "GeographyLevelCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "count"
+        ],
+        "title": "GeographyLevelCount",
+        "type": "object"
+      },
+      "GeographyOverviewResponse": {
+        "description": "Hierarchy metadata, including levels that are deliberately empty.",
+        "properties": {
+          "boundary_versions": {
+            "items": {
+              "$ref": "#/components/schemas/BoundaryVersionSummary"
+            },
+            "title": "Boundary Versions",
+            "type": "array"
+          },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/GeographyLevelCount"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "levels",
+          "boundary_versions",
+          "note"
+        ],
+        "title": "GeographyOverviewResponse",
+        "type": "object"
+      },
+      "GeographyScopeSummary": {
+        "properties": {
+          "geography_unit_id": {
+            "format": "uuid",
+            "title": "Geography Unit Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "preferred_code": {
+            "title": "Preferred Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "geography_unit_id",
+          "preferred_code",
+          "level",
+          "name"
+        ],
+        "title": "GeographyScopeSummary",
+        "type": "object"
+      },
+      "GeographyUnitDetail": {
+        "properties": {
+          "ancestors": {
+            "items": {
+              "$ref": "#/components/schemas/GeographyUnitSummary"
+            },
+            "title": "Ancestors",
+            "type": "array"
+          },
+          "boundary_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Id"
+          },
+          "child_count": {
+            "default": 0,
+            "title": "Child Count",
+            "type": "integer"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "has_geometry": {
+            "default": false,
+            "description": "False throughout phases 1-2; geometry is imported in Prompt 5.",
+            "title": "Has Geometry",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "description": "The raw supplied name. Displayed as-is.",
+            "title": "Name",
+            "type": "string"
+          },
+          "normalised_name": {
+            "description": "Lookup form. Not for display.",
+            "title": "Normalised Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "preferred_code": {
+            "title": "Preferred Code",
+            "type": "string"
+          },
+          "unit_kind": {
+            "title": "Unit Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "unit_kind",
+          "preferred_code",
+          "name",
+          "normalised_name",
+          "parent_id",
+          "depth",
+          "path",
+          "is_active",
+          "effective_from",
+          "effective_to",
+          "boundary_version_id"
+        ],
+        "title": "GeographyUnitDetail",
+        "type": "object"
+      },
+      "GeographyUnitSummary": {
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "description": "The raw supplied name. Displayed as-is.",
+            "title": "Name",
+            "type": "string"
+          },
+          "normalised_name": {
+            "description": "Lookup form. Not for display.",
+            "title": "Normalised Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "preferred_code": {
+            "title": "Preferred Code",
+            "type": "string"
+          },
+          "unit_kind": {
+            "title": "Unit Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "unit_kind",
+          "preferred_code",
+          "name",
+          "normalised_name",
+          "parent_id",
+          "depth",
+          "path",
+          "is_active",
+          "effective_from",
+          "effective_to"
+        ],
+        "title": "GeographyUnitSummary",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LivenessResponse": {
+        "properties": {
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "description": "Always 'alive' when the process is serving.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "service"
+        ],
+        "title": "LivenessResponse",
+        "type": "object"
+      },
+      "MethodDefinitionSummary": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/MethodVersionSummary"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "label",
+          "kind",
+          "purpose"
+        ],
+        "title": "MethodDefinitionSummary",
+        "type": "object"
+      },
+      "MethodVersionSummary": {
+        "properties": {
+          "artifact_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Checksum"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "semantic_version": {
+            "title": "Semantic Version",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "validation_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Reference"
+          }
+        },
+        "required": [
+          "id",
+          "semantic_version",
+          "status",
+          "summary",
+          "effective_from",
+          "validation_reference",
+          "artifact_checksum"
+        ],
+        "title": "MethodVersionSummary",
+        "type": "object"
+      },
+      "OrganisationUnitDetail": {
+        "properties": {
+          "ancestors": {
+            "items": {
+              "$ref": "#/components/schemas/OrganisationUnitSummary"
+            },
+            "title": "Ancestors",
+            "type": "array"
+          },
+          "child_count": {
+            "default": 0,
+            "title": "Child Count",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "primary_geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Geography Unit Id"
+          },
+          "unit_type": {
+            "title": "Unit Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "unit_type",
+          "parent_id",
+          "depth",
+          "primary_geography_unit_id",
+          "is_active"
+        ],
+        "title": "OrganisationUnitDetail",
+        "type": "object"
+      },
+      "OrganisationUnitSummary": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "primary_geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Geography Unit Id"
+          },
+          "unit_type": {
+            "title": "Unit Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "unit_type",
+          "parent_id",
+          "depth",
+          "primary_geography_unit_id",
+          "is_active"
+        ],
+        "title": "OrganisationUnitSummary",
+        "type": "object"
+      },
+      "OrganisationUnitType": {
+        "description": "Health-sector organisational hierarchy.\n\nDeliberately distinct from ``GeographyLevel``. A Health Sub-District is a\nhealth-sector management unit; it is not equivalent to a county, and MARS\nmust not assume it is. The correspondence, where one exists, is recorded as\ndata once the Ministry list is supplied.",
+        "enum": [
+          "national",
+          "regional_referral",
+          "district_health_office",
+          "health_sub_district",
+          "facility"
+        ],
+        "title": "OrganisationUnitType",
+        "type": "string"
+      },
+      "Page_FacilitySummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FacilitySummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omitted when counting would be costly.",
+            "title": "Total"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[FacilitySummary]",
+        "type": "object"
+      },
+      "Page_GeographyUnitSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GeographyUnitSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omitted when counting would be costly.",
+            "title": "Total"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[GeographyUnitSummary]",
+        "type": "object"
+      },
+      "Page_OrganisationUnitSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OrganisationUnitSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omitted when counting would be costly.",
+            "title": "Total"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[OrganisationUnitSummary]",
+        "type": "object"
+      },
+      "ReadinessResponse": {
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyStatus"
+            },
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "status": {
+            "description": "ready | degraded | unavailable",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checked_at",
+          "dependencies"
+        ],
+        "title": "ReadinessResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VersionResponse": {
+        "description": "Build and governance identity of this deployment.\n\nExposes which method versions are active, so a number on a screen can be\ntraced to the rules that produced it. Configuration *content* is not\nexposed here - only which version is in force.",
+        "properties": {
+          "active_configuration_keys": {
+            "description": "Keys with an active version. Values are not exposed here.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Active Configuration Keys",
+            "type": "array"
+          },
+          "active_method_versions": {
+            "description": "Qualified identifiers, e.g. 'IND-TPR@1.2.0'. Empty until Prompt 13.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Active Method Versions",
+            "type": "array"
+          },
+          "ai_assistant_enabled": {
+            "title": "Ai Assistant Enabled",
+            "type": "boolean"
+          },
+          "api_version": {
+            "title": "Api Version",
+            "type": "string"
+          },
+          "build_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Timestamp"
+          },
+          "demo_mode_enabled": {
+            "title": "Demo Mode Enabled",
+            "type": "boolean"
+          },
+          "development_auth_active": {
+            "title": "Development Auth Active",
+            "type": "boolean"
+          },
+          "display_timezone": {
+            "title": "Display Timezone",
+            "type": "string"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "git_sha": {
+            "title": "Git Sha",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "release_version": {
+            "title": "Release Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "release_version",
+          "git_sha",
+          "build_timestamp",
+          "environment",
+          "api_version",
+          "display_timezone",
+          "ai_assistant_enabled",
+          "demo_mode_enabled",
+          "development_auth_active"
+        ],
+        "title": "VersionResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "MARS bearer token": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "name": "MARS implementation team"
+    },
+    "description": "MARS converts routine malaria data into explainable surveillance signals that a\nnamed person is accountable for investigating.\n\n**Scientific boundary.** Signals produced from routine e-register and HMIS data\nindicate patterns requiring investigation. They do not confirm antimalarial\nresistance. Routine data cannot distinguish recrudescence from reinfection,\nprove drug exposure or adherence, identify parasite genotype, or confirm\nmolecular markers. Externally confirmed findings - therapeutic efficacy studies\nand molecular results - are handled in a separate, separately governed lane. See\n`/api/v1/meta/evidence-lanes`.\n\n**Phase status.** This build covers phases 1 and 2: repository and runtime\nfoundation, database and governance foundation, authentication and\nauthorisation, and the organisation, facility and geography domain model. No\nencounter ingestion, episode construction, indicator, anomaly-detection, signal\nor investigation capability exists yet.\n",
+    "title": "MARS - Malaria Antimalarial Resistance Surveillance",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/auth/dev/login": {
+      "post": {
+        "description": "Issue a short-lived synthetic token.\n\nThe account must already exist and be flagged synthetic. This route never\ncreates an account, so it cannot be used to mint a principal that the seeded\ndevelopment fixture did not define.",
+        "operationId": "development_login_api_v1_auth_dev_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevelopmentLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevelopmentLoginResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sign in as a synthetic development user",
+        "tags": [
+          "auth",
+          "development"
+        ]
+      }
+    },
+    "/api/v1/auth/dev/users": {
+      "get": {
+        "description": "List the synthetic accounts a developer may sign in as.",
+        "operationId": "development_users_api_v1_auth_dev_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DevelopmentUserSummary"
+                  },
+                  "title": "Response Development Users Api V1 Auth Dev Users Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Synthetic users available for development sign-in",
+        "tags": [
+          "auth",
+          "development"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Record the logout.\n\nToken revocation is the identity provider's responsibility; MARS records the\nevent so the audit trail has both ends of the session.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "End the current session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "description": "Return the caller's own non-sensitive profile.\n\nThe frontend uses this to decide what to render. It is a convenience, not a\ncontrol: every endpoint re-checks server-side, so a client that ignores this\nresponse gains nothing.",
+        "operationId": "current_user_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "The caller's profile and effective authorisation",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/facilities": {
+      "get": {
+        "description": "List facilities.\n\nScope is applied in the query, so a district filter naming another district\nreturns nothing rather than raising - a caller learns what they may see, not\nwhat exists elsewhere.",
+        "operationId": "list_facilities_api_v1_facilities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "district_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "District Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subcounty_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subcounty Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "organisation_unit_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Organisation Unit Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "facility_level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/FacilityLevel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Facility Level"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active_only",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Active Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_FacilitySummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "List facilities within your scope",
+        "tags": [
+          "organisation"
+        ]
+      }
+    },
+    "/api/v1/facilities/{facility_id}": {
+      "get": {
+        "operationId": "get_facility_api_v1_facilities__facility_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "facility_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Facility Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacilityDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "One facility",
+        "tags": [
+          "organisation"
+        ]
+      }
+    },
+    "/api/v1/geography/aliases": {
+      "get": {
+        "description": "Return every candidate mapping for a source code.\n\nMore than one result means the mapping is ambiguous and needs review. MARS\ndoes not pick one: an ambiguous source value stays unresolved.",
+        "operationId": "resolve_alias_api_v1_geography_aliases_get",
+        "parameters": [
+          {
+            "description": "e.g. ubos_fscode, dhis2",
+            "in": "query",
+            "name": "source_system",
+            "required": true,
+            "schema": {
+              "description": "e.g. ubos_fscode, dhis2",
+              "title": "Source System",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_code",
+            "required": true,
+            "schema": {
+              "title": "Source Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GeographyAliasSummary"
+                  },
+                  "title": "Response Resolve Alias Api V1 Geography Aliases Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Resolve a source system's geography code",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/boundary-versions": {
+      "get": {
+        "operationId": "list_boundary_versions_api_v1_geography_boundary_versions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BoundaryVersionSummary"
+                  },
+                  "title": "Response List Boundary Versions Api V1 Geography Boundary Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Registered boundary dataset versions",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/overview": {
+      "get": {
+        "description": "Report unit counts per level and the boundary versions registered.\n\nLevels with no data are reported as zero rather than omitted, so an empty\nparish level reads as \"none loaded\" and not as \"level not supported\".",
+        "operationId": "overview_api_v1_geography_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeographyOverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Hierarchy metadata and loaded boundary versions",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/units": {
+      "get": {
+        "operationId": "list_units_api_v1_geography_units_get",
+        "parameters": [
+          {
+            "description": "Filter by hierarchy level",
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GeographyLevel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by hierarchy level",
+              "title": "Level"
+            }
+          },
+          {
+            "description": "Direct children of this unit",
+            "in": "query",
+            "name": "parent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Direct children of this unit",
+              "title": "Parent Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active_only",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Active Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_GeographyUnitSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "List geography units within your scope",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/units/{unit_id}": {
+      "get": {
+        "operationId": "get_unit_api_v1_geography_units__unit_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeographyUnitDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "One geography unit, with its ancestor chain",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/units/{unit_id}/children": {
+      "get": {
+        "operationId": "get_children_api_v1_geography_units__unit_id__children_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GeographyUnitSummary"
+                  },
+                  "title": "Response Get Children Api V1 Geography Units  Unit Id  Children Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Direct children of a geography unit",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/governance/configuration-keys": {
+      "get": {
+        "description": "List configuration keys.\n\nA key with no active version is returned with nulls rather than omitted: an\nungoverned parameter is a fact the programme needs to see.",
+        "operationId": "list_configuration_keys_api_v1_governance_configuration_keys_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigurationKeySummary"
+                  },
+                  "title": "Response List Configuration Keys Api V1 Governance Configuration Keys Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Governed configuration keys and which version is active",
+        "tags": [
+          "governance"
+        ]
+      }
+    },
+    "/api/v1/governance/methods": {
+      "get": {
+        "description": "List registered methods and their versions.\n\nEmpty until Prompt 13. An empty registry is the honest state: no analytical\nmethod has been defined, let alone validated or approved.",
+        "operationId": "list_methods_api_v1_governance_methods_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MethodDefinitionSummary"
+                  },
+                  "title": "Response List Methods Api V1 Governance Methods Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "The analytical method registry",
+        "tags": [
+          "governance"
+        ]
+      }
+    },
+    "/api/v1/health/live": {
+      "get": {
+        "description": "Return 200 whenever the process is able to serve a request.",
+        "operationId": "liveness_api_v1_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "description": "Check backing services and report each one individually.\n\nPostGIS absence is reported as ``not_installed`` rather than as a failure.\nThe schema work of phases 1-2 does not need it; the geography importer\n(Prompt 5) checks for it explicitly and refuses to run without it.",
+        "operationId": "readiness_api_v1_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "A required dependency is unavailable."
+          }
+        },
+        "summary": "Readiness probe",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/health/schema": {
+      "get": {
+        "description": "List the MARS schemas present in the connected database.\n\nUsed by the development shell and by deployment smoke checks to confirm that\nmigrations have been applied.",
+        "operationId": "schema_state_api_v1_health_schema_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Schema State Api V1 Health Schema Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "The database could not be reached."
+          }
+        },
+        "summary": "Report which MARS schemas exist",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/meta/evidence-lanes": {
+      "get": {
+        "description": "Describe the two-lane evidence model.\n\nServed by the API rather than written into the interface so that the\nscientific boundary has one authoritative statement, used identically by the\ndashboard, generated reports and documentation.",
+        "operationId": "evidence_lanes_api_v1_meta_evidence_lanes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Evidence Lanes Api V1 Meta Evidence Lanes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "How MARS separates routine signals from confirmed findings",
+        "tags": [
+          "metadata"
+        ]
+      }
+    },
+    "/api/v1/meta/permissions": {
+      "get": {
+        "description": "Describe every permission and the sensitivity tier it requires.\n\nRead by the administration interface so that permission descriptions come\nfrom one place rather than being re-typed in the frontend.",
+        "operationId": "permission_catalogue_api_v1_meta_permissions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Permission Catalogue Api V1 Meta Permissions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The permission catalogue this build recognises",
+        "tags": [
+          "metadata"
+        ]
+      }
+    },
+    "/api/v1/meta/version": {
+      "get": {
+        "description": "Return build identity plus the active method and configuration registry.\n\nRegistry lookups are best-effort: this endpoint must keep answering during a\ndatabase outage, because it is what an operator reaches for first when\nsomething is wrong.",
+        "operationId": "version_api_v1_meta_version_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Build and governance identity of this deployment",
+        "tags": [
+          "metadata"
+        ]
+      }
+    },
+    "/api/v1/organisation-units": {
+      "get": {
+        "description": "List health-sector organisation units.\n\nHealth Sub-District is one of the unit types here, not a geography level:\nMARS does not assume an HSD coincides with a county.",
+        "operationId": "list_organisation_units_api_v1_organisation_units_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "unit_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/OrganisationUnitType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Unit Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active_only",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Active Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_OrganisationUnitSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "List organisation units within your scope",
+        "tags": [
+          "organisation"
+        ]
+      }
+    },
+    "/api/v1/organisation-units/{unit_id}": {
+      "get": {
+        "operationId": "get_organisation_unit_api_v1_organisation_units__unit_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationUnitDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "One organisation unit, with its ancestor chain",
+        "tags": [
+          "organisation"
+        ]
+      }
+    }
+  }
+}

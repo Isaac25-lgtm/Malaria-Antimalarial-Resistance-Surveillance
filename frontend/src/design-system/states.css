@@ -1,0 +1,111 @@
+/*
+ * State styles.
+ *
+ * Each state has a visually distinct treatment. They are deliberately not
+ * variations of one grey box: a reader must be able to tell "nothing matched"
+ * from "nothing was submitted" from "you may not see this" at a glance.
+ */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-5);
+  border-radius: var(--radius-md);
+}
+
+.state__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+.state__description {
+  margin: 0;
+  color: var(--ink-secondary);
+  max-width: 60ch;
+}
+
+.state__meta {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-tertiary);
+}
+
+/* Nothing matched: quiet, no border, no alarm. */
+.state--empty {
+  background: var(--surface-inset);
+  border: 1px dashed var(--line-default);
+}
+
+/* No data submitted: hatched, to read as an absence rather than a zero. */
+.state--no-data {
+  border: 1px solid var(--line-default);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--status-unavailable-soft),
+    var(--status-unavailable-soft) 6px,
+    var(--surface-raised) 6px,
+    var(--surface-raised) 12px
+  );
+}
+
+/* Not permitted: amber edge, no hatching - the data exists, access does not. */
+.state--forbidden {
+  border: 1px solid var(--status-attention);
+  border-left-width: 3px;
+  background: var(--status-attention-soft);
+}
+
+/* Dependency failure: the only state that uses the priority colour. */
+.state--unavailable {
+  border: 1px solid var(--status-priority);
+  border-left-width: 3px;
+  background: var(--status-priority-soft);
+}
+
+/* -- Loading skeleton --------------------------------------------------- */
+.state--loading {
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  width: 100%;
+}
+
+.skeleton {
+  height: 1.25rem;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 0%,
+    var(--surface-inset) 50%,
+    var(--surface-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s var(--easing) infinite;
+}
+
+.skeleton:nth-child(2) {
+  width: 82%;
+}
+.skeleton:nth-child(3) {
+  width: 64%;
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--surface-sunken);
+  }
+}

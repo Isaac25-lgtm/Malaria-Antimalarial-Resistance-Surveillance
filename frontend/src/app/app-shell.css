@@ -1,0 +1,203 @@
+/* Application shell layout. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* -- App bar ------------------------------------------------------------ */
+.shell__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: var(--app-bar-height);
+  padding: 0 var(--space-5);
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--line-default);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.shell__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.shell__mark {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+.shell__wordmark {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-md);
+  letter-spacing: 0.02em;
+}
+
+.shell__divider {
+  width: 1px;
+  height: 1.25rem;
+  background: var(--line-default);
+}
+
+.shell__context {
+  font-size: var(--text-xs);
+  color: var(--ink-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shell__bar-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+/* The signed-in user's scope is printed beside their name, so nobody has to
+   wonder why a district is missing from a list. */
+.shell__account {
+  text-align: right;
+  line-height: 1.3;
+}
+
+.shell__account-name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.shell__account-scope {
+  font-size: var(--text-2xs);
+  color: var(--ink-tertiary);
+}
+
+/* -- Body --------------------------------------------------------------- */
+.shell__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.shell__nav {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-3);
+  border-right: 1px solid var(--line-subtle);
+  background: var(--surface-raised);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.shell__nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shell__nav-link {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--ink-secondary);
+  text-decoration: none;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  border-left: 2px solid transparent;
+  transition: background var(--duration-fast) var(--easing);
+}
+
+.shell__nav-link:hover {
+  background: var(--surface-sunken);
+  color: var(--ink-primary);
+}
+
+.shell__nav-link--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+/* States a destination is in are stated up front, so an empty view is
+   expected rather than read as a failure. */
+.shell__nav-note {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-tertiary);
+  font-weight: var(--weight-regular);
+}
+
+.shell__nav-footer {
+  border-top: 1px solid var(--line-subtle);
+  padding-top: var(--space-3);
+}
+
+.shell__main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6);
+  max-width: var(--content-max-width);
+}
+
+.shell__main:focus {
+  outline: none;
+}
+
+/* -- Scientific boundary statement -------------------------------------- */
+.shell__boundary {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--line-default);
+  background: var(--surface-raised);
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+/* -- Responsive --------------------------------------------------------- */
+@media (max-width: 60rem) {
+  .shell__body {
+    flex-direction: column;
+  }
+
+  .shell__nav {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-subtle);
+  }
+
+  .shell__nav ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .shell__nav-note {
+    display: none;
+  }
+
+  .shell__context {
+    display: none;
+  }
+
+  .shell__main {
+    padding: var(--space-4);
+  }
+}

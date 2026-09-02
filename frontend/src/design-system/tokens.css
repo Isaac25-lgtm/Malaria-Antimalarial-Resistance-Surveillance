@@ -1,0 +1,129 @@
+/*
+ * MARS design tokens.
+ *
+ * Blueprint section 070. The discipline this file encodes:
+ *
+ *   One accent (teal), three semantic states, everything else neutral.
+ *   Structural surfaces are never coloured - only status marks are. A KPI card
+ *   is neutral even when its number is bad; that is what keeps the interface
+ *   readable and stops it becoming a wall of competing colour.
+ *
+ * Colour carries meaning here, so it is spent sparingly:
+ *   teal   - the single brand accent and the neutral analytical series
+ *   amber  - attention; something needs review
+ *   red    - high priority only
+ *   grey   - no or insufficient data. NEVER read as "low".
+ */
+
+:root {
+  color-scheme: light;
+
+  /* -- Surfaces ------------------------------------------------------- */
+  --surface-page: #f6f8f7;
+  --surface-raised: #ffffff;
+  --surface-sunken: #eef1f0;
+  --surface-inset: #fbfcfb;
+
+  /* -- Ink ------------------------------------------------------------ */
+  --ink-primary: #12212b;
+  --ink-secondary: #4e5f66;
+  --ink-tertiary: #7c8b90;
+  --ink-inverse: #ffffff;
+
+  /* -- Lines ---------------------------------------------------------- */
+  --line-subtle: #e3e8e7;
+  --line-default: #d2dad8;
+  --line-strong: #b6c2bf;
+
+  /* -- Accent (the only brand colour) --------------------------------- */
+  --accent: #0b6e63;
+  --accent-hover: #095c53;
+  --accent-soft: #e4f0ed;
+  --accent-line: #9cc7bf;
+  --accent-ink: #ffffff;
+
+  /* -- Semantic status ------------------------------------------------ */
+  --status-priority: #96242a;
+  --status-priority-soft: #faebea;
+  --status-attention: #8a5200;
+  --status-attention-soft: #fbf1e0;
+  --status-ok: #2f6b3c;
+  --status-ok-soft: #e8f2e9;
+  --status-info: #1c5a8a;
+  --status-info-soft: #e7f0f7;
+
+  /* Absence of data is its own state, visually distinct from every value
+     on the scale. Blueprint appendix 142: grey means no or insufficient
+     data, not low risk. */
+  --status-unavailable: #8c9895;
+  --status-unavailable-soft: #eceeed;
+
+  /* -- Focus ---------------------------------------------------------- */
+  --focus-ring: #0b6e63;
+  --focus-ring-offset: #ffffff;
+
+  /* -- Typography ----------------------------------------------------- */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --text-2xs: 0.6875rem; /* 11px - uppercase labels */
+  --text-xs: 0.75rem; /* 12px - metadata */
+  --text-sm: 0.8125rem; /* 13px - dense table text */
+  --text-base: 0.875rem; /* 14px - body */
+  --text-md: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.375rem; /* 22px - section heading */
+  --text-2xl: 1.75rem; /* 28px - metric value */
+  --text-3xl: 2.25rem; /* 36px - page title */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.65;
+
+  --tracking-label: 0.06em;
+
+  /* -- Spacing: 8px rhythm -------------------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* -- Shape ----------------------------------------------------------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Almost no shadow. Depth comes from a 1px border, not from a blur -
+     blueprint section 070 asks for subtle borders and minimal shadows. */
+  --shadow-raised: 0 1px 2px rgb(18 33 43 / 6%);
+  --shadow-overlay: 0 4px 16px rgb(18 33 43 / 10%);
+
+  /* -- Layout ---------------------------------------------------------- */
+  --app-bar-height: 3.5rem;
+  --sidebar-width: 15rem;
+  --content-max-width: 90rem;
+
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --easing: cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* The interface targets a well-lit office display and commits to one visual
+   world. A dark variant would need its own contrast work against the map and
+   chart palettes, so it is deliberately deferred rather than half-done. */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+  }
+}
