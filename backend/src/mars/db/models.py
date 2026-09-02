@@ -9,6 +9,14 @@ from __future__ import annotations
 
 from mars.db.base import Base
 from mars.domain.audit import AuditEvent
+from mars.domain.encounter import (
+    OpdEncounter,
+    OpdEncounterDiagnosis,
+    OpdEncounterPrescription,
+    OpdEncounterReferral,
+    OpdEncounterTest,
+    PatientReference,
+)
 from mars.domain.geography import (
     BoundaryVersion,
     GeographyUnit,
@@ -45,7 +53,13 @@ __all__ = [
     "GeographyUnitGeometry",
     "MethodDefinition",
     "MethodVersion",
+    "OpdEncounter",
+    "OpdEncounterDiagnosis",
+    "OpdEncounterPrescription",
+    "OpdEncounterReferral",
+    "OpdEncounterTest",
     "OrganisationUnit",
+    "PatientReference",
     "Role",
     "RolePermission",
     "UserAccount",

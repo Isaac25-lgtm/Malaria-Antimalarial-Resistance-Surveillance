@@ -31,6 +31,7 @@ secrets/
 # their exact bytes in data/manifests/hmis-reference-documents.sha256.json.
 /HMIS 033b HEALTH UNIT WEEKLY EPIDEMIOLOGICAL-ka2024.pdf
 /HMIS 105 Health Unit Outpatient Monthly Report-ka2024_IPS.pdf
+/HMIS OPD 002 OUTPATIENT REGISTER_ka2024.pdf
 
 # Generated geography audit output. Regenerate with scripts/geography_audit.py.
 /data/manifests/geography-audit.json

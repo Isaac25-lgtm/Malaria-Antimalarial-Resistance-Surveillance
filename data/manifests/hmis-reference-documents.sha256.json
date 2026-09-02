@@ -1,7 +1,7 @@
 {
   "schema": "mars.hmis-reference-documents.manifest/1",
   "generated_on": "2026-09-02",
-  "note": "User-supplied HMIS reference forms, excluded from Git by size. These checksums identify the exact local source bytes. OPD 002 has not yet been supplied.",
+  "note": "User-supplied HMIS reference forms, excluded from Git by size. These checksums identify the exact local source bytes. Every canonical field MARS derives from a form cites the form, page and printed label; the checksum is what makes that citation verifiable.",
   "files": [
     {
       "filename": "HMIS 033b HEALTH UNIT WEEKLY EPIDEMIOLOGICAL-ka2024.pdf",
@@ -18,6 +18,15 @@
       "size_bytes": 33362242,
       "modified_utc": "2025-07-30T11:23:28.4902541Z",
       "inspection": "Valid 25-page A4 AcroForm PDF with essentially no extractable text layer; use visual inspection or OCR for field analysis."
+    },
+    {
+      "filename": "HMIS OPD 002 OUTPATIENT REGISTER_ka2024.pdf",
+      "role": "HMIS OPD 002 Outpatient Register reference form",
+      "sha256": "5305ac6f79b30cf9bf3b87de420de4a75344c156699e503dad3b1e2489763fe1",
+      "size_bytes": 584304,
+      "pages": 5,
+      "print_version": "July 2024",
+      "supplied_on": "2026-09-02"
     }
   ]
 }

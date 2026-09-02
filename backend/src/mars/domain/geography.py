@@ -41,6 +41,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -81,6 +82,18 @@ class BoundaryVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="effective_range_ordered",
         ),
         Index("ix_boundary_version_status", "import_status"),
+        # Both created by migration 0004 and declared here so autogenerate does
+        # not propose dropping them. Re-import detection is a checksum lookup on
+        # every import, and the partial unique index is what guarantees at most
+        # one published version - the constraint that lets every geography unit
+        # belong to one unambiguous hierarchy.
+        Index("ix_boundary_version_source_checksum", "source_checksum"),
+        Index(
+            "uq_boundary_version_single_published",
+            "import_status",
+            unique=True,
+            postgresql_where=text("import_status = 'published'"),
+        ),
         {"schema": CORE},
     )
 

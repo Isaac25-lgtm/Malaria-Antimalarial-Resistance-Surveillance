@@ -239,3 +239,156 @@ class AuditOutcome(str, enum.Enum):
     SUCCEEDED = "succeeded"
     DENIED = "denied"
     FAILED = "failed"
+
+
+# ---------------------------------------------------------------------------
+# Outpatient encounter — HMIS OPD 002 (Print Version July 2024)
+#
+# Every value here is either printed on the form or is an explicit MARS
+# addition for an entry that is absent or unreadable. The additions are named
+# ``UNKNOWN`` and documented as such, so nobody can mistake one for a category
+# the register offers. See docs/data-dictionary/opd-002.md.
+# ---------------------------------------------------------------------------
+class AgeUnit(str, enum.Enum):
+    """The unit the register recorded an age in.
+
+    OPD 002 column 4 deliberately changes unit with age: complete years above
+    one year, months under one year, days under one month. MARS keeps the unit
+    the clerk wrote rather than converting, because converting a three-day-old
+    to ``0.008 years`` discards precision the form went out of its way to
+    capture.
+    """
+
+    YEARS = "years"
+    MONTHS = "months"
+    DAYS = "days"
+
+
+class Sex(str, enum.Enum):
+    """OPD 002 column 5. The form prints M and F only.
+
+    ``UNKNOWN`` is a MARS value for a blank or unreadable cell. It is not a
+    third option on the register, and a count of it is a data-quality finding
+    rather than a demographic one.
+    """
+
+    MALE = "male"
+    FEMALE = "female"
+    UNKNOWN = "unknown"
+
+
+class PatientCategory(str, enum.Enum):
+    """OPD 002 column 6: N national, R refugee, F foreigner.
+
+    Also says which identifier system column 2 holds, since that column carries
+    a national ID, a refugee number or a passport number with no type marker.
+    """
+
+    NATIONAL = "national"
+    REFUGEE = "refugee"
+    FOREIGNER = "foreigner"
+    UNKNOWN = "unknown"
+
+
+class AttendanceType(str, enum.Enum):
+    """OPD 002 column 16, the New / Re-attendance tick.
+
+    Re-attendance is a Lane A signal input and nothing more. A patient returns
+    for many reasons this register does not record, so no MARS surface may
+    describe a re-attendance as treatment failure or as evidence of resistance
+    (ADR 0005).
+
+    ``UNKNOWN`` covers both ticks set and neither set: the form gives no rule
+    for resolving either, so MARS does not invent one.
+    """
+
+    NEW_ATTENDANCE = "new_attendance"
+    RE_ATTENDANCE = "re_attendance"
+    UNKNOWN = "unknown"
+
+
+class FeverStatus(str, enum.Enum):
+    """OPD 002 column 13, the Fever (Y/N) sub-column."""
+
+    YES = "yes"
+    NO = "no"
+    UNKNOWN = "unknown"
+
+
+class MalariaTestMethod(str, enum.Enum):
+    """OPD 002 column 13, Tests Done.
+
+    Printed codes: ``B/S`` microscopy, ``RDT`` rapid diagnostic test, ``ND`` not
+    done. The grid header additionally shows ``Y/N``, which has no meaning under
+    the printed instructions and is treated as a printing artefact.
+    """
+
+    MICROSCOPY = "microscopy"
+    RDT = "rdt"
+    NOT_DONE = "not_done"
+    UNKNOWN = "unknown"
+
+
+class MalariaTestResult(str, enum.Enum):
+    """OPD 002 column 13, Results.
+
+    The instructions and the grid header disagree: the instructions say the
+    column takes ``ND``, the header prints ``POS/NEG/NA``. Both are accepted and
+    kept distinct rather than merged, because "no test was done" and "not
+    applicable" are different statements and the form does not say they are the
+    same.
+    """
+
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    NOT_DONE = "not_done"
+    NOT_APPLICABLE = "not_applicable"
+    UNKNOWN = "unknown"
+
+
+class ReferralDirection(str, enum.Enum):
+    """OPD 002 columns 21 and 22.
+
+    Column 21 is the number on a referral note the patient arrived with; column
+    22 is the number on one written for them to leave with. Held as a direction
+    rather than two parallel columns so a row can carry both, neither, or - as
+    an extract occasionally does - two of one kind.
+    """
+
+    INBOUND = "inbound"
+    OUTBOUND = "outbound"
+
+
+class DateAssignmentMethod(str, enum.Enum):
+    """How an encounter's date was determined.
+
+    The register writes the date once on a blank row, and it applies to every
+    row beneath until the next date row. An extract that loses row order loses
+    the date, so MARS records how each row got its date rather than presenting
+    all dates as equally certain.
+    """
+
+    #: Read from a date header row immediately governing this row.
+    ROW_HEADER = "row_header"
+    #: Carried forward from an earlier date header.
+    CARRIED_FORWARD = "carried_forward"
+    #: Supplied per row by the source system, needing no carry-forward.
+    SOURCE_SUPPLIED = "source_supplied"
+    #: No date could be established. The row is retained and flagged.
+    UNRESOLVED = "unresolved"
+
+
+class EncounterQuarantineReason(str, enum.Enum):
+    """Why a source row could not become an encounter.
+
+    Quarantined rather than dropped: a row MARS cannot parse is a data-quality
+    finding about a facility's records, and silently discarding it would hide
+    exactly the gaps surveillance needs to see.
+    """
+
+    NO_DATE = "no_date"
+    NO_FACILITY = "no_facility"
+    CONTRADICTORY_TEST = "contradictory_test"
+    UNPARSABLE_AGE = "unparsable_age"
+    DUPLICATE_SOURCE_ROW = "duplicate_source_row"
+    MALFORMED_ROW = "malformed_row"

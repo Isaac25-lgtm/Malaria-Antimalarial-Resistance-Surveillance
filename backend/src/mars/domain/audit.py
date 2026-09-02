@@ -61,7 +61,10 @@ class AuditEvent(UUIDPrimaryKeyMixin, Base):
             "actor_user_id IS NOT NULL OR actor_kind <> 'user'",
             name="actor_user_required_for_user_events",
         ),
-        {"schema": AUDIT},
+        {
+            "schema": AUDIT,
+            "comment": "Append-only. UPDATE and DELETE are rejected by trigger.",
+        },
     )
 
     # -- When -------------------------------------------------------------
