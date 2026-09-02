@@ -36,7 +36,12 @@ from sqlalchemy.orm import Session
 
 from mars.core.errors import MarsError, NotFoundError
 from mars.domain.enums import BoundaryImportStatus, GeographyLevel
-from mars.domain.geography import BoundaryVersion, GeographyUnit, GeographyUnitGeometry
+from mars.domain.geography import (
+    BoundaryVersion,
+    GeographyUnit,
+    GeographyUnitGeometry,
+    GeographyUnitRevision,
+)
 from mars.security.principal import AuthenticatedPrincipal
 from mars.services.geography_service import GeographyService
 
@@ -141,6 +146,27 @@ class MapMetadata:
     #: rather than an empty map that looks like a rendering failure.
     is_available: bool
     generated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalUnit:
+    """One unit as a named boundary version described it.
+
+    Deliberately not a ``GeographyUnit``: an ORM object would carry the cached
+    current-state columns alongside the historical ones, and the two would be
+    indistinguishable at the call site. This carries only what the revision
+    actually said.
+    """
+
+    geography_unit_id: uuid.UUID
+    level: str
+    preferred_code: str
+    name: str
+    path: str | None
+    depth: int
+    #: False where this version dropped a unit that earlier versions contained.
+    is_present: bool
+    boundary_version_id: uuid.UUID
 
 
 @dataclass(slots=True)
@@ -309,7 +335,11 @@ class GeographyMapService:
             )
             .outerjoin(
                 GeographyUnitGeometry,
-                GeographyUnitGeometry.geography_unit_id == GeographyUnit.id,
+                # Both halves of the key. Geometry is per (unit, version) since
+                # migration 0008; joining on the unit alone would return one row
+                # per version the unit ever had and draw each boundary twice.
+                (GeographyUnitGeometry.geography_unit_id == GeographyUnit.id)
+                & (GeographyUnitGeometry.boundary_version_id == version.id),
             )
             .where(
                 GeographyUnit.boundary_version_id == version.id,
@@ -359,7 +389,11 @@ class GeographyMapService:
             )
             .join(
                 GeographyUnitGeometry,
-                GeographyUnitGeometry.geography_unit_id == GeographyUnit.id,
+                # Both halves of the key. Geometry is per (unit, version) since
+                # migration 0008; joining on the unit alone would return one row
+                # per version the unit ever had and draw each boundary twice.
+                (GeographyUnitGeometry.geography_unit_id == GeographyUnit.id)
+                & (GeographyUnitGeometry.boundary_version_id == version.id),
             )
             .where(
                 GeographyUnit.boundary_version_id == version.id,
@@ -445,7 +479,14 @@ class GeographyMapService:
         if matched > effective_limit:
             raise FeatureLimitExceededError(level.value, matched, effective_limit)
 
-        collection.etag = self._etag(version, level, parent_id, within_id, effective_limit)
+        collection.etag = self._etag(
+            version,
+            level,
+            parent_id,
+            within_id,
+            effective_limit,
+            scope_fingerprint(principal),
+        )
 
         rows = self._session.execute(
             self._scoped(
@@ -513,7 +554,11 @@ class GeographyMapService:
             )
             .join(
                 GeographyUnitGeometry,
-                GeographyUnitGeometry.geography_unit_id == GeographyUnit.id,
+                # Both halves of the key. Geometry is per (unit, version) since
+                # migration 0008; joining on the unit alone would return one row
+                # per version the unit ever had and draw each boundary twice.
+                (GeographyUnitGeometry.geography_unit_id == GeographyUnit.id)
+                & (GeographyUnitGeometry.boundary_version_id == version.id),
             )
             .where(
                 GeographyUnit.boundary_version_id == version.id,
@@ -542,7 +587,11 @@ class GeographyMapService:
             select(func.count(GeographyUnit.id))
             .join(
                 GeographyUnitGeometry,
-                GeographyUnitGeometry.geography_unit_id == GeographyUnit.id,
+                # Both halves of the key. Geometry is per (unit, version) since
+                # migration 0008; joining on the unit alone would return one row
+                # per version the unit ever had and draw each boundary twice.
+                (GeographyUnitGeometry.geography_unit_id == GeographyUnit.id)
+                & (GeographyUnitGeometry.boundary_version_id == version.id),
             )
             .where(
                 GeographyUnit.boundary_version_id == version.id,
@@ -578,7 +627,11 @@ class GeographyMapService:
             .select_from(GeographyUnit)
             .join(
                 GeographyUnitGeometry,
-                GeographyUnitGeometry.geography_unit_id == GeographyUnit.id,
+                # Both halves of the key. Geometry is per (unit, version) since
+                # migration 0008; joining on the unit alone would return one row
+                # per version the unit ever had and draw each boundary twice.
+                (GeographyUnitGeometry.geography_unit_id == GeographyUnit.id)
+                & (GeographyUnitGeometry.boundary_version_id == version.id),
             )
             .where(
                 GeographyUnit.boundary_version_id == version.id,
@@ -598,6 +651,57 @@ class GeographyMapService:
             max_lon=float(row[2]),
             max_lat=float(row[3]),
         )
+
+    # -- History -----------------------------------------------------------
+    def historical_hierarchy(
+        self,
+        principal: AuthenticatedPrincipal,
+        boundary_version_id: uuid.UUID,
+        *,
+        level: GeographyLevel | None = None,
+    ) -> list[HistoricalUnit]:
+        """The hierarchy as one boundary version described it.
+
+        Reads **revisions**, never the cached columns on ``geography_unit``.
+        Those columns hold whatever the most recent import wrote; asking them
+        about an earlier version returns today's answer wearing yesterday's
+        date, which is worse than an error because it looks right.
+
+        Scope is applied through the stable unit, because authorisation is
+        granted over identity - a district officer's grant follows their
+        district across a recut, which is the point of separating the two.
+        """
+        statement = (
+            select(
+                GeographyUnitRevision.geography_unit_id,
+                GeographyUnitRevision.level,
+                GeographyUnitRevision.preferred_code,
+                GeographyUnitRevision.raw_name,
+                GeographyUnitRevision.path,
+                GeographyUnitRevision.depth,
+                GeographyUnitRevision.is_present,
+            )
+            .join(GeographyUnit, GeographyUnit.id == GeographyUnitRevision.geography_unit_id)
+            .where(GeographyUnitRevision.boundary_version_id == boundary_version_id)
+            .order_by(GeographyUnitRevision.depth, GeographyUnitRevision.normalised_name)
+        )
+        if level is not None:
+            statement = statement.where(GeographyUnitRevision.level == level)
+
+        rows = self._session.execute(self._scoped(statement, principal)).all()
+        return [
+            HistoricalUnit(
+                geography_unit_id=row[0],
+                level=row[1].value,
+                preferred_code=row[2],
+                name=row[3],
+                path=row[4],
+                depth=row[5],
+                is_present=row[6],
+                boundary_version_id=boundary_version_id,
+            )
+            for row in rows
+        ]
 
     # -- Single unit -------------------------------------------------------
     def unit_geometry(
@@ -676,17 +780,24 @@ class GeographyMapService:
         parent_id: uuid.UUID | None,
         within_id: uuid.UUID | None,
         limit: int,
+        scope: str,
     ) -> str:
-        """A strong validator for one layer of one boundary version.
+        """A strong validator for one representation.
 
-        Derived from the inputs that determine the bytes, so it is stable across
-        restarts and across replicas - a timestamp or a process-local counter
-        would not be. Publishing a new boundary version changes ``code`` and so
-        invalidates every layer at once, which is correct: the hierarchy moved.
+        Every input that determines the bytes is here, **including the caller's
+        geography scope** - because the body is filtered by it. Leaving scope out
+        was a real defect: two callers requesting the same URL with different
+        scopes received different bodies under the same strong ETag, and a
+        browser reused across a logout could revalidate one against the other
+        and be told 304.
 
-        The caller's scope is deliberately absent. Responses are private to the
-        request and never shared between users, and mixing a principal into the
-        validator would make it a weak identifier of who fetched what.
+        Derived from stable values rather than a timestamp or a counter, so it
+        holds across restarts and across replicas. Publishing a new boundary
+        version changes ``code`` and invalidates every layer at once, which is
+        correct: the hierarchy moved.
+
+        The scope contribution is a digest of sorted geography paths and carries
+        no username, user id, session or token - see :func:`scope_fingerprint`.
         """
         material = "|".join(
             [
@@ -696,9 +807,39 @@ class GeographyMapService:
                 str(parent_id) if parent_id else "-",
                 str(within_id) if within_id else "-",
                 str(limit),
+                scope,
             ]
         )
         return f'"{hashlib.sha256(material.encode("utf-8")).hexdigest()[:32]}"'
+
+
+def scope_fingerprint(principal: AuthenticatedPrincipal) -> str:
+    """A stable, non-identifying digest of the caller's effective geography.
+
+    Two callers with the same authorised geography receive the same bytes, so
+    they must share a validator; two callers with different geography must not.
+    That is the whole requirement, and it is a property of the *scope*, not of
+    the person - so the fingerprint is derived from geography alone.
+
+    Nothing identifying goes in: no username, no user id, no session, no token.
+    A validator built from a principal would travel in an unencrypted response
+    header and act as a weak identifier of who fetched what.
+
+    Sorted materialised paths, because they are stable across re-imports and
+    describe the subtree the scope actually covers. Falling back to the unit id
+    keeps a scope with no path from silently colliding with another.
+    """
+    if principal.has_national_scope:
+        # Every national caller sees the same body, so they share one validator.
+        return "national"
+    if not principal.geography_scopes:
+        # No scope sees nothing - a distinct representation from every other.
+        return "unscoped"
+
+    roots = sorted(
+        scope.path or str(scope.geography_unit_id) for scope in principal.geography_scopes
+    )
+    return hashlib.sha256("|".join(roots).encode("utf-8")).hexdigest()[:16]
 
 
 def _restrict(
@@ -734,7 +875,9 @@ __all__ = [
     "FeatureCollection",
     "FeatureLimitExceededError",
     "GeographyMapService",
+    "HistoricalUnit",
     "LevelAvailability",
     "MapMetadata",
     "geojson_property_names",
+    "scope_fingerprint",
 ]

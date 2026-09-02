@@ -154,6 +154,17 @@ class OpdEncounter(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "age_unit <> 'years' OR age_value IS NULL OR age_value <= 130",
             name="age_years_plausible",
         ),
+        # A value without a unit is not an age. The register writes "3" and
+        # "MTH" together or writes neither, and the two columns were
+        # independently nullable, so "3" with no unit could be stored - and
+        # would be read as three years by anything that assumed a default.
+        # A three-day-old counted as a three-year-old is the kind of error that
+        # survives into an age-banded rate and is never noticed.
+        CheckConstraint(
+            "(age_value IS NULL AND age_unit IS NULL) "
+            "OR (age_value IS NOT NULL AND age_unit IS NOT NULL)",
+            name="age_value_and_unit_together",
+        ),
         Index("ix_opd_encounter_facility_date", "facility_id", "encounter_date"),
         Index("ix_opd_encounter_date", "encounter_date"),
         Index("ix_opd_encounter_patient", "patient_reference_id"),

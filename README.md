@@ -69,6 +69,7 @@ specifically — "no boundary version has been imported" is a different fact fro
 - [Database architecture](docs/architecture/database.md)
 - [Geography import](docs/architecture/geography-import.md)
 - [Geographic API and the national map](docs/architecture/geography-map.md)
+- [Historical boundary versioning](docs/architecture/geography-versioning.md)
 - [Authorisation model](docs/security/authorisation.md)
 - [Geography audit](docs/data-dictionary/geography-audit.md) — generated, not written
 

@@ -237,6 +237,38 @@ class TestTheDatabaseRefusesContradictions:
         with pytest.raises(IntegrityError, match="age_not_negative"):
             session.commit()
 
+    def test_an_age_value_without_a_unit_is_refused(self, session: Session) -> None:
+        """A number with no unit is not an age.
+
+        The register writes the value and the unit together. Stored alone, "3"
+        would be read as three years by anything assuming a default - and a
+        three-day-old counted as a three-year-old survives into every age-banded
+        rate derived from it without ever looking wrong.
+        """
+        session.add(encounter(age_value=3, age_unit=None))
+        with pytest.raises(IntegrityError, match="age_value_and_unit_together"):
+            session.commit()
+
+    def test_an_age_unit_without_a_value_is_refused(self, session: Session) -> None:
+        session.add(encounter(age_value=None, age_unit=AgeUnit.MONTHS))
+        with pytest.raises(IntegrityError, match="age_value_and_unit_together"):
+            session.commit()
+
+    def test_both_absent_is_accepted(self, session: Session) -> None:
+        """An unknown age is an honest state the register can produce."""
+        session.add(encounter(age_value=None, age_unit=None))
+        session.commit()
+
+    def test_both_present_is_accepted(self, session: Session) -> None:
+        session.add(encounter(age_value=7, age_unit=AgeUnit.MONTHS))
+        session.commit()
+
+    def test_the_unit_bounds_still_apply_alongside_the_pair_rule(self, session: Session) -> None:
+        """The new constraint must not have displaced the old ones."""
+        session.add(encounter(age_value=14, age_unit=AgeUnit.MONTHS))
+        with pytest.raises(IntegrityError, match="age_months_under_a_year"):
+            session.commit()
+
     def test_ages_at_the_boundaries_are_accepted(self, session: Session) -> None:
         """11 months and 30 days are legal; the form's rules are inclusive."""
         session.add(encounter(age_value=11, age_unit=AgeUnit.MONTHS))

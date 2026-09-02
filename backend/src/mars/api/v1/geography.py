@@ -354,10 +354,19 @@ def map_features(
     )
 
     if collection.etag:
+        # The validator covers the caller's geography scope as well as the
+        # query, so it identifies the representation rather than the URL. Two
+        # callers with different scopes get different bodies and different
+        # ETags, and one cannot revalidate against the other.
         response.headers["ETag"] = collection.etag
-        # Private: the payload depends on the caller's geography scope, so a
-        # shared cache must never serve one user's layer to another.
+        # Private: the payload depends on the caller's scope, so a shared cache
+        # must never serve one user's layer to another.
         response.headers["Cache-Control"] = "private, max-age=300, must-revalidate"
+        # Defence in depth for intermediaries that key on headers, not a
+        # substitute for the representation-correct ETag above: Vary does not
+        # help a *private* cache that has already stored one user's body under
+        # this URL, which is exactly the logout-and-login case.
+        response.headers["Vary"] = "Authorization"
         if request.headers.get("if-none-match") == collection.etag:
             return Response(status_code=304, headers=dict(response.headers))
 

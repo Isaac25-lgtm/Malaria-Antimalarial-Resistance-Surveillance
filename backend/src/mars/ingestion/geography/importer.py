@@ -45,6 +45,7 @@ from mars.domain.geography import (
     GeographyUnit,
     GeographyUnitAlias,
     GeographyUnitGeometry,
+    GeographyUnitRevision,
 )
 from mars.geo import fscode as fs
 from mars.geo.naming import extract_alias_names, infer_unit_kind, name_defects, normalise_name
@@ -833,12 +834,24 @@ class GeographyImporter:
         result: ImportResult,
         options: ImportOptions,
     ) -> None:
-        """Write units, aliases and geometry.
+        """Write units, revisions, aliases and geometry.
 
-        Units are matched on ``(level, preferred_code)`` so a re-import updates
-        the existing row and keeps its UUID. Facilities and user geography
-        scopes reference that UUID, so replacing rather than updating would
-        break them.
+        Units are matched on ``(level, preferred_code)`` so a re-import keeps
+        the existing UUID. Facilities, user geography scopes and encounters
+        reference that UUID, so replacing rather than reusing it would break
+        every one of them.
+
+        Two things are written for each unit, and the distinction is the point:
+
+        * a **revision** describing what *this* boundary version says - name,
+          kind, parent, depth, path, presence. Immutable once the version is
+          published, so a later recut adds history rather than erasing it.
+        * the **cached columns** on the stable row, updated to match. Fast to
+          read, and explicitly not a historical answer.
+
+        Before revisions existed, only the second happened, and a second import
+        left the earlier ``BoundaryVersion`` describing boundaries that no
+        longer existed anywhere.
         """
         existing = {
             (unit.level, unit.preferred_code): unit
@@ -848,6 +861,7 @@ class GeographyImporter:
         # Parents before children, so parent_id is always available.
         ordered = sorted(pending.values(), key=lambda unit: (unit.depth, unit.preferred_code))
         code_to_id: dict[tuple[GeographyLevel, str], uuid.UUID] = {}
+        code_to_revision: dict[tuple[GeographyLevel, str], uuid.UUID] = {}
 
         for item in ordered:
             counts = result.level(item.level.value)
@@ -893,12 +907,65 @@ class GeographyImporter:
             self._session.flush()
             code_to_id[key] = unit.id
 
+            revision = self._write_revision(unit, item, version, parent_id, code_to_revision)
+            code_to_revision[key] = revision.id
+
             self._write_aliases(unit, item, result)
 
             if options.load_geometry and item.assessment is not None:
-                self._write_geometry(unit, item, result, options)
+                self._write_geometry(unit, item, version, result, options)
 
         self._deactivate_absent(pending, existing, version, result)
+
+    def _write_revision(
+        self,
+        unit: GeographyUnit,
+        item: _PendingUnit,
+        version: BoundaryVersion,
+        parent_id: uuid.UUID | None,
+        code_to_revision: dict[tuple[GeographyLevel, str], uuid.UUID],
+    ) -> GeographyUnitRevision:
+        """Record what this boundary version says about this unit.
+
+        The parent link points at the *parent's revision under the same
+        version*, not at the stable parent unit: a recut may re-parent a
+        subcounty, and a link to the stable unit would lose which parent it had
+        at the time.
+
+        Re-running the same import updates the revision in place, which the
+        database permits only while the version is unpublished - publication is
+        what makes it immutable.
+        """
+        parent_revision_id: uuid.UUID | None = None
+        if item.parent_code is not None:
+            parent_level = item.level.parent_level
+            assert parent_level is not None
+            parent_revision_id = code_to_revision.get((parent_level, item.parent_code))
+
+        revision = self._session.execute(
+            select(GeographyUnitRevision).where(
+                GeographyUnitRevision.geography_unit_id == unit.id,
+                GeographyUnitRevision.boundary_version_id == version.id,
+            )
+        ).scalar_one_or_none()
+
+        if revision is None:
+            revision = GeographyUnitRevision(
+                geography_unit_id=unit.id, boundary_version_id=version.id
+            )
+            self._session.add(revision)
+
+        revision.level = item.level
+        revision.unit_kind = item.unit_kind
+        revision.preferred_code = item.preferred_code
+        revision.raw_name = item.raw_name
+        revision.normalised_name = item.normalised_name
+        revision.parent_revision_id = parent_revision_id
+        revision.depth = item.depth
+        revision.path = item.path
+        revision.is_present = True
+        self._session.flush()
+        return revision
 
     def _write_aliases(self, unit: GeographyUnit, item: _PendingUnit, result: ImportResult) -> None:
         """Record every source code that identifies this unit.
@@ -940,6 +1007,7 @@ class GeographyImporter:
         self,
         unit: GeographyUnit,
         item: _PendingUnit,
+        version: BoundaryVersion,
         result: ImportResult,
         options: ImportOptions,
     ) -> None:
@@ -947,11 +1015,16 @@ class GeographyImporter:
         assert assessment is not None
 
         record = self._session.execute(
-            select(GeographyUnitGeometry).where(GeographyUnitGeometry.geography_unit_id == unit.id)
+            select(GeographyUnitGeometry).where(
+                GeographyUnitGeometry.geography_unit_id == unit.id,
+                GeographyUnitGeometry.boundary_version_id == version.id,
+            )
         ).scalar_one_or_none()
 
         if record is None:
-            record = GeographyUnitGeometry(geography_unit_id=unit.id)
+            record = GeographyUnitGeometry(
+                geography_unit_id=unit.id, boundary_version_id=version.id
+            )
             self._session.add(record)
 
         record.validity_state = assessment.validity_state
@@ -1073,13 +1146,15 @@ class GeographyImporter:
             statement = text(
                 """
                 INSERT INTO mars_core.geography_unit_geometry
-                    (id, geography_unit_id, validity_state, repair_method,
+                    (id, geography_unit_id, boundary_version_id,
+                     validity_state, repair_method,
                      geom, geom_web, simplification_tolerance_deg,
                      area_sq_km, perimeter_km,
                      part_count, ring_count, vertex_count,
                      bbox_min_lon, bbox_min_lat, bbox_max_lon, bbox_max_lat,
                      created_at, updated_at)
-                SELECT gen_random_uuid(), parent.id, 'valid', 'dissolved_from_children',
+                SELECT gen_random_uuid(), parent.id, :version_id,
+                       'valid', 'dissolved_from_children',
                        dissolved.geom,
                        CASE WHEN :simplify THEN
                            ST_Multi(ST_MakeValid(ST_SimplifyPreserveTopology(
@@ -1110,7 +1185,7 @@ class GeographyImporter:
                   ) AS dissolved ON dissolved.geom IS NOT NULL
                  WHERE parent.level = :level
                    AND parent.boundary_version_id = :version_id
-                ON CONFLICT (geography_unit_id) DO UPDATE
+                ON CONFLICT (geography_unit_id, boundary_version_id) DO UPDATE
                     SET geom = EXCLUDED.geom,
                         geom_web = EXCLUDED.geom_web,
                         simplification_tolerance_deg = EXCLUDED.simplification_tolerance_deg,

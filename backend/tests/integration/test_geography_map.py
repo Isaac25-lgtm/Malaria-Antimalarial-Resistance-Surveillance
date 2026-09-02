@@ -166,10 +166,12 @@ def synthetic_geography(map_engine: Engine) -> None:
                 text(
                     """
                     INSERT INTO mars_core.geography_unit_geometry
-                        (id, geography_unit_id, validity_state, geom, geom_web,
+                        (id, geography_unit_id, boundary_version_id,
+                         validity_state, geom, geom_web,
                          area_sq_km, bbox_min_lon, bbox_min_lat, bbox_max_lon,
                          bbox_max_lat, created_at, updated_at)
-                    SELECT gen_random_uuid(), :unit, 'valid', g.geom, g.geom,
+                    SELECT gen_random_uuid(), :unit, :version,
+                           'valid', g.geom, g.geom,
                            ST_Area(g.geom::geography) / 1000000.0,
                            ST_XMin(g.geom), ST_YMin(g.geom),
                            ST_XMax(g.geom), ST_YMax(g.geom), now(), now()
@@ -177,7 +179,7 @@ def synthetic_geography(map_engine: Engine) -> None:
                                 ST_GeomFromGeoJSON(:geojson), 4326)) AS geom) AS g
                     """
                 ),
-                {"unit": unit_id, "geojson": geojson},
+                {"unit": unit_id, "version": BOUNDARY_VERSION_ID, "geojson": geojson},
             )
 
         insert_unit(COUNTRY_ID, "country", "UG", "Testland", None, 0, "UG")
@@ -552,13 +554,16 @@ class TestCacheValidator:
         )
         assert first.etag != second.etag
 
-    def test_the_etag_does_not_encode_the_caller(
+    def test_different_scopes_produce_different_etags(
         self, session: Session, synthetic_geography: None
     ) -> None:
-        """Responses are private and never shared between users.
+        """The defect this test replaces.
 
-        Mixing the principal in would turn a cache validator into a weak
-        identifier of who fetched what, which is worse than useless here.
+        The body is filtered by scope, so a validator derived from the query
+        alone was wrong: a national and a district caller received different
+        bodies under the same strong ETag. A browser reused across a logout
+        could revalidate one against the other, be told 304, and render a
+        national map to a district officer.
         """
         service = GeographyMapService(session)
         national = service.feature_collection(
@@ -567,7 +572,91 @@ class TestCacheValidator:
         local = service.feature_collection(
             principal(district_scope(1)), level=GeographyLevel.DISTRICT
         )
-        assert national.etag == local.etag
+
+        assert len(national.features) != len(local.features), "bodies must differ"
+        assert national.etag != local.etag
+
+    def test_two_different_districts_do_not_share_an_etag(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        service = GeographyMapService(session)
+        one = service.feature_collection(
+            principal(district_scope(1)), level=GeographyLevel.DISTRICT
+        )
+        two = service.feature_collection(
+            principal(district_scope(2)), level=GeographyLevel.DISTRICT
+        )
+        assert one.etag != two.etag
+
+    def test_the_same_scope_and_query_share_an_etag(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        """Two accounts with identical geography receive identical bytes.
+
+        They must share a validator, or a conditional request would never hit
+        for anybody and the header would be decoration.
+        """
+        service = GeographyMapService(session)
+        first = service.feature_collection(
+            principal(district_scope(1)), level=GeographyLevel.DISTRICT
+        )
+        second = service.feature_collection(
+            principal(district_scope(1)), level=GeographyLevel.DISTRICT
+        )
+        assert first.etag == second.etag
+
+    def test_an_unscoped_caller_has_its_own_etag(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        """Seeing nothing is a distinct representation from seeing everything."""
+        service = GeographyMapService(session)
+        empty = service.feature_collection(principal(), level=GeographyLevel.DISTRICT)
+        national = service.feature_collection(
+            principal(national_scope()), level=GeographyLevel.DISTRICT
+        )
+        assert empty.etag != national.etag
+
+    def test_the_etag_carries_no_principal_data(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        """A validator travels in a plaintext header on every response.
+
+        It must identify the representation, never the person: no username, no
+        user id, no session reference, no token.
+        """
+        from mars.services.geography_map_service import scope_fingerprint
+
+        caller = principal(district_scope(1))
+        fingerprint = scope_fingerprint(caller)
+        collection = GeographyMapService(session).feature_collection(
+            caller, level=GeographyLevel.DISTRICT
+        )
+
+        for secret in (
+            str(caller.user_id),
+            caller.username,
+            caller.subject,
+            caller.session_reference or "",
+        ):
+            if secret:
+                assert secret not in fingerprint
+                assert secret not in collection.etag
+
+    def test_the_fingerprint_follows_geography_not_identity(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        """Two different accounts with the same geography must agree."""
+        from mars.services.geography_map_service import scope_fingerprint
+
+        one = principal(district_scope(1))
+        two = principal(district_scope(1))
+        assert one.user_id != two.user_id
+        assert scope_fingerprint(one) == scope_fingerprint(two)
+
+    def test_national_scope_has_a_stable_marker(self) -> None:
+        from mars.services.geography_map_service import scope_fingerprint
+
+        assert scope_fingerprint(principal(national_scope())) == "national"
 
 
 class TestPayloadCeiling:
@@ -911,6 +1000,70 @@ class TestOverHttp:
             "max_lat": 1.0,
         }
         assert "geometry" not in response.text
+
+    def test_an_etag_from_another_scope_does_not_produce_304(
+        self, map_client, synthetic_geography: None
+    ) -> None:
+        """The end-to-end form of the defect.
+
+        A validator obtained as a national user, replayed on a district user's
+        request, must fetch a fresh body rather than being told the cached one
+        is still good.
+        """
+        national = map_client(principal(national_scope())).get(
+            "/api/v1/geography/map/features?level=district"
+        )
+        borrowed = national.headers["etag"]
+
+        response = map_client(principal(district_scope(1))).get(
+            "/api/v1/geography/map/features?level=district",
+            headers={"If-None-Match": borrowed},
+        )
+        assert response.status_code == 200
+        assert len(response.json()["features"]) == 1
+
+    def test_a_same_scope_conditional_request_does_produce_304(
+        self, map_client, synthetic_geography: None
+    ) -> None:
+        client = map_client(principal(district_scope(1)))
+        first = client.get("/api/v1/geography/map/features?level=district")
+        second = client.get(
+            "/api/v1/geography/map/features?level=district",
+            headers={"If-None-Match": first.headers["etag"]},
+        )
+        assert second.status_code == 304
+        assert second.content == b""
+
+    def test_the_response_varies_on_authorization(
+        self, map_client, synthetic_geography: None
+    ) -> None:
+        """Defence in depth for intermediaries, beside the correct ETag."""
+        response = map_client(principal(national_scope())).get(
+            "/api/v1/geography/map/features?level=district"
+        )
+        assert "Authorization" in response.headers.get("vary", "")
+
+    def test_a_new_boundary_version_invalidates_the_etag(
+        self, map_client, map_engine: Engine, synthetic_geography: None
+    ) -> None:
+        """The hierarchy moved, so every cached layer must be refetched."""
+        caller = principal(national_scope())
+        before = (
+            map_client(caller).get("/api/v1/geography/map/features?level=district").headers["etag"]
+        )
+
+        with map_engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE mars_core.boundary_version SET code = 'TEST-MAP-0002' "
+                    "WHERE code = 'TEST-MAP-0001'"
+                )
+            )
+
+        after = (
+            map_client(caller).get("/api/v1/geography/map/features?level=district").headers["etag"]
+        )
+        assert before != after
 
 
 # ---------------------------------------------------------------------------

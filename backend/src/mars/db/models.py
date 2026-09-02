@@ -22,6 +22,7 @@ from mars.domain.geography import (
     GeographyUnit,
     GeographyUnitAlias,
     GeographyUnitGeometry,
+    GeographyUnitRevision,
 )
 from mars.domain.governance import (
     ConfigurationKey,
@@ -56,6 +57,7 @@ __all__ = [
     "GeographyUnit",
     "GeographyUnitAlias",
     "GeographyUnitGeometry",
+    "GeographyUnitRevision",
     "IdentityIdentifier",
     "IdentityRecord",
     "MethodDefinition",

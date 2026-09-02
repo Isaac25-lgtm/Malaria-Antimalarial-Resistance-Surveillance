@@ -134,6 +134,17 @@ class BoundaryVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     units: Mapped[list[GeographyUnit]] = relationship(back_populates="boundary_version")
 
 
+#: Carried by every cached column on GeographyUnit. The columns are fast to
+#: read and structurally incapable of answering a historical question, so
+#: the warning travels with them into psql, into a schema dump, and into
+#: whatever tool an analyst points at the database.
+_CACHE_NOTE = (
+    "Cache of the currently published revision's {}. NOT historical: a "
+    "later import overwrites it. Query geography_unit_revision for what "
+    "any given boundary version said."
+)
+
+
 class GeographyUnit(UUIDPrimaryKeyMixin, TimestampMixin, SourceProvenanceMixin, Base):
     """A single administrative area at any level of the hierarchy."""
 
@@ -163,7 +174,15 @@ class GeographyUnit(UUIDPrimaryKeyMixin, TimestampMixin, SourceProvenanceMixin, 
         Index("ix_geography_unit_boundary_version_id", "boundary_version_id"),
         Index("ix_geography_unit_effective", "effective_from", "effective_to"),
         Index("ix_geography_unit_is_active", "is_active"),
-        {"schema": CORE},
+        {
+            "schema": CORE,
+            "comment": (
+                "Stable geographic identity. The UUID facilities, user scopes "
+                "and encounters reference; it survives every boundary recut. "
+                "The columns here cache the currently published revision - "
+                "history lives in geography_unit_revision."
+            ),
+        },
     )
 
     level: Mapped[GeographyLevel] = mapped_column(_level_enum, nullable=False)
@@ -180,37 +199,64 @@ class GeographyUnit(UUIDPrimaryKeyMixin, TimestampMixin, SourceProvenanceMixin, 
     preferred_code: Mapped[str] = mapped_column(String(32), nullable=False)
 
     #: The name exactly as supplied, including any defect.
-    raw_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    raw_name: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        comment=_CACHE_NOTE.format("name"),
+    )
     #: Uppercased, whitespace-collapsed, punctuation-normalised. For lookup only;
     #: never displayed in preference to the raw name.
-    normalised_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalised_name: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        comment=_CACHE_NOTE.format("normalised name"),
+    )
 
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(f"{CORE}.geography_unit.id", ondelete="RESTRICT"),
         nullable=True,
+        comment=_CACHE_NOTE.format("parent"),
     )
     #: Denormalised hierarchy depth, kept consistent by the service layer. Makes
     #: level-bounded traversal cheap without a recursive query.
-    depth: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    depth: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        comment=_CACHE_NOTE.format("depth"),
+    )
     #: Materialised ancestor path of preferred codes, e.g. "UG/3/314".
-    path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    path: Mapped[str | None] = mapped_column(
+        String(512),
+        nullable=True,
+        comment=_CACHE_NOTE.format("materialised path"),
+    )
 
     boundary_version_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(f"{CORE}.boundary_version.id", ondelete="RESTRICT"),
         nullable=True,
+        comment=_CACHE_NOTE.format("boundary version"),
     )
 
     effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        comment=_CACHE_NOTE.format("active state"),
+    )
 
     parent: Mapped[GeographyUnit | None] = relationship(
         remote_side="GeographyUnit.id", back_populates="children"
     )
     children: Mapped[list[GeographyUnit]] = relationship(back_populates="parent")
     boundary_version: Mapped[BoundaryVersion | None] = relationship(back_populates="units")
+    revisions: Mapped[list[GeographyUnitRevision]] = relationship(
+        back_populates="unit", cascade="all, delete-orphan"
+    )
     aliases: Mapped[list[GeographyUnitAlias]] = relationship(
         back_populates="geography_unit", cascade="all, delete-orphan"
     )
@@ -218,6 +264,119 @@ class GeographyUnit(UUIDPrimaryKeyMixin, TimestampMixin, SourceProvenanceMixin, 
         back_populates="geography_unit",
         cascade="all, delete-orphan",
         uselist=False,
+    )
+
+
+class GeographyUnitRevision(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """One geography unit as one boundary version described it.
+
+    The historical record. ``GeographyUnit`` is a stable identity - a UUID that
+    facilities, user scopes and encounters point at, and that must survive every
+    recut. Everything a recut can *change* lives here, once per boundary version.
+
+    Before this table existed, a second import overwrote the first: names,
+    parents, paths and active state were updated in place on the stable row, so
+    the previous ``BoundaryVersion`` remained as metadata describing boundaries
+    nothing could reconstruct. An analysis pinned to last year's hierarchy could
+    not be reproduced, and nobody would have noticed until they tried.
+
+    **Immutable once its boundary version is published.** A trigger rejects
+    UPDATE and DELETE on a revision belonging to a published version, so history
+    cannot be quietly rewritten by a later import - which is precisely what was
+    happening.
+
+    A unit absent from a newer version simply has no revision under it, or has
+    one with ``is_present`` false. Either way its earlier revisions are
+    untouched, and a query pinned to the earlier version still returns it.
+    """
+
+    __tablename__ = "geography_unit_revision"
+    __table_args__ = (
+        # One description per unit per version. This is the whole point: the
+        # same stable unit may be described differently by two versions, and
+        # both descriptions survive.
+        UniqueConstraint(
+            "geography_unit_id",
+            "boundary_version_id",
+            name="uq_geography_unit_revision_unit_version",
+        ),
+        # A code is unique within a level *within a version*, not globally: a
+        # recut may reassign a code, and both assignments are historical fact.
+        UniqueConstraint(
+            "boundary_version_id",
+            "level",
+            "preferred_code",
+            name="uq_geography_unit_revision_version_level_code",
+        ),
+        Index("ix_geography_unit_revision_version", "boundary_version_id"),
+        Index("ix_geography_unit_revision_unit", "geography_unit_id"),
+        Index("ix_geography_unit_revision_parent", "parent_revision_id"),
+        Index("ix_geography_unit_revision_path", "boundary_version_id", "path"),
+        {
+            "schema": CORE,
+            "comment": (
+                "One geography unit as one boundary version described it. "
+                "Immutable once that version is published: a later recut adds "
+                "revisions, it never rewrites them."
+            ),
+        },
+    )
+
+    geography_unit_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{CORE}.geography_unit.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    boundary_version_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{CORE}.boundary_version.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    # -- Everything a recut can change ------------------------------------
+    level: Mapped[GeographyLevel] = mapped_column(
+        pg_enum(GeographyLevel, name="geography_level", schema=CORE), nullable=False
+    )
+    unit_kind: Mapped[GeographyUnitKind] = mapped_column(
+        pg_enum(GeographyUnitKind, name="geography_unit_kind", schema=CORE),
+        nullable=False,
+        default=GeographyUnitKind.UNSPECIFIED,
+    )
+    preferred_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    raw_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalised_name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    #: The parent *within this version*, as a revision rather than a unit: a
+    #: recut may re-parent a subcounty, and pointing at the stable unit would
+    #: lose which parent it had at the time.
+    parent_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        # Named explicitly. The convention would build
+        # "fk_geography_unit_revision_parent_revision_id_geography_unit_revision",
+        # 69 characters, which PostgreSQL silently truncates to 63 - leaving the
+        # model and the database disagreeing about the constraint's name.
+        ForeignKey(
+            f"{CORE}.geography_unit_revision.id",
+            ondelete="SET NULL",
+            name="fk_geo_revision_parent_revision",
+        ),
+        nullable=True,
+    )
+
+    depth: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    #: Whether this version contains the unit at all. False records that a
+    #: version dropped it, without touching what earlier versions said.
+    is_present: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    unit: Mapped[GeographyUnit] = relationship(back_populates="revisions")
+    boundary_version: Mapped[BoundaryVersion] = relationship()
+    parent_revision: Mapped[GeographyUnitRevision | None] = relationship(
+        remote_side="GeographyUnitRevision.id"
     )
 
 
@@ -303,8 +462,16 @@ class GeographyUnitGeometry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "geography_unit_geometry"
     __table_args__ = (
-        UniqueConstraint("geography_unit_id", name="uq_geography_unit_geometry_geography_unit_id"),
+        # Keyed by unit *and* version. It was keyed by unit alone, so a recut
+        # overwrote the previous geometry in place and the earlier boundary
+        # version described shapes that no longer existed anywhere.
+        UniqueConstraint(
+            "geography_unit_id",
+            "boundary_version_id",
+            name="uq_geography_unit_geometry_unit_version",
+        ),
         Index("ix_geography_unit_geometry_validity", "validity_state"),
+        Index("ix_geography_unit_geometry_version", "boundary_version_id"),
         Index("ix_geography_unit_geometry_geom", "geom", postgresql_using="gist"),
         Index("ix_geography_unit_geometry_geom_web", "geom_web", postgresql_using="gist"),
         {"schema": CORE},
@@ -314,6 +481,14 @@ class GeographyUnitGeometry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         PGUUID(as_uuid=True),
         ForeignKey(f"{CORE}.geography_unit.id", ondelete="CASCADE"),
         nullable=False,
+    )
+
+    #: Which boundary version drew this shape. Nullable only so the corrective
+    #: migration can backfill; every row written since carries it.
+    boundary_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(f"{CORE}.boundary_version.id", ondelete="CASCADE"),
+        nullable=True,
     )
 
     validity_state: Mapped[GeometryValidityState] = mapped_column(
