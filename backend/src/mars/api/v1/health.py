@@ -40,9 +40,9 @@ def liveness(settings: SettingsDep) -> LivenessResponse:
 def readiness(settings: SettingsDep, response: Response) -> ReadinessResponse:
     """Check backing services and report each one individually.
 
-    PostGIS absence is reported as ``not_installed`` rather than as a failure.
-    The schema work of phases 1-2 does not need it; the geography importer
-    (Prompt 5) checks for it explicitly and refuses to run without it.
+    PostGIS absence is reported as ``not_installed`` and makes the service
+    unready. Migration ``0003_phase2_hardening`` introduced PostGIS geometry
+    columns, so the current schema head cannot be applied without the extension.
     """
     dependencies: list[DependencyStatus] = []
     overall = "ready"
@@ -71,12 +71,12 @@ def readiness(settings: SettingsDep, response: Response) -> ReadinessResponse:
                         name="postgis",
                         status="not_installed",
                         detail=(
-                            "The PostGIS extension is not installed. Schema operations "
-                            "work without it; geography import requires it."
+                            "The PostGIS extension is not installed. It is required by "
+                            "the current database schema and geography import."
                         ),
                     )
                 )
-                overall = "degraded"
+                overall = "unavailable"
     except Exception as exc:
         logger.error("readiness_database_unavailable", error_type=type(exc).__name__)
         dependencies.append(

@@ -105,9 +105,8 @@ def check_database(connection: Connection) -> dict[str, object]:
     """Probe the database for the readiness endpoint.
 
     Reports the PostgreSQL server version and, when the extension is installed,
-    the PostGIS version. A missing PostGIS extension is reported rather than
-    treated as a failure: the schema work of phases 1-2 does not require it, and
-    the geography importer (Prompt 5) checks for it explicitly.
+    the PostGIS version. The current migration head contains PostGIS geometry
+    columns, so a missing extension makes the deployment unready.
     """
     server_version = connection.execute(text("SHOW server_version")).scalar_one()
 

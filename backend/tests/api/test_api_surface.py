@@ -41,21 +41,17 @@ class TestHealthEndpoints:
         assert names["postgresql"]["status"] == "ok"
         assert names["postgresql"]["version"] == "16.4"
 
-    def test_readiness_reports_postgis_absence_without_failing(
+    def test_readiness_fails_when_postgis_is_absent(
         self, client: TestClient, database_without_postgis: None
     ) -> None:
-        """Phases 1-2 do not need PostGIS, so its absence is degraded, not down.
-
-        Reporting it as unavailable would make every pre-geography deployment
-        look broken; reporting it as ok would hide a real gap before Prompt 5.
-        """
+        """The current migration head contains PostGIS columns and requires it."""
         response = client.get("/api/v1/health/ready")
-        assert response.status_code == 200
+        assert response.status_code == 503
         body = response.json()
-        assert body["status"] == "degraded"
+        assert body["status"] == "unavailable"
         names = {d["name"]: d for d in body["dependencies"]}
         assert names["postgis"]["status"] == "not_installed"
-        assert "geography import requires it" in names["postgis"]["detail"]
+        assert "required by the current database schema" in names["postgis"]["detail"]
 
     def test_readiness_does_not_leak_connection_details(
         self, client: TestClient, unreachable_database: None

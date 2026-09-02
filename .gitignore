@@ -87,6 +87,10 @@ node_modules/
 # Build output. frontend/dist is a build artefact, never committed.
 /frontend/dist/
 /frontend/.vite/
+# Windows occasionally holds a handle on dist/assets, so the build is run
+# after renaming the stuck directory aside. Those renames are artefacts too.
+/frontend/dist-stuck-*/
+/frontend/dist-verify/
 
 # npm debug output
 npm-debug.log*

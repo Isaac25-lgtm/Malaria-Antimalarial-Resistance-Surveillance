@@ -327,9 +327,9 @@ export interface paths {
          * Readiness probe
          * @description Check backing services and report each one individually.
          *
-         *     PostGIS absence is reported as ``not_installed`` rather than as a failure.
-         *     The schema work of phases 1-2 does not need it; the geography importer
-         *     (Prompt 5) checks for it explicitly and refuses to run without it.
+         *     PostGIS absence is reported as ``not_installed`` and makes the service
+         *     unready. Migration ``0003_phase2_hardening`` introduced PostGIS geometry
+         *     columns, so the current schema head cannot be applied without the extension.
          */
         get: operations["readiness_api_v1_health_ready_get"];
         put?: never;

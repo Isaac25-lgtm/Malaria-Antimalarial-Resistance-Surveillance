@@ -278,7 +278,7 @@ scripts/          Geography audit, terminology lint, contract export
   touched.
 - Migration `0003_phase2_hardening` installs the PostGIS geometry contract and
   therefore requires an extension-capable PostgreSQL server. Readiness reports
-  an absent extension as `not_installed` until migrations are applied.
+  an absent extension as `not_installed` and returns HTTP 503.
 
 **Data**
 

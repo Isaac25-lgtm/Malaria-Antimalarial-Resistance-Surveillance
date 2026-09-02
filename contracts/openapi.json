@@ -2370,7 +2370,7 @@
     },
     "/api/v1/health/ready": {
       "get": {
-        "description": "Check backing services and report each one individually.\n\nPostGIS absence is reported as ``not_installed`` rather than as a failure.\nThe schema work of phases 1-2 does not need it; the geography importer\n(Prompt 5) checks for it explicitly and refuses to run without it.",
+        "description": "Check backing services and report each one individually.\n\nPostGIS absence is reported as ``not_installed`` and makes the service\nunready. Migration ``0003_phase2_hardening`` introduced PostGIS geometry\ncolumns, so the current schema head cannot be applied without the extension.",
         "operationId": "readiness_api_v1_health_ready_get",
         "responses": {
           "200": {
