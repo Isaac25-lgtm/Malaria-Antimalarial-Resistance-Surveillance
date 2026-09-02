@@ -35,6 +35,12 @@ from mars.domain.identity import (
     IdentityRecord,
     ReidentificationEvent,
 )
+from mars.domain.ingestion import (
+    ImportBatch,
+    ImportSourceRow,
+    ImportStageExecution,
+    ImportValidationIssue,
+)
 from mars.domain.organisation import Facility, FacilityIdentifier, OrganisationUnit
 from mars.domain.security import (
     Role,
@@ -60,6 +66,10 @@ __all__ = [
     "GeographyUnitRevision",
     "IdentityIdentifier",
     "IdentityRecord",
+    "ImportBatch",
+    "ImportSourceRow",
+    "ImportStageExecution",
+    "ImportValidationIssue",
     "MethodDefinition",
     "MethodVersion",
     "OpdEncounter",

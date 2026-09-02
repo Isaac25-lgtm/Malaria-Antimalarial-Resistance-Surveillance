@@ -452,3 +452,71 @@ class ReidentificationOutcome(str, enum.Enum):
     DENIED_SENSITIVITY = "denied_sensitivity"
     DENIED_NO_REASON = "denied_no_reason"
     NOT_FOUND = "not_found"
+
+
+# ---------------------------------------------------------------------------
+# Ingestion lifecycle — Prompt 9
+# ---------------------------------------------------------------------------
+class ImportBatchStatus(str, enum.Enum):
+    """Where a batch is in its lifecycle.
+
+    ``PARTIALLY_COMPLETED`` is a first-class success, not a degraded one. Real
+    registers contain unreadable rows, and refusing a whole district's month
+    because forty rows are malformed would lose far more than it protects.
+    """
+
+    #: The artefact was accepted and its checksum recorded. Nothing read yet.
+    RECEIVED = "received"
+    #: Rows are being checked. Nothing has been written to mars_core.
+    VALIDATING = "validating"
+    #: No row was loadable. The batch is retained in full for diagnosis.
+    QUARANTINED = "quarantined"
+    #: Valid rows are being written.
+    LOADING = "loading"
+    #: Every row loaded.
+    COMPLETED = "completed"
+    #: Some rows loaded, some quarantined. The normal outcome for real data.
+    PARTIALLY_COMPLETED = "partially_completed"
+    #: The batch itself was unusable: bad envelope, checksum, schema version or
+    #: an unresolvable facility. No row was even considered.
+    FAILED = "failed"
+
+
+class ImportStage(str, enum.Enum):
+    """The stages a batch passes through.
+
+    Named because each is timed and counted separately: a run that slows down is
+    usually slow in one stage, and an aggregate duration hides which.
+    """
+
+    READ = "read"
+    VALIDATE = "validate"
+    LINK_IDENTITY = "link_identity"
+    WRITE_CANONICAL = "write_canonical"
+
+
+class SourceRowOutcome(str, enum.Enum):
+    """What became of one source row."""
+
+    #: Written to mars_core as a new encounter.
+    LOADED = "loaded"
+    #: Already present and unchanged. Counted separately from ``loaded`` so a
+    #: replay reports honestly rather than claiming to have imported anything.
+    UNCHANGED = "unchanged"
+    #: Already present and updated from a newer revision of the source.
+    UPDATED = "updated"
+    #: Not loadable. The issues say why.
+    QUARANTINED = "quarantined"
+
+
+class ValidationSeverity(str, enum.Enum):
+    """How much an issue matters.
+
+    A warning is recorded and the row still loads. An error quarantines the row.
+    A ``FATAL`` issue is about the batch rather than a row - an unknown schema
+    version, an unresolvable facility - and stops the run.
+    """
+
+    WARNING = "warning"
+    ERROR = "error"
+    FATAL = "fatal"

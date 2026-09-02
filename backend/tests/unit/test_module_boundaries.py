@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -158,23 +159,28 @@ class TestPlaceholderPackagesAreEmpty:
         assert "Prompt" in source, f"{package}/__init__.py does not say which phase implements it"
 
 
-class TestIngestionContainsOnlyGeography:
-    """Prompt 5 fills ``ingestion`` with the geography importer and nothing else.
+class TestIngestionContainsOnlyWhatHasBeenBuilt:
+    """``ingestion`` grows one sub-package per prompt, and no faster.
 
-    Encounter ingestion, aggregate ingestion and the DHIS2 adapter arrive with
-    later prompts. Asserting the boundary here stops a stub for one of those
-    appearing before the prompt that owns it.
+    Prompt 5 added ``geography``; Prompt 9 added ``encounters``. Aggregate
+    ingestion and the DHIS2 adapter arrive with later prompts. Listing the
+    permitted set here stops a stub for one of those appearing before the
+    prompt that owns it - which is how a half-built module starts being
+    imported and then has to be kept.
     """
 
-    def test_only_the_geography_sub_package_exists(self) -> None:
+    #: Update this only when the prompt that owns the sub-package is done.
+    IMPLEMENTED: ClassVar[list[str]] = ["encounters", "geography"]
+
+    def test_only_the_implemented_sub_packages_exist(self) -> None:
         directory = SRC / "ingestion"
         subpackages = sorted(
             path.name
             for path in directory.iterdir()
             if path.is_dir() and path.name != "__pycache__"
         )
-        assert subpackages == ["geography"], (
-            f"ingestion contains {subpackages}; only geography is implemented so far"
+        assert subpackages == self.IMPLEMENTED, (
+            f"ingestion contains {subpackages}; implemented so far: {self.IMPLEMENTED}"
         )
 
     def test_no_loose_modules_beside_the_sub_package(self) -> None:

@@ -44,6 +44,7 @@ dev = [
 mars-api = "mars.main:run"
 mars-worker = "mars.worker:run"
 mars-import-geography = "mars.ingestion.geography.cli:run"
+mars-import-encounters = "mars.ingestion.encounters.cli:run"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

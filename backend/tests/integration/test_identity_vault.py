@@ -792,7 +792,17 @@ class TestRuntimeRoleSeparation:
 
 
 class TestNoIdentityInCore:
-    FORBIDDEN = ("nin", "national_id", "passport", "surname", "given_name", "phone")
+    #: Matched as whole underscore-separated words, not as bare substrings.
+    #: ``nin`` inside ``warning_count`` is not an identifier column, and a
+    #: guard that fires on it teaches people to ignore the guard.
+    FORBIDDEN = frozenset(
+        {"nin", "national", "id", "passport", "surname", "given", "name", "phone"}
+    )
+
+    #: Word pairs that only mean an identifier together. ``name`` alone appears
+    #: in every raw_name column in the schema.
+    FORBIDDEN_WORDS = frozenset({"nin", "passport", "surname", "phone"})
+    FORBIDDEN_PHRASES = (("national", "id"), ("given", "name"))
 
     def test_no_core_column_is_named_for_an_identifier(self, vault_engine: Engine) -> None:
         with vault_engine.connect() as connection:
@@ -806,12 +816,20 @@ class TestNoIdentityInCore:
                 .scalars()
                 .all()
             )
-        offenders = [
-            c
-            for c in columns
-            if any(word in c.lower() for word in self.FORBIDDEN) and not c.startswith("facility.")
-        ]
-        assert not offenders, f"identifier-shaped columns in mars_core: {offenders}"
+        offenders = [c for c in columns if self._names_an_identifier(c)]
+        assert offenders == [], f"identifier-shaped columns in mars_core: {offenders}"
+
+    def _names_an_identifier(self, qualified: str) -> bool:
+        if qualified.startswith("facility."):
+            # A facility's own identifiers are not a person's.
+            return False
+        words = qualified.lower().replace(".", "_").split("_")
+        if self.FORBIDDEN_WORDS & set(words):
+            return True
+        return any(
+            first in words and second in words and words.index(second) == words.index(first) + 1
+            for first, second in self.FORBIDDEN_PHRASES
+        )
 
     def test_the_vault_holds_nothing_clinical(self, vault_engine: Engine) -> None:
         with vault_engine.connect() as connection:
