@@ -691,7 +691,10 @@ class TestReplayingCreatesNoDuplicates:
                 )
             )
             connection.execute(
-                text("UPDATE mars_core.import_batch SET import_status = 'loading', completed_at = NULL")
+                text(
+                    "UPDATE mars_core.import_batch "
+                    "SET import_status = 'loading', completed_at = NULL"
+                )
             )
         session.expire_all()
 
