@@ -24,6 +24,10 @@ dependencies = [
     "python-multipart>=0.0.20",
     "pyjwt[crypto]>=2.10,<3",
     "httpx>=0.28,<0.29",
+    # Direct dependency since Prompt 8: AES-256-GCM for the identity vault.
+    # Present transitively via pyjwt[crypto], but a security primitive must be
+    # declared where it is used rather than inherited from something else.
+    "cryptography>=44,<51",
 ]
 
 [project.optional-dependencies]

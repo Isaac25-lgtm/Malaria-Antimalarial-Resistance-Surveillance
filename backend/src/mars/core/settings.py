@@ -12,7 +12,7 @@ import enum
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -100,6 +100,69 @@ class Settings(BaseSettings):
         description="HMAC secret for synthetic development tokens. Never used in production.",
     )
     dev_auth_token_ttl_seconds: int = Field(default=28_800, ge=60)
+
+    # -- Identity linkage -------------------------------------------------
+    #
+    # The HMAC secret that derives patient linkage tokens. Held as a SecretStr
+    # so it does not appear in a repr, a log line, a traceback or a settings
+    # dump, and defaulted to None rather than to a placeholder: a deployment
+    # that forgets it must fail loudly, not derive every token in the country
+    # under a value an attacker can read in the source.
+    identity_linkage_key: SecretStr | None = Field(
+        default=None,
+        description=(
+            "HMAC secret for patient linkage tokens. Supplied through the "
+            "environment only. Never stored, logged or returned."
+        ),
+    )
+    #: Recorded on every token so rotation does not orphan existing links.
+    identity_linkage_key_version: str = Field(default="v1", min_length=1, max_length=16)
+
+    #: Retired keys, as "version:secret" entries, so a token derived under an
+    #: earlier version can still be recomputed while rotation is in progress.
+    identity_linkage_retired_keys: SecretStr | None = Field(
+        default=None,
+        description=(
+            "Retired linkage keys as version:secret pairs separated by commas. "
+            "Used to verify existing tokens during rotation, never to derive new ones."
+        ),
+    )
+
+    #: Connection URL for the identity service, using the identity database
+    #: role. Deliberately separate from ``database_url``: the ordinary
+    #: application must not merely decline to query identity, it must connect as
+    #: a role that cannot. Absent in a deployment that runs no identity
+    #: component, which then reports identity unready rather than falling back
+    #: to the application connection.
+    identity_database_url: str | None = Field(
+        default=None,
+        description=(
+            "SQLAlchemy URL for the identity service, as the identity database "
+            "role. Never the same credentials as database_url."
+        ),
+    )
+
+    #: AES-256 key for identity encryption at rest, as 64 hex characters or 44
+    #: base64 characters. Separate from the linkage key above: one lets you read
+    #: stored identifiers, the other lets you test a guessed one, and neither
+    #: should substitute for the other.
+    identity_encryption_key: SecretStr | None = Field(
+        default=None,
+        description=(
+            "AES-256 key for identity encryption at rest, hex or base64. "
+            "Supplied through the environment only."
+        ),
+    )
+    identity_encryption_key_version: str = Field(default="v1", min_length=1, max_length=16)
+    #: Retired encryption keys, as "version:secret" pairs, so rows written under
+    #: an earlier key stay readable while rotation runs.
+    identity_encryption_retired_keys: SecretStr | None = Field(
+        default=None,
+        description=(
+            "Retired encryption keys as version:secret pairs separated by "
+            "commas. Used to decrypt existing rows, never to encrypt new ones."
+        ),
+    )
 
     # -- Feature boundaries ----------------------------------------------
     # The optional AI assistant is out of scope for phases 1-2 and is disabled.

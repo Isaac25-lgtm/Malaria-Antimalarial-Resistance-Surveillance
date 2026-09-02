@@ -78,16 +78,27 @@ class TestSchemaBoundaries:
             )
         assert present == set(ALL_SCHEMAS)
 
-    def test_identity_schema_exists_and_is_empty(self, engine: Engine) -> None:
-        """The boundary is created before the data, never retrofitted."""
+    def test_identity_schema_holds_only_the_vault(self, engine: Engine) -> None:
+        """The boundary was created before the data, never retrofitted.
+
+        Empty through phases 1-2; filled by Prompt 8 with exactly three tables
+        and nothing else. Asserting the *contents* rather than emptiness keeps
+        the check meaningful now that the schema is populated: a table appearing
+        here that is not part of the vault would mean something had drifted
+        across the identity boundary.
+        """
         with engine.connect() as connection:
-            tables = list(
+            tables = sorted(
                 connection.execute(
                     text("SELECT tablename FROM pg_tables WHERE schemaname = :s"),
                     {"s": IDENTITY},
                 ).scalars()
             )
-        assert tables == [], f"{IDENTITY} should be empty in phases 1-2, found {tables}"
+        assert tables == [
+            "identity_identifier",
+            "identity_record",
+            "reidentification_event",
+        ], f"unexpected tables in {IDENTITY}: {tables}"
 
     def test_pgcrypto_is_available(self, engine: Engine) -> None:
         """gen_random_uuid() backs every primary key default."""

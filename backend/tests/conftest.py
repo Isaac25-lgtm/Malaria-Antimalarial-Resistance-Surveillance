@@ -209,3 +209,31 @@ def all_principals(
         SystemRole.ANALYST: analyst_principal,
         SystemRole.ADMINISTRATOR: administrator_principal,
     }
+
+
+# ---------------------------------------------------------------------------
+# The published API contract.
+#
+# Several suites need to inspect what MARS *publishes* - the routes and the
+# response schemas - rather than how it behaves. That is a property of the
+# application itself and needs no database, no fake services and no dependency
+# overrides, so it is built once here and shared.
+#
+# Deliberately not a second ``app`` fixture. ``tests/api/conftest.py`` owns the
+# application-with-overrides used for behavioural tests; duplicating it here
+# would create two apps that could drift apart, and a contract assertion passing
+# against the wrong one would be worse than no assertion.
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="session")
+def openapi_document() -> dict[str, Any]:
+    """The OpenAPI document the real application produces."""
+    from mars.main import create_app
+
+    application = create_app(
+        Settings(
+            environment=Environment.LOCAL,
+            database_url="postgresql+psycopg://mars:unused@localhost:5432/unused",
+            log_format="console",
+        )
+    )
+    return application.openapi()

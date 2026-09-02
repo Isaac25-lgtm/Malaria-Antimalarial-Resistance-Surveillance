@@ -392,3 +392,63 @@ class EncounterQuarantineReason(str, enum.Enum):
     UNPARSABLE_AGE = "unparsable_age"
     DUPLICATE_SOURCE_ROW = "duplicate_source_row"
     MALFORMED_ROW = "malformed_row"
+
+
+# ---------------------------------------------------------------------------
+# Identity and linkage — mars_identity (Prompt 8)
+# ---------------------------------------------------------------------------
+class IdentifierType(str, enum.Enum):
+    """Which identifier system a stored value belongs to.
+
+    OPD 002 column 2 carries a national ID, a refugee number or a passport
+    number in a single cell with no type marker; column 6 (Patient Category) is
+    what says which. The type is recorded because it is a *domain separator* for
+    the linkage token: without it a passport ``CM12345`` and a NIN ``CM12345``
+    would derive the same token and merge two unrelated clinical histories.
+
+    ``UNSPECIFIED_SCHEME`` is used when column 6 is blank or contradicts the
+    value's shape. A value under it links only to other values under it, which
+    is the conservative behaviour: an unknown scheme should never merge with a
+    known one.
+    """
+
+    NATIONAL_ID = "national_id"
+    REFUGEE_NUMBER = "refugee_number"
+    PASSPORT = "passport"
+    PHONE = "phone"
+    UNSPECIFIED_SCHEME = "unspecified_scheme"
+
+
+class LinkageConfidence(str, enum.Enum):
+    """How a person was linked to their own earlier records.
+
+    MARS performs no probabilistic linkage. Fuzzy matching on names and dates of
+    birth produces false merges, and a false merge in surveillance attaches one
+    person's clinical history to another. Every value here is a deterministic
+    statement about what was matched.
+    """
+
+    #: A normalised identifier of a known type matched exactly.
+    DETERMINISTIC_IDENTIFIER = "deterministic_identifier"
+    #: Matched, but the identifier's scheme was unknown, so the match holds only
+    #: within the unspecified-scheme domain.
+    DETERMINISTIC_UNSPECIFIED_SCHEME = "deterministic_unspecified_scheme"
+    #: No identifier was usable. The encounter stands alone, which is honest.
+    UNLINKED = "unlinked"
+    #: A link was made and later withdrawn - a correction, or a consent change.
+    WITHDRAWN = "withdrawn"
+
+
+class ReidentificationOutcome(str, enum.Enum):
+    """What happened to a re-identification request.
+
+    ``NOT_FOUND`` and ``DENIED`` are separate values in the audit trail but
+    produce the *same* response to the caller. The distinction is for the people
+    reviewing access, not for the person asking.
+    """
+
+    DISCLOSED = "disclosed"
+    DENIED_PERMISSION = "denied_permission"
+    DENIED_SENSITIVITY = "denied_sensitivity"
+    DENIED_NO_REASON = "denied_no_reason"
+    NOT_FOUND = "not_found"

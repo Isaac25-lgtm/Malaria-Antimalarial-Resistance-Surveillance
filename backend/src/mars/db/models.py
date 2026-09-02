@@ -29,6 +29,11 @@ from mars.domain.governance import (
     MethodDefinition,
     MethodVersion,
 )
+from mars.domain.identity import (
+    IdentityIdentifier,
+    IdentityRecord,
+    ReidentificationEvent,
+)
 from mars.domain.organisation import Facility, FacilityIdentifier, OrganisationUnit
 from mars.domain.security import (
     Role,
@@ -51,6 +56,8 @@ __all__ = [
     "GeographyUnit",
     "GeographyUnitAlias",
     "GeographyUnitGeometry",
+    "IdentityIdentifier",
+    "IdentityRecord",
     "MethodDefinition",
     "MethodVersion",
     "OpdEncounter",
@@ -60,6 +67,7 @@ __all__ = [
     "OpdEncounterTest",
     "OrganisationUnit",
     "PatientReference",
+    "ReidentificationEvent",
     "Role",
     "RolePermission",
     "UserAccount",
