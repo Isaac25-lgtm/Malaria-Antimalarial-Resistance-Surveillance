@@ -19,7 +19,7 @@ from types import FrameType
 from mars.core.logging import configure_logging, get_logger
 from mars.core.settings import Settings, get_settings
 
-#: Jobs the worker will run, added by the phases that own them.
+#: Jobs the worker can run, added by the phases that own them.
 #:
 #: Prompt 9  - e-register encounter ingestion
 #: Prompt 12 - aggregate reconciliation
@@ -27,7 +27,7 @@ from mars.core.settings import Settings, get_settings
 #: Prompt 18 - temporal baseline refresh
 #: Prompt 20 - spatial metric refresh
 #: Prompt 21 - signal generation
-REGISTERED_JOBS: tuple[str, ...] = ()
+REGISTERED_JOBS: tuple[str, ...] = ("geography.import",)
 
 
 class Worker:
@@ -54,10 +54,16 @@ class Worker:
         if not REGISTERED_JOBS:
             self._logger.info(
                 "worker_idle",
-                detail=(
-                    "No jobs are registered in phases 1-2. The process is running "
-                    "and will exit cleanly on SIGTERM."
-                ),
+                detail="No jobs are registered yet. The process will exit cleanly on SIGTERM.",
+            )
+        else:
+            # No scheduler yet: jobs are invoked explicitly by an operator or a
+            # test. A queue consumer replaces this loop when the first
+            # event-driven job lands in Prompt 9.
+            self._logger.info(
+                "worker_jobs_available",
+                jobs=list(REGISTERED_JOBS),
+                detail="Invoked on demand; no scheduler is running.",
             )
 
         # Wait rather than spin. A scheduler replaces this when the first job

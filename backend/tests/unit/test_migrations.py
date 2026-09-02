@@ -21,6 +21,7 @@ from mars.db.models import Base
 from mars.db.schemas import ALL_SCHEMAS
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations" / "versions"
+ENV_PY = MIGRATIONS_DIR.parent / "env.py"
 
 #: PostgreSQL truncates identifiers at NAMEDATALEN - 1.
 MAX_IDENTIFIER_LENGTH = 63
@@ -307,3 +308,75 @@ def test_schema_is_documented(schema: str) -> None:
 
     assert schema in SCHEMA_PURPOSE
     assert SCHEMA_PURPOSE[schema].strip()
+
+
+class TestMigrationEnvironmentTargetsTheRequestedDatabase:
+    """A caller's explicit database URL must survive ``env.py``.
+
+    ``env.py`` reads the URL from settings so that no connection string is
+    committed. Applying that unconditionally was a real defect: a caller that
+    had already set ``sqlalchemy.url`` on the config - which is how the
+    integration fixtures point Alembic at a disposable database - had its choice
+    silently replaced by whatever the environment happened to hold, and the
+    migration ran against a different server than the one requested.
+
+    The failure is quiet and destructive in the wrong direction, so the guard is
+    asserted structurally rather than left to be noticed.
+    """
+
+    def _tree(self) -> ast.Module:
+        return ast.parse(ENV_PY.read_text(encoding="utf-8"))
+
+    def _set_main_option_calls(self, tree: ast.Module) -> list[ast.Call]:
+        """Every ``config.set_main_option("sqlalchemy.url", ...)`` in the tree.
+
+        The tree is passed in rather than re-parsed, because the caller compares
+        these nodes by identity against nodes from the same parse.
+        """
+        return [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "set_main_option"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and node.args[0].value == "sqlalchemy.url"
+        ]
+
+    def test_the_url_is_assigned_exactly_once(self) -> None:
+        calls = self._set_main_option_calls(self._tree())
+        assert len(calls) == 1, (
+            f"env.py sets sqlalchemy.url {len(calls)} times; one assignment keeps "
+            "the precedence between caller and settings readable"
+        )
+
+    def test_the_assignment_is_conditional(self) -> None:
+        """The settings URL is a fallback, never an override."""
+        tree = self._tree()
+        call = self._set_main_option_calls(tree)[0]
+
+        guarded = any(
+            call in ast.walk(node) for node in ast.walk(tree) if isinstance(node, ast.If)
+        )
+        assert guarded, (
+            "env.py assigns sqlalchemy.url unconditionally, so it overwrites a URL "
+            "the caller already set and migrates the wrong database"
+        )
+
+    def test_alembic_ini_declares_no_url(self) -> None:
+        """The guard above is only safe while the ini contributes no URL.
+
+        If ``alembic.ini`` gained a ``sqlalchemy.url``, that placeholder would
+        win over settings for every ordinary CLI invocation.
+        """
+        ini = ENV_PY.parent.parent / "alembic.ini"
+        declared = [
+            line
+            for line in ini.read_text(encoding="utf-8").splitlines()
+            if line.strip().startswith("sqlalchemy.url")
+        ]
+        assert not declared, (
+            f"alembic.ini declares a database URL {declared}; env.py treats any "
+            "preset URL as a deliberate caller override, so the ini must stay silent"
+        )

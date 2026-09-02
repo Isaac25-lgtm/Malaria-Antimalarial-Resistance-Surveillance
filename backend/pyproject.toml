@@ -39,6 +39,7 @@ dev = [
 [project.scripts]
 mars-api = "mars.main:run"
 mars-worker = "mars.worker:run"
+mars-import-geography = "mars.ingestion.geography.cli:run"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

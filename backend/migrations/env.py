@@ -3,7 +3,10 @@
 Two things distinguish this from a default env.py:
 
 * The database URL comes from settings, never from alembic.ini, so no
-  environment's connection string is ever committed.
+  environment's connection string is ever committed. A caller that has already
+  set ``sqlalchemy.url`` on the config keeps it: that is how the integration
+  tests migrate a disposable database without having to mutate the process
+  environment first.
 * Autogenerate is made schema-aware. ``include_schemas=True`` alone would also
   drag in PostGIS's own tables, so ``include_object`` restricts comparison to
   the MARS schemas.
@@ -31,7 +34,13 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# Settings are the default source, not an override. ``alembic.ini`` deliberately
+# carries no ``sqlalchemy.url``, so anything present here was set by a caller in
+# this process and states an intent more specific than the environment's.
+# Clobbering it would silently migrate a different database than the one asked
+# for, which is the kind of mistake that is only noticed after it has happened.
+if not config.get_main_option("sqlalchemy.url", None):
+    config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
 #: Tables PostGIS creates in the public schema. Never MARS's to manage.
 _POSTGIS_TABLES = {"spatial_ref_sys", "geometry_columns", "geography_columns", "raster_columns"}

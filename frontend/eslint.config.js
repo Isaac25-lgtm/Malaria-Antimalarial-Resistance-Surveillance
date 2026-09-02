@@ -7,7 +7,11 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   {
     // The generated API types are the contract, not hand-written source.
-    ignores: ["dist", "node_modules", "src/api/schema.d.ts"],
+    // "dist-stuck-*" is build output that Windows would not let Vite delete:
+    // the build renames the locked directory aside and carries on. Those
+    // directories hold minified bundles, so linting them reports thousands of
+    // meaningless errors about single-letter variables.
+    ignores: ["dist", "dist-stuck-*", "node_modules", "src/api/schema.d.ts"],
   },
 
   js.configs.recommended,

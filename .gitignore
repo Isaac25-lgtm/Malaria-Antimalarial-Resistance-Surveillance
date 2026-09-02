@@ -35,6 +35,11 @@ secrets/
 # Generated geography audit output. Regenerate with scripts/geography_audit.py.
 /data/manifests/geography-audit.json
 
+# Generated geography import report. One per import run: it carries that run's
+# timestamps and version code, so it is evidence of a run rather than a fact
+# about the repository. Regenerate with `mars-import-geography --json`.
+/data/manifests/geography-import.json
+
 # ===========================================================================
 # Python
 # ===========================================================================

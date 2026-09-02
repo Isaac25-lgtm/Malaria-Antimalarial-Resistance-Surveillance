@@ -129,31 +129,64 @@ class TestRoutersStayThin:
         assert not offenders, f"routers importing ORM models: {offenders}"
 
 
+#: Packages that no implemented prompt fills yet. A stub that looks implemented
+#: is worse than an absent module, because a reader cannot tell the difference
+#: without opening it.
+#:
+#: ``ingestion`` left this list at Prompt 5, which implements the geography
+#: importer. Each entry is removed only by the prompt that genuinely fills it.
+UNIMPLEMENTED_PACKAGES = ["analytics", "signals", "explainability", "investigations"]
+
+
 class TestPlaceholderPackagesAreEmpty:
-    """Phases 1-2 implement no analytics, signals or investigations.
+    """Capabilities not yet implemented must stay visibly absent."""
 
-    A stub that looks implemented is worse than an absent module, because a
-    reader cannot tell the difference without opening it.
-    """
-
-    @pytest.mark.parametrize(
-        "package",
-        ["analytics", "signals", "explainability", "investigations", "ingestion"],
-    )
+    @pytest.mark.parametrize("package", UNIMPLEMENTED_PACKAGES)
     def test_package_contains_only_its_docstring(self, package: str) -> None:
         files = _package_files(package)
         assert files, f"{package} package is missing entirely"
         non_init = [f for f in files if f.name != "__init__.py"]
         assert not non_init, (
-            f"{package} contains implementation, but phases 1-2 define no such "
-            f"capability: {[str(f.relative_to(SRC)) for f in non_init]}"
+            f"{package} contains implementation, but no prompt implemented so far "
+            f"defines that capability: {[str(f.relative_to(SRC)) for f in non_init]}"
         )
 
-    @pytest.mark.parametrize(
-        "package",
-        ["analytics", "signals", "explainability", "investigations", "ingestion"],
-    )
+    @pytest.mark.parametrize("package", UNIMPLEMENTED_PACKAGES)
     def test_docstring_names_the_prompt_that_fills_it(self, package: str) -> None:
         """A reader should know when the module becomes real."""
         source = (SRC / package / "__init__.py").read_text(encoding="utf-8")
         assert "Prompt" in source, f"{package}/__init__.py does not say which phase implements it"
+
+
+class TestIngestionContainsOnlyGeography:
+    """Prompt 5 fills ``ingestion`` with the geography importer and nothing else.
+
+    Encounter ingestion, aggregate ingestion and the DHIS2 adapter arrive with
+    later prompts. Asserting the boundary here stops a stub for one of those
+    appearing before the prompt that owns it.
+    """
+
+    def test_only_the_geography_sub_package_exists(self) -> None:
+        directory = SRC / "ingestion"
+        subpackages = sorted(
+            path.name
+            for path in directory.iterdir()
+            if path.is_dir() and path.name != "__pycache__"
+        )
+        assert subpackages == ["geography"], (
+            f"ingestion contains {subpackages}; only geography is implemented so far"
+        )
+
+    def test_no_loose_modules_beside_the_sub_package(self) -> None:
+        directory = SRC / "ingestion"
+        modules = sorted(path.name for path in directory.glob("*.py") if path.name != "__init__.py")
+        assert modules == [], f"unexpected modules directly under ingestion: {modules}"
+
+    def test_the_importer_does_not_reach_into_api_or_analytics(self) -> None:
+        """Ingestion is a domain service; it must not depend on the web layer."""
+        offenders: list[tuple[str, str]] = []
+        for path in _package_files("ingestion"):
+            for module in _imports_of(path):
+                if module.startswith(("mars.api", "mars.analytics", "mars.signals")):
+                    offenders.append((str(path.relative_to(SRC)), module))
+        assert not offenders, f"ingestion imports a forbidden layer: {offenders}"
