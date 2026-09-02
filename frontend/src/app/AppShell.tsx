@@ -24,10 +24,14 @@ interface NavigationItem {
 const PRIMARY_NAVIGATION: NavigationItem[] = [
   { to: "/status", label: "System status" },
   {
+    to: "/national",
+    label: "National map",
+    permission: "geography:view",
+  },
+  {
     to: "/geography",
     label: "Geography",
     permission: "geography:view",
-    note: "Not yet imported",
   },
   {
     to: "/organisation",

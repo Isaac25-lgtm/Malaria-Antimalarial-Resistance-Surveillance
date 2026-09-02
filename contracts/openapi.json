@@ -127,6 +127,35 @@
         "title": "BoundaryVersionSummary",
         "type": "object"
       },
+      "BoundingBoxModel": {
+        "description": "A geographic extent in EPSG:4326 degrees, west/south/east/north.",
+        "properties": {
+          "max_lat": {
+            "title": "Max Lat",
+            "type": "number"
+          },
+          "max_lon": {
+            "title": "Max Lon",
+            "type": "number"
+          },
+          "min_lat": {
+            "title": "Min Lat",
+            "type": "number"
+          },
+          "min_lon": {
+            "title": "Min Lon",
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_lon",
+          "min_lat",
+          "max_lon",
+          "max_lat"
+        ],
+        "title": "BoundingBoxModel",
+        "type": "object"
+      },
       "ConfigurationKeySummary": {
         "properties": {
           "active_effective_from": {
@@ -699,6 +728,36 @@
         "title": "FacilitySummary",
         "type": "object"
       },
+      "FieldError": {
+        "description": "A single field-level validation failure.",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "FieldError",
+        "type": "object"
+      },
       "GeographyAliasSummary": {
         "properties": {
           "geography_unit_id": {
@@ -756,6 +815,57 @@
           "match_method"
         ],
         "title": "GeographyAliasSummary",
+        "type": "object"
+      },
+      "GeographyBreadcrumb": {
+        "description": "One step in the ancestor chain, from country down to the unit.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "unit_id": {
+            "format": "uuid",
+            "title": "Unit Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "level",
+          "code",
+          "name",
+          "is_current"
+        ],
+        "title": "GeographyBreadcrumb",
+        "type": "object"
+      },
+      "GeographyBreadcrumbsResponse": {
+        "properties": {
+          "breadcrumbs": {
+            "items": {
+              "$ref": "#/components/schemas/GeographyBreadcrumb"
+            },
+            "title": "Breadcrumbs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "breadcrumbs"
+        ],
+        "title": "GeographyBreadcrumbsResponse",
         "type": "object"
       },
       "GeographyLevel": {
@@ -1116,6 +1226,445 @@
         "title": "LivenessResponse",
         "type": "object"
       },
+      "MapCollectionMeta": {
+        "description": "MARS metadata carried inside the FeatureCollection as a foreign member.",
+        "properties": {
+          "boundary_version_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Code"
+          },
+          "boundary_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Id"
+          },
+          "feature_count": {
+            "title": "Feature Count",
+            "type": "integer"
+          },
+          "geometry_resolution": {
+            "title": "Geometry Resolution",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "matched_count": {
+            "title": "Matched Count",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "within_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Within Id"
+          }
+        },
+        "required": [
+          "boundary_version_id",
+          "boundary_version_code",
+          "level",
+          "parent_id",
+          "within_id",
+          "geometry_resolution",
+          "feature_count",
+          "matched_count",
+          "truncated"
+        ],
+        "title": "MapCollectionMeta",
+        "type": "object"
+      },
+      "MapFeature": {
+        "description": "One administrative area as GeoJSON.",
+        "properties": {
+          "geometry": {
+            "additionalProperties": true,
+            "description": "GeoJSON MultiPolygon, simplified for display.",
+            "title": "Geometry",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/MapFeatureProperties"
+          },
+          "type": {
+            "default": "Feature",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "geometry",
+          "properties"
+        ],
+        "title": "MapFeature",
+        "type": "object"
+      },
+      "MapFeatureCollection": {
+        "description": "A GeoJSON FeatureCollection with the boundary version attached.\n\nThe version travels inside the document, not only in a header, so a saved\nor forwarded response still says which boundaries produced it.",
+        "properties": {
+          "bbox": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Extent of the whole collection: west, south, east, north.",
+            "title": "Bbox"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/MapFeature"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "mars": {
+            "$ref": "#/components/schemas/MapCollectionMeta"
+          },
+          "type": {
+            "default": "FeatureCollection",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "features",
+          "mars"
+        ],
+        "title": "MapFeatureCollection",
+        "type": "object"
+      },
+      "MapFeatureProperties": {
+        "description": "The complete set of properties a map feature carries.\n\nDeclared as a closed model rather than a free-form object so the allow-list\nis part of the published contract and appears in the generated client.",
+        "properties": {
+          "area_sq_km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Sq Km"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "unit_id": {
+            "format": "uuid",
+            "title": "Unit Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit_id",
+          "level",
+          "code",
+          "name",
+          "parent_id",
+          "path",
+          "area_sq_km",
+          "is_active"
+        ],
+        "title": "MapFeatureProperties",
+        "type": "object"
+      },
+      "MapLevelAvailability": {
+        "description": "Whether one hierarchy level can be drawn, and at what tolerance.",
+        "properties": {
+          "geometry_count": {
+            "title": "Geometry Count",
+            "type": "integer"
+          },
+          "is_drawable": {
+            "description": "False when the level exists in the schema but no geometry is loaded.",
+            "title": "Is Drawable",
+            "type": "boolean"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "simplification_tolerance_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simplification Tolerance Deg"
+          },
+          "supports_national_layer": {
+            "description": "Whether the whole level may be requested without a parent filter.",
+            "title": "Supports National Layer",
+            "type": "boolean"
+          },
+          "unit_count": {
+            "title": "Unit Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level",
+          "unit_count",
+          "geometry_count",
+          "simplification_tolerance_deg",
+          "is_drawable",
+          "supports_national_layer"
+        ],
+        "title": "MapLevelAvailability",
+        "type": "object"
+      },
+      "MapMetadataResponse": {
+        "description": "What the caller may draw, and from which boundary version.\n\n``is_available`` false means no boundary version is published or none of\nits levels carry geometry. The client shows an explicit \"no boundaries\nloaded\" state rather than an empty canvas, which would read as a rendering\nfailure.",
+        "properties": {
+          "boundary_version_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Code"
+          },
+          "boundary_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Id"
+          },
+          "boundary_version_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Label"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "geometry_resolution": {
+            "description": "Always 'simplified'. Full-resolution geometry is never served to a browser.",
+            "title": "Geometry Resolution",
+            "type": "string"
+          },
+          "imported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imported At"
+          },
+          "initial_bounds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoundingBoxModel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Extent of the highest unit in the caller's scope, for the first viewport."
+          },
+          "initial_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Unit Id"
+          },
+          "initial_unit_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Unit Level"
+          },
+          "initial_unit_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Unit Name"
+          },
+          "is_available": {
+            "title": "Is Available",
+            "type": "boolean"
+          },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/MapLevelAvailability"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "max_features": {
+            "title": "Max Features",
+            "type": "integer"
+          },
+          "source_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SHA-256 of the source set, so a client can prove which bytes it is drawing.",
+            "title": "Source Checksum"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          }
+        },
+        "required": [
+          "is_available",
+          "boundary_version_id",
+          "boundary_version_code",
+          "boundary_version_label",
+          "source_name",
+          "source_checksum",
+          "imported_at",
+          "initial_bounds",
+          "initial_unit_id",
+          "initial_unit_name",
+          "initial_unit_level",
+          "levels",
+          "geometry_resolution",
+          "max_features",
+          "generated_at"
+        ],
+        "title": "MapMetadataResponse",
+        "type": "object"
+      },
       "MethodDefinitionSummary": {
         "properties": {
           "code": {
@@ -1221,6 +1770,82 @@
           "artifact_checksum"
         ],
         "title": "MethodVersionSummary",
+        "type": "object"
+      },
+      "NationalGeographyResponse": {
+        "description": "The caller's root geography and the level below it.\n\n\"National\" is the top of the caller's scope, not necessarily Uganda: a\ndistrict user's national view is their district. The map opens correctly for\na delegated account without a special case in the client.",
+        "properties": {
+          "boundary_version_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Code"
+          },
+          "boundary_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Id"
+          },
+          "bounds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoundingBoxModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "child_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Level"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/GeographyUnitSummary"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "root": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeographyUnitSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "root",
+          "bounds",
+          "child_level",
+          "children",
+          "boundary_version_id",
+          "boundary_version_code"
+        ],
+        "title": "NationalGeographyResponse",
         "type": "object"
       },
       "OrganisationUnitDetail": {
@@ -1489,6 +2114,102 @@
           "offset"
         ],
         "title": "Page[OrganisationUnitSummary]",
+        "type": "object"
+      },
+      "ProblemDetail": {
+        "description": "RFC 7807 problem document, extended with MARS diagnostics.",
+        "properties": {
+          "code": {
+            "description": "Stable machine-readable MARS error code.",
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Human-readable explanation.",
+            "title": "Detail"
+          },
+          "documentation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where to read more.",
+            "title": "Documentation"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldError"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Field-level failures.",
+            "title": "Errors"
+          },
+          "instance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Request path.",
+            "title": "Instance"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Correlates with server logs.",
+            "title": "Request Id"
+          },
+          "status": {
+            "description": "HTTP status code.",
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "description": "Short, human-readable summary.",
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "description": "URI reference identifying the problem type.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "title": "ProblemDetail",
         "type": "object"
       },
       "ReadinessResponse": {
@@ -2049,6 +2770,277 @@
         ]
       }
     },
+    "/api/v1/geography/districts/{code}": {
+      "get": {
+        "description": "Resolve a district code to a unit.\n\nA code outside the caller's scope raises the same not-found as a code that\nwas never issued.",
+        "operationId": "get_district_api_v1_geography_districts__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeographyUnitDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "No such unit, or the unit is outside the caller's geography scope. These are the same response by design."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Look up a district by its code",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/map/features": {
+      "get": {
+        "description": "Return one drawable layer.\n\nparent_id selects direct children; within_id selects every descendant\nat the requested level, which is how a district drills to its subcounties -\nthose hang off counties, so a parent filter would return nothing.\n\nAlways simplified: full-resolution geometry is the analytical copy and never\nleaves the server. A request matching more units than the ceiling allows is\nrefused with 413 rather than truncated, because a partial map that looks\ncomplete is worse than an error.\n\nThe response carries a strong ETag derived from the boundary version and the\nquery, so a client re-opening the national view revalidates in a few bytes.\nA matching ``If-None-Match`` returns 304.",
+        "operationId": "map_features_api_v1_geography_map_features_get",
+        "parameters": [
+          {
+            "description": "Hierarchy level to draw",
+            "in": "query",
+            "name": "level",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/GeographyLevel",
+              "description": "Hierarchy level to draw"
+            }
+          },
+          {
+            "description": "Restrict to direct children of this unit",
+            "in": "query",
+            "name": "parent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Restrict to direct children of this unit",
+              "title": "Parent Id"
+            }
+          },
+          {
+            "description": "Restrict to any descendant of this unit at the requested level",
+            "in": "query",
+            "name": "within_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Restrict to any descendant of this unit at the requested level",
+              "title": "Within Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 400,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapFeatureCollection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "No such unit, or the unit is outside the caller's geography scope. These are the same response by design."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "More features match than the payload ceiling allows. The request is refused rather than truncated; narrow it with `parent_id` or `within_id`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Simplified boundary geometry for one level, as GeoJSON",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/map/metadata": {
+      "get": {
+        "description": "Describe the drawable geography before any geometry is fetched.\n\nOne request, deliberately: a client that needs several calls to learn which\nboundary version it is drawing will eventually draw two at once.",
+        "operationId": "map_metadata_api_v1_geography_map_metadata_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapMetadataResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "What this caller can draw, and from which boundary version",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/national": {
+      "get": {
+        "description": "Open the map at the top of the caller's scope.\n\n\"National\" means the highest unit this caller can see, which for a district\naccount is their district. Deriving it from scope rather than assuming\nUganda means a delegated account opens correctly with no special case in the\nclient.",
+        "operationId": "national_geography_api_v1_geography_national_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NationalGeographyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "The caller's root geography and the level below it",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
     "/api/v1/geography/overview": {
       "get": {
         "description": "Report unit counts per level and the boundary versions registered.\n\nLevels with no data are reported as zero rather than omitted, so an empty\nparish level reads as \"none loaded\" and not as \"level not supported\".",
@@ -2071,6 +3063,73 @@
           }
         ],
         "summary": "Hierarchy metadata and loaded boundary versions",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/subcounties/{code}": {
+      "get": {
+        "operationId": "get_subcounty_api_v1_geography_subcounties__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeographyUnitDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "No such unit, or the unit is outside the caller's geography scope. These are the same response by design."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Look up a subcounty by its code",
         "tags": [
           "geography"
         ]
@@ -2232,6 +3291,144 @@
         ]
       }
     },
+    "/api/v1/geography/units/{unit_id}/bounds": {
+      "get": {
+        "description": "Four numbers, so a client can zoom to a district without downloading it.",
+        "operationId": "unit_bounds_api_v1_geography_units__unit_id__bounds_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoundingBoxModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "No such unit, or the unit is outside the caller's geography scope. These are the same response by design."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "One unit's extent, without transferring its geometry",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/units/{unit_id}/breadcrumbs": {
+      "get": {
+        "description": "Country / region / district / subcounty, ending with the unit itself.\n\nOnly ancestors the caller may see appear, so a district user's trail starts\nat the highest unit in their scope rather than revealing the chain above it.",
+        "operationId": "unit_breadcrumbs_api_v1_geography_units__unit_id__breadcrumbs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeographyBreadcrumbsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "No such unit, or the unit is outside the caller's geography scope. These are the same response by design."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "The ancestor chain from the caller's root down to this unit",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
     "/api/v1/geography/units/{unit_id}/children": {
       "get": {
         "operationId": "get_children_api_v1_geography_units__unit_id__children_get",
@@ -2279,6 +3476,74 @@
           }
         ],
         "summary": "Direct children of a geography unit",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/units/{unit_id}/geometry": {
+      "get": {
+        "operationId": "unit_geometry_api_v1_geography_units__unit_id__geometry_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapFeature"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "No such unit, or the unit is outside the caller's geography scope. These are the same response by design."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "One unit's simplified boundary, as a GeoJSON Feature",
         "tags": [
           "geography"
         ]

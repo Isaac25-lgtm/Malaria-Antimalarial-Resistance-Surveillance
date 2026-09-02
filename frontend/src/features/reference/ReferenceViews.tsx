@@ -109,7 +109,7 @@ export function GeographyView() {
               <div className="panel__body">
                 <div className="notice notice--info">
                   <div>
-                    <div className="notice__title">Why every level reads zero</div>
+                    <div className="notice__title">Why parish and village read zero</div>
                     <div>{overview.data.note}</div>
                   </div>
                 </div>
@@ -128,10 +128,10 @@ export function GeographyView() {
             <NoDataState
               title="No boundary version has been registered"
               description={
-                "The supplied Uganda boundary files are held in the repository with a " +
-                "tracked checksum manifest, but none has been imported into the database yet."
+                "The supplied Uganda boundary files are held outside Git with a tracked " +
+                "checksum manifest. Run the geography importer to publish a version."
               }
-              awaiting="the boundary importer"
+              awaiting="a geography import"
             />
           ) : null}
         </div>

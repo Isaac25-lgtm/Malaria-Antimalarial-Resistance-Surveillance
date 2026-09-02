@@ -196,6 +196,152 @@ class GeographyAliasSummary(MarsModel):
     match_method: str | None
 
 
+# -- Map delivery ---------------------------------------------------------
+#
+# The map contract is separate from the hierarchy contract above. A client that
+# only lists districts should not have to understand geometry, and a client that
+# draws them should not have to guess which boundary version it is drawing.
+class BoundingBoxModel(MarsModel):
+    """A geographic extent in EPSG:4326 degrees, west/south/east/north."""
+
+    min_lon: float
+    min_lat: float
+    max_lon: float
+    max_lat: float
+
+
+class MapLevelAvailability(MarsModel):
+    """Whether one hierarchy level can be drawn, and at what tolerance."""
+
+    level: str
+    unit_count: int
+    geometry_count: int
+    simplification_tolerance_deg: float | None
+    is_drawable: bool = Field(
+        description="False when the level exists in the schema but no geometry is loaded."
+    )
+    supports_national_layer: bool = Field(
+        description="Whether the whole level may be requested without a parent filter."
+    )
+
+
+class MapMetadataResponse(MarsModel):
+    """What the caller may draw, and from which boundary version.
+
+    ``is_available`` false means no boundary version is published or none of
+    its levels carry geometry. The client shows an explicit "no boundaries
+    loaded" state rather than an empty canvas, which would read as a rendering
+    failure.
+    """
+
+    is_available: bool
+    boundary_version_id: uuid.UUID | None
+    boundary_version_code: str | None
+    boundary_version_label: str | None
+    source_name: str | None
+    source_checksum: str | None = Field(
+        description="SHA-256 of the source set, so a client can prove which bytes it is drawing."
+    )
+    imported_at: datetime | None
+    initial_bounds: BoundingBoxModel | None = Field(
+        description="Extent of the highest unit in the caller's scope, for the first viewport."
+    )
+    initial_unit_id: uuid.UUID | None
+    initial_unit_name: str | None
+    initial_unit_level: str | None
+    levels: list[MapLevelAvailability]
+    geometry_resolution: str = Field(
+        description="Always 'simplified'. Full-resolution geometry is never served to a browser."
+    )
+    max_features: int
+    generated_at: datetime
+
+
+class MapFeatureProperties(MarsModel):
+    """The complete set of properties a map feature carries.
+
+    Declared as a closed model rather than a free-form object so the allow-list
+    is part of the published contract and appears in the generated client.
+    """
+
+    unit_id: uuid.UUID
+    level: str
+    code: str
+    name: str
+    parent_id: uuid.UUID | None
+    path: str
+    area_sq_km: float | None
+    is_active: bool
+
+
+class MapFeature(MarsModel):
+    """One administrative area as GeoJSON."""
+
+    type: str = Field(default="Feature")
+    id: str
+    geometry: dict[str, Any] = Field(description="GeoJSON MultiPolygon, simplified for display.")
+    properties: MapFeatureProperties
+
+
+class MapCollectionMeta(MarsModel):
+    """MARS metadata carried inside the FeatureCollection as a foreign member."""
+
+    boundary_version_id: uuid.UUID | None
+    boundary_version_code: str | None
+    level: str | None
+    parent_id: uuid.UUID | None
+    within_id: uuid.UUID | None
+    geometry_resolution: str
+    feature_count: int
+    matched_count: int
+    truncated: bool
+
+
+class MapFeatureCollection(MarsModel):
+    """A GeoJSON FeatureCollection with the boundary version attached.
+
+    The version travels inside the document, not only in a header, so a saved
+    or forwarded response still says which boundaries produced it.
+    """
+
+    type: str = Field(default="FeatureCollection")
+    features: list[MapFeature]
+    bbox: list[float] | None = Field(
+        default=None, description="Extent of the whole collection: west, south, east, north."
+    )
+    mars: MapCollectionMeta
+
+
+class GeographyBreadcrumb(MarsModel):
+    """One step in the ancestor chain, from country down to the unit."""
+
+    unit_id: uuid.UUID
+    level: str
+    code: str
+    name: str
+    is_current: bool
+
+
+class GeographyBreadcrumbsResponse(MarsModel):
+    breadcrumbs: list[GeographyBreadcrumb]
+
+
+class NationalGeographyResponse(MarsModel):
+    """The caller's root geography and the level below it.
+
+    "National" is the top of the caller's scope, not necessarily Uganda: a
+    district user's national view is their district. The map opens correctly for
+    a delegated account without a special case in the client.
+    """
+
+    root: GeographyUnitSummary | None
+    bounds: BoundingBoxModel | None
+    child_level: str | None
+    children: list[GeographyUnitSummary]
+    boundary_version_id: uuid.UUID | None
+    boundary_version_code: str | None
+
+
 # -- Organisation and facility -------------------------------------------
 class OrganisationUnitSummary(MarsModel):
     id: uuid.UUID

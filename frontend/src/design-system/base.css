@@ -320,3 +320,56 @@ code,
   font-weight: var(--weight-semibold);
   margin-bottom: var(--space-1);
 }
+
+/* -- Page header metadata ----------------------------------------------- */
+/* A page that draws from a versioned dataset says so in its header, where the
+   version stays visible while the content scrolls. */
+.page__header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+}
+
+.page__meta-detail {
+  /* AA at this size needs 4.5:1; --ink-tertiary gives 3.53:1 on white. */
+  color: var(--ink-secondary);
+}
+
+.page__note {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+}
+
+.panel__meta {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-secondary);
+}
+
+/* -- Link-styled button -------------------------------------------------- */
+/* A control that navigates rather than submits. It is a button because it acts
+   on in-page state; it looks like a link because that is what it does. */
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link-button:hover {
+  color: var(--accent-hover);
+}
+
+.link-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

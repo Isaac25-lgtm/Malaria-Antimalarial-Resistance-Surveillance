@@ -208,6 +208,38 @@ export const api = {
   boundaryVersions: () =>
     request<Schemas["BoundaryVersionSummary"][]>("/geography/boundary-versions"),
 
+  // -- Map delivery -------------------------------------------------------
+  // Geometry is always the simplified copy; the API has no full-resolution
+  // route to call, so the client cannot request one by accident.
+  mapMetadata: () => request<Schemas["MapMetadataResponse"]>("/geography/map/metadata"),
+
+  mapFeatures: (query: {
+    level: string;
+    parent_id?: string;
+    within_id?: string;
+    limit?: number;
+  }) => request<Schemas["MapFeatureCollection"]>("/geography/map/features", { query }),
+
+  nationalGeography: () =>
+    request<Schemas["NationalGeographyResponse"]>("/geography/national"),
+
+  unitGeometry: (unitId: string) =>
+    request<Schemas["MapFeature"]>(`/geography/units/${unitId}/geometry`),
+
+  unitBounds: (unitId: string) =>
+    request<Schemas["BoundingBoxModel"]>(`/geography/units/${unitId}/bounds`),
+
+  unitBreadcrumbs: (unitId: string) =>
+    request<Schemas["GeographyBreadcrumbsResponse"]>(
+      `/geography/units/${unitId}/breadcrumbs`,
+    ),
+
+  unitChildren: (unitId: string) =>
+    request<Schemas["GeographyUnitSummary"][]>(`/geography/units/${unitId}/children`),
+
+  district: (code: string) =>
+    request<Schemas["GeographyUnitDetail"]>(`/geography/districts/${code}`),
+
   organisationUnits: (query?: { unit_type?: string; limit?: number }) =>
     request<Schemas["Page_OrganisationUnitSummary_"]>("/organisation-units", { query }),
 

@@ -176,6 +176,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/geography/districts/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Look up a district by its code
+         * @description Resolve a district code to a unit.
+         *
+         *     A code outside the caller's scope raises the same not-found as a code that
+         *     was never issued.
+         */
+        get: operations["get_district_api_v1_geography_districts__code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geography/map/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Simplified boundary geometry for one level, as GeoJSON
+         * @description Return one drawable layer.
+         *
+         *     parent_id selects direct children; within_id selects every descendant
+         *     at the requested level, which is how a district drills to its subcounties -
+         *     those hang off counties, so a parent filter would return nothing.
+         *
+         *     Always simplified: full-resolution geometry is the analytical copy and never
+         *     leaves the server. A request matching more units than the ceiling allows is
+         *     refused with 413 rather than truncated, because a partial map that looks
+         *     complete is worse than an error.
+         *
+         *     The response carries a strong ETag derived from the boundary version and the
+         *     query, so a client re-opening the national view revalidates in a few bytes.
+         *     A matching ``If-None-Match`` returns 304.
+         */
+        get: operations["map_features_api_v1_geography_map_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geography/map/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What this caller can draw, and from which boundary version
+         * @description Describe the drawable geography before any geometry is fetched.
+         *
+         *     One request, deliberately: a client that needs several calls to learn which
+         *     boundary version it is drawing will eventually draw two at once.
+         */
+        get: operations["map_metadata_api_v1_geography_map_metadata_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geography/national": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's root geography and the level below it
+         * @description Open the map at the top of the caller's scope.
+         *
+         *     "National" means the highest unit this caller can see, which for a district
+         *     account is their district. Deriving it from scope rather than assuming
+         *     Uganda means a delegated account opens correctly with no special case in the
+         *     client.
+         */
+        get: operations["national_geography_api_v1_geography_national_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/geography/overview": {
         parameters: {
             query?: never;
@@ -191,6 +295,23 @@ export interface paths {
          *     parish level reads as "none loaded" and not as "level not supported".
          */
         get: operations["overview_api_v1_geography_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geography/subcounties/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Look up a subcounty by its code */
+        get: operations["get_subcounty_api_v1_geography_subcounties__code__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -233,6 +354,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/geography/units/{unit_id}/bounds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One unit's extent, without transferring its geometry
+         * @description Four numbers, so a client can zoom to a district without downloading it.
+         */
+        get: operations["unit_bounds_api_v1_geography_units__unit_id__bounds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geography/units/{unit_id}/breadcrumbs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The ancestor chain from the caller's root down to this unit
+         * @description Country / region / district / subcounty, ending with the unit itself.
+         *
+         *     Only ancestors the caller may see appear, so a district user's trail starts
+         *     at the highest unit in their scope rather than revealing the chain above it.
+         */
+        get: operations["unit_breadcrumbs_api_v1_geography_units__unit_id__breadcrumbs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/geography/units/{unit_id}/children": {
         parameters: {
             query?: never;
@@ -242,6 +406,23 @@ export interface paths {
         };
         /** Direct children of a geography unit */
         get: operations["get_children_api_v1_geography_units__unit_id__children_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geography/units/{unit_id}/geometry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One unit's simplified boundary, as a GeoJSON Feature */
+        get: operations["unit_geometry_api_v1_geography_units__unit_id__geometry_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -512,6 +693,20 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /**
+         * BoundingBoxModel
+         * @description A geographic extent in EPSG:4326 degrees, west/south/east/north.
+         */
+        BoundingBoxModel: {
+            /** Max Lat */
+            max_lat: number;
+            /** Max Lon */
+            max_lon: number;
+            /** Min Lat */
+            min_lat: number;
+            /** Min Lon */
+            min_lon: number;
+        };
         /** ConfigurationKeySummary */
         ConfigurationKeySummary: {
             /** Active Effective From */
@@ -723,6 +918,18 @@ export interface components {
             /** Subcounty Geography Unit Id */
             subcounty_geography_unit_id: string | null;
         };
+        /**
+         * FieldError
+         * @description A single field-level validation failure.
+         */
+        FieldError: {
+            /** Code */
+            code?: string | null;
+            /** Field */
+            field: string;
+            /** Message */
+            message: string;
+        };
         /** GeographyAliasSummary */
         GeographyAliasSummary: {
             /**
@@ -745,6 +952,30 @@ export interface components {
             source_name: string | null;
             /** Source System */
             source_system: string;
+        };
+        /**
+         * GeographyBreadcrumb
+         * @description One step in the ancestor chain, from country down to the unit.
+         */
+        GeographyBreadcrumb: {
+            /** Code */
+            code: string;
+            /** Is Current */
+            is_current: boolean;
+            /** Level */
+            level: string;
+            /** Name */
+            name: string;
+            /**
+             * Unit Id
+             * Format: uuid
+             */
+            unit_id: string;
+        };
+        /** GeographyBreadcrumbsResponse */
+        GeographyBreadcrumbsResponse: {
+            /** Breadcrumbs */
+            breadcrumbs: components["schemas"]["GeographyBreadcrumb"][];
         };
         /**
          * GeographyLevel
@@ -891,6 +1122,175 @@ export interface components {
              */
             status: string;
         };
+        /**
+         * MapCollectionMeta
+         * @description MARS metadata carried inside the FeatureCollection as a foreign member.
+         */
+        MapCollectionMeta: {
+            /** Boundary Version Code */
+            boundary_version_code: string | null;
+            /** Boundary Version Id */
+            boundary_version_id: string | null;
+            /** Feature Count */
+            feature_count: number;
+            /** Geometry Resolution */
+            geometry_resolution: string;
+            /** Level */
+            level: string | null;
+            /** Matched Count */
+            matched_count: number;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Truncated */
+            truncated: boolean;
+            /** Within Id */
+            within_id: string | null;
+        };
+        /**
+         * MapFeature
+         * @description One administrative area as GeoJSON.
+         */
+        MapFeature: {
+            /**
+             * Geometry
+             * @description GeoJSON MultiPolygon, simplified for display.
+             */
+            geometry: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: string;
+            properties: components["schemas"]["MapFeatureProperties"];
+            /**
+             * Type
+             * @default Feature
+             */
+            type: string;
+        };
+        /**
+         * MapFeatureCollection
+         * @description A GeoJSON FeatureCollection with the boundary version attached.
+         *
+         *     The version travels inside the document, not only in a header, so a saved
+         *     or forwarded response still says which boundaries produced it.
+         */
+        MapFeatureCollection: {
+            /**
+             * Bbox
+             * @description Extent of the whole collection: west, south, east, north.
+             */
+            bbox?: number[] | null;
+            /** Features */
+            features: components["schemas"]["MapFeature"][];
+            mars: components["schemas"]["MapCollectionMeta"];
+            /**
+             * Type
+             * @default FeatureCollection
+             */
+            type: string;
+        };
+        /**
+         * MapFeatureProperties
+         * @description The complete set of properties a map feature carries.
+         *
+         *     Declared as a closed model rather than a free-form object so the allow-list
+         *     is part of the published contract and appears in the generated client.
+         */
+        MapFeatureProperties: {
+            /** Area Sq Km */
+            area_sq_km: number | null;
+            /** Code */
+            code: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Level */
+            level: string;
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Path */
+            path: string;
+            /**
+             * Unit Id
+             * Format: uuid
+             */
+            unit_id: string;
+        };
+        /**
+         * MapLevelAvailability
+         * @description Whether one hierarchy level can be drawn, and at what tolerance.
+         */
+        MapLevelAvailability: {
+            /** Geometry Count */
+            geometry_count: number;
+            /**
+             * Is Drawable
+             * @description False when the level exists in the schema but no geometry is loaded.
+             */
+            is_drawable: boolean;
+            /** Level */
+            level: string;
+            /** Simplification Tolerance Deg */
+            simplification_tolerance_deg: number | null;
+            /**
+             * Supports National Layer
+             * @description Whether the whole level may be requested without a parent filter.
+             */
+            supports_national_layer: boolean;
+            /** Unit Count */
+            unit_count: number;
+        };
+        /**
+         * MapMetadataResponse
+         * @description What the caller may draw, and from which boundary version.
+         *
+         *     ``is_available`` false means no boundary version is published or none of
+         *     its levels carry geometry. The client shows an explicit "no boundaries
+         *     loaded" state rather than an empty canvas, which would read as a rendering
+         *     failure.
+         */
+        MapMetadataResponse: {
+            /** Boundary Version Code */
+            boundary_version_code: string | null;
+            /** Boundary Version Id */
+            boundary_version_id: string | null;
+            /** Boundary Version Label */
+            boundary_version_label: string | null;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Geometry Resolution
+             * @description Always 'simplified'. Full-resolution geometry is never served to a browser.
+             */
+            geometry_resolution: string;
+            /** Imported At */
+            imported_at: string | null;
+            /** @description Extent of the highest unit in the caller's scope, for the first viewport. */
+            initial_bounds: components["schemas"]["BoundingBoxModel"] | null;
+            /** Initial Unit Id */
+            initial_unit_id: string | null;
+            /** Initial Unit Level */
+            initial_unit_level: string | null;
+            /** Initial Unit Name */
+            initial_unit_name: string | null;
+            /** Is Available */
+            is_available: boolean;
+            /** Levels */
+            levels: components["schemas"]["MapLevelAvailability"][];
+            /** Max Features */
+            max_features: number;
+            /**
+             * Source Checksum
+             * @description SHA-256 of the source set, so a client can prove which bytes it is drawing.
+             */
+            source_checksum: string | null;
+            /** Source Name */
+            source_name: string | null;
+        };
         /** MethodDefinitionSummary */
         MethodDefinitionSummary: {
             /** Code */
@@ -928,6 +1328,26 @@ export interface components {
             summary: string;
             /** Validation Reference */
             validation_reference: string | null;
+        };
+        /**
+         * NationalGeographyResponse
+         * @description The caller's root geography and the level below it.
+         *
+         *     "National" is the top of the caller's scope, not necessarily Uganda: a
+         *     district user's national view is their district. The map opens correctly for
+         *     a delegated account without a special case in the client.
+         */
+        NationalGeographyResponse: {
+            /** Boundary Version Code */
+            boundary_version_code: string | null;
+            /** Boundary Version Id */
+            boundary_version_id: string | null;
+            bounds: components["schemas"]["BoundingBoxModel"] | null;
+            /** Child Level */
+            child_level: string | null;
+            /** Children */
+            children: components["schemas"]["GeographyUnitSummary"][];
+            root: components["schemas"]["GeographyUnitSummary"] | null;
         };
         /** OrganisationUnitDetail */
         OrganisationUnitDetail: {
@@ -1032,6 +1452,57 @@ export interface components {
              * @description Omitted when counting would be costly.
              */
             total?: number | null;
+        };
+        /**
+         * ProblemDetail
+         * @description RFC 7807 problem document, extended with MARS diagnostics.
+         */
+        ProblemDetail: {
+            /**
+             * Code
+             * @description Stable machine-readable MARS error code.
+             */
+            code: string;
+            /**
+             * Detail
+             * @description Human-readable explanation.
+             */
+            detail?: string | null;
+            /**
+             * Documentation
+             * @description Where to read more.
+             */
+            documentation?: string | null;
+            /**
+             * Errors
+             * @description Field-level failures.
+             */
+            errors?: components["schemas"]["FieldError"][] | null;
+            /**
+             * Instance
+             * @description Request path.
+             */
+            instance?: string | null;
+            /**
+             * Request Id
+             * @description Correlates with server logs.
+             */
+            request_id?: string | null;
+            /**
+             * Status
+             * @description HTTP status code.
+             */
+            status: number;
+            /**
+             * Title
+             * @description Short, human-readable summary.
+             */
+            title: string;
+            /**
+             * Type
+             * @description URI reference identifying the problem type.
+             */
+            type: string;
         };
         /** ReadinessResponse */
         ReadinessResponse: {
@@ -1318,6 +1789,177 @@ export interface operations {
             };
         };
     };
+    get_district_api_v1_geography_districts__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeographyUnitDetail"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No such unit, or the unit is outside the caller's geography scope. These are the same response by design. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    map_features_api_v1_geography_map_features_get: {
+        parameters: {
+            query: {
+                /** @description Hierarchy level to draw */
+                level: components["schemas"]["GeographyLevel"];
+                /** @description Restrict to direct children of this unit */
+                parent_id?: string | null;
+                /** @description Restrict to any descendant of this unit at the requested level */
+                within_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapFeatureCollection"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No such unit, or the unit is outside the caller's geography scope. These are the same response by design. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description More features match than the payload ceiling allows. The request is refused rather than truncated; narrow it with `parent_id` or `within_id`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    map_metadata_api_v1_geography_map_metadata_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapMetadataResponse"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    national_geography_api_v1_geography_national_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NationalGeographyResponse"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     overview_api_v1_geography_overview_get: {
         parameters: {
             query?: never;
@@ -1334,6 +1976,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GeographyOverviewResponse"];
+                };
+            };
+        };
+    };
+    get_subcounty_api_v1_geography_subcounties__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeographyUnitDetail"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No such unit, or the unit is outside the caller's geography scope. These are the same response by design. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1406,6 +2097,104 @@ export interface operations {
             };
         };
     };
+    unit_bounds_api_v1_geography_units__unit_id__bounds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoundingBoxModel"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No such unit, or the unit is outside the caller's geography scope. These are the same response by design. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unit_breadcrumbs_api_v1_geography_units__unit_id__breadcrumbs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeographyBreadcrumbsResponse"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No such unit, or the unit is outside the caller's geography scope. These are the same response by design. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_children_api_v1_geography_units__unit_id__children_get: {
         parameters: {
             query?: never;
@@ -1424,6 +2213,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GeographyUnitSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unit_geometry_api_v1_geography_units__unit_id__geometry_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapFeature"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No such unit, or the unit is outside the caller's geography scope. These are the same response by design. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Validation Error */

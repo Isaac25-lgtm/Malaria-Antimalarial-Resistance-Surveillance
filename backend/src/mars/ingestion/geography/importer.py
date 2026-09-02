@@ -1075,7 +1075,10 @@ class GeographyImporter:
                 INSERT INTO mars_core.geography_unit_geometry
                     (id, geography_unit_id, validity_state, repair_method,
                      geom, geom_web, simplification_tolerance_deg,
-                     area_sq_km, perimeter_km, created_at, updated_at)
+                     area_sq_km, perimeter_km,
+                     part_count, ring_count, vertex_count,
+                     bbox_min_lon, bbox_min_lat, bbox_max_lon, bbox_max_lat,
+                     created_at, updated_at)
                 SELECT gen_random_uuid(), parent.id, 'valid', 'dissolved_from_children',
                        dissolved.geom,
                        CASE WHEN :simplify THEN
@@ -1085,6 +1088,15 @@ class GeographyImporter:
                        CASE WHEN :simplify THEN :tolerance ELSE NULL END,
                        ST_Area(dissolved.geom::geography) / 1000000.0,
                        ST_Perimeter(dissolved.geom::geography) / 1000.0,
+                       ST_NumGeometries(dissolved.geom),
+                       ST_NRings(dissolved.geom),
+                       ST_NPoints(dissolved.geom),
+                       -- Measured here rather than left to the reader. A map
+                       -- fits its viewport from these four numbers, and a
+                       -- dissolved region with no bounding box would be the one
+                       -- level that could not be zoomed to.
+                       ST_XMin(dissolved.geom), ST_YMin(dissolved.geom),
+                       ST_XMax(dissolved.geom), ST_YMax(dissolved.geom),
                        now(), now()
                   FROM mars_core.geography_unit AS parent
                   JOIN LATERAL (
@@ -1104,6 +1116,13 @@ class GeographyImporter:
                         simplification_tolerance_deg = EXCLUDED.simplification_tolerance_deg,
                         area_sq_km = EXCLUDED.area_sq_km,
                         perimeter_km = EXCLUDED.perimeter_km,
+                        part_count = EXCLUDED.part_count,
+                        ring_count = EXCLUDED.ring_count,
+                        vertex_count = EXCLUDED.vertex_count,
+                        bbox_min_lon = EXCLUDED.bbox_min_lon,
+                        bbox_min_lat = EXCLUDED.bbox_min_lat,
+                        bbox_max_lon = EXCLUDED.bbox_max_lon,
+                        bbox_max_lat = EXCLUDED.bbox_max_lat,
                         validity_state = EXCLUDED.validity_state,
                         repair_method = EXCLUDED.repair_method,
                         updated_at = now()

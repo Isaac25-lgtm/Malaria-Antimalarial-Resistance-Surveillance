@@ -27,6 +27,7 @@ from mars.security.principal import AuthenticatedPrincipal
 from mars.security.providers import TokenVerifier, build_token_verifier
 from mars.services.audit_service import AuditService
 from mars.services.auth_service import AuthService
+from mars.services.geography_map_service import GeographyMapService
 from mars.services.geography_service import GeographyService
 from mars.services.governance_service import ConfigurationService, MethodRegistryService
 from mars.services.organisation_service import FacilityService, OrganisationService
@@ -71,6 +72,10 @@ def get_geography_service(session: SessionDep) -> GeographyService:
     return GeographyService(session)
 
 
+def get_geography_map_service(session: SessionDep) -> GeographyMapService:
+    return GeographyMapService(session)
+
+
 def get_organisation_service(session: SessionDep) -> OrganisationService:
     return OrganisationService(session)
 
@@ -89,6 +94,7 @@ def get_method_registry_service(session: SessionDep, audit: AuditDep) -> MethodR
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 GeographyServiceDep = Annotated[GeographyService, Depends(get_geography_service)]
+GeographyMapServiceDep = Annotated[GeographyMapService, Depends(get_geography_map_service)]
 OrganisationServiceDep = Annotated[OrganisationService, Depends(get_organisation_service)]
 FacilityServiceDep = Annotated[FacilityService, Depends(get_facility_service)]
 ConfigurationServiceDep = Annotated[ConfigurationService, Depends(get_configuration_service)]

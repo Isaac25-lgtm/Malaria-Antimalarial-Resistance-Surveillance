@@ -1,0 +1,167 @@
+/*
+ * National map.
+ *
+ * The map and the list are siblings, not a primary and a fallback. On a narrow
+ * screen the list comes first: it is the representation that works everywhere,
+ * and a 60vh canvas above it would push the usable control off the screen.
+ *
+ * Every colour here is a token. The map's own paint properties read the same
+ * tokens at runtime, so the canvas and the interface around it cannot drift.
+ */
+
+.map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 60rem) {
+  .map-layout {
+    /* The list is given a fixed measure rather than a fraction: district names
+       do not get longer on a wider screen, and the map should take the space. */
+    grid-template-columns: minmax(0, 1fr) 20rem;
+  }
+
+  .map-layout__canvas {
+    order: 0;
+  }
+
+  .map-layout__list {
+    order: 1;
+  }
+}
+
+@media (max-width: 59.99rem) {
+  .map-layout__list {
+    order: 0;
+  }
+
+  .map-layout__canvas {
+    order: 1;
+  }
+}
+
+/* -- Canvas -------------------------------------------------------------- */
+.boundary-map {
+  width: 100%;
+  height: 32rem;
+  background: var(--surface-sunken);
+}
+
+@media (max-width: 59.99rem) {
+  .boundary-map {
+    height: 20rem;
+  }
+}
+
+/* MapLibre draws its own controls. These bring them into the MARS palette
+   rather than leaving the library's default blue focus ring on the page. */
+.boundary-map .maplibregl-ctrl-group {
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-raised);
+}
+
+.boundary-map .maplibregl-ctrl-group button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* -- Breadcrumbs --------------------------------------------------------- */
+.map-breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.map-breadcrumbs li + li::before {
+  content: "/";
+  margin-right: var(--space-2);
+  color: var(--ink-tertiary);
+}
+
+.map-breadcrumbs [aria-current="location"] {
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+/* -- Geography list ------------------------------------------------------ */
+.geography-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 30rem;
+  overflow-y: auto;
+}
+
+.geography-list__row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line-subtle);
+  /* The selected row is marked by a left bar as well as a background, so the
+     state survives greyscale and high-contrast rendering. */
+  border-left: 3px solid transparent;
+}
+
+.geography-list__row--hovered {
+  background: var(--surface-sunken);
+}
+
+.geography-list__row--selected {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+
+.geography-list__select {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 0;
+  background: none;
+  padding: var(--space-3) var(--space-4);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink-primary);
+}
+
+.geography-list__select:focus-visible,
+.geography-list__drill:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.geography-list__name {
+  font-size: var(--text-base);
+}
+
+.geography-list__code {
+  font-size: var(--text-xs);
+  /* --ink-tertiary measures 3.53:1 on white, below the 4.5:1 WCAG AA needs for
+     text this size. The code is content, not decoration - it is what an
+     operator quotes in a report - so it takes the 6.66:1 token. */
+  color: var(--ink-secondary);
+}
+
+.geography-list__drill {
+  border: 0;
+  border-left: 1px solid var(--line-subtle);
+  background: none;
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.geography-list__drill:hover {
+  background: var(--surface-sunken);
+  color: var(--accent-hover);
+}

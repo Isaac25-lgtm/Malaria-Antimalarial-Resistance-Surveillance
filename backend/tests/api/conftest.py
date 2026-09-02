@@ -20,6 +20,7 @@ from mars.api.dependencies import (
     get_current_principal,
     get_db_session,
     get_facility_service,
+    get_geography_map_service,
     get_geography_service,
     get_method_registry_service,
     get_organisation_service,
@@ -55,7 +56,12 @@ class FakeAuditService:
 
 
 class FakeGeographyService:
-    """Returns nothing. Phase 1-2 has no geography loaded."""
+    """An empty hierarchy.
+
+    Every lookup raises the same NotFoundError the real service raises for an
+    out-of-scope unit, which is what lets the API tests assert that "hidden"
+    and "absent" are indistinguishable without needing a database.
+    """
 
     def list_units(self, *_a: Any, **_k: Any) -> list[Any]:
         return []
@@ -70,6 +76,68 @@ class FakeGeographyService:
 
     def find_by_alias(self, *_a: Any, **_k: Any) -> list[Any]:
         return []
+
+    def get_unit(self, *_a: Any, **_k: Any) -> Any:
+        from mars.core.errors import NotFoundError
+
+        raise NotFoundError("geography unit not found or outside your assigned scope")
+
+    def get_unit_by_code(self, *_a: Any, **_k: Any) -> Any:
+        from mars.core.errors import NotFoundError
+
+        raise NotFoundError("no visible unit with that code in your assigned scope")
+
+    def children_of(self, *_a: Any, **_k: Any) -> list[Any]:
+        return []
+
+    def ancestors_of(self, *_a: Any, **_k: Any) -> list[Any]:
+        return []
+
+
+class FakeGeographyMapService:
+    """No boundary version published.
+
+    This is the state a fresh deployment is in before the importer has run, and
+    the API must answer it as "nothing loaded" rather than as an error.
+    """
+
+    def map_metadata(self, *_a: Any, **_k: Any) -> Any:
+        from datetime import UTC, datetime
+
+        from mars.services.geography_map_service import MAX_FEATURES, MapMetadata
+
+        return MapMetadata(
+            boundary_version_id=None,
+            boundary_version_code=None,
+            boundary_version_label=None,
+            source_name=None,
+            source_checksum=None,
+            imported_at=None,
+            initial_bounds=None,
+            initial_unit_id=None,
+            initial_unit_name=None,
+            initial_unit_level=None,
+            levels=[],
+            geometry_resolution="simplified",
+            max_features=MAX_FEATURES,
+            is_available=False,
+            generated_at=datetime.now(UTC),
+        )
+
+    def feature_collection(self, *_a: Any, **_k: Any) -> Any:
+        from mars.services.geography_map_service import FeatureCollection
+
+        return FeatureCollection(level=_k.get("level").value if _k.get("level") else None)
+
+    def unit_geometry(self, *_a: Any, **_k: Any) -> Any:
+        from mars.core.errors import NotFoundError
+
+        raise NotFoundError("geography unit not found or outside your assigned scope")
+
+    def unit_bounds(self, *_a: Any, **_k: Any) -> Any:
+        from mars.core.errors import NotFoundError
+
+        raise NotFoundError("geography unit not found or outside your assigned scope")
 
 
 class FakeOrganisationService:
@@ -119,6 +187,7 @@ def app(api_settings: Settings, audit_recorder: FakeAuditService) -> Iterator[Fa
     application.dependency_overrides[get_db_session] = lambda: None
     application.dependency_overrides[get_audit_service] = lambda: audit_recorder
     application.dependency_overrides[get_geography_service] = FakeGeographyService
+    application.dependency_overrides[get_geography_map_service] = FakeGeographyMapService
     application.dependency_overrides[get_organisation_service] = FakeOrganisationService
     application.dependency_overrides[get_facility_service] = FakeFacilityService
     application.dependency_overrides[get_configuration_service] = FakeConfigurationService

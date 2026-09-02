@@ -25,6 +25,7 @@ import {
   GovernanceView,
   OrganisationView,
 } from "../features/reference/ReferenceViews";
+import { NationalMapView } from "../features/map/NationalMapView";
 import { SystemStatusView } from "../features/status/SystemStatusView";
 
 const queryClient = new QueryClient({
@@ -117,12 +118,20 @@ function AppRoutes() {
         />
 
         {/*
-          Surveillance workspaces resolve to the reference views they can
-          actually populate. The national command centre, district and facility
-          workspaces, signal register and action centre arrive with the phases
-          that give them something to show.
+          The national map draws the boundaries MARS has actually imported. The
+          remaining surveillance workspaces - district and facility views, the
+          signal register, the action centre - still resolve to the reference
+          views they can populate, and arrive with the phases that give them
+          something to show.
         */}
-        <Route path="national" element={<Navigate to="/geography" replace />} />
+        <Route
+          path="national"
+          element={
+            <RequireAuth permissions={["geography:view"]}>
+              <NationalMapView />
+            </RequireAuth>
+          }
+        />
         <Route path="districts/:districtCode" element={<Navigate to="/geography" replace />} />
         <Route path="facilities/:facilityId" element={<Navigate to="/facilities" replace />} />
 
@@ -132,9 +141,12 @@ function AppRoutes() {
   );
 }
 
-/** Send the signed-in user to the highest geography they are scoped to. */
+/** Send the signed-in user to the highest geography they are scoped to.
+ *
+ * The national landing used to divert to the status page because no national
+ * view existed. It does now, and it draws the boundaries the importer loaded.
+ */
 function LandingRedirect() {
   const { landingPath } = useAuth();
-  const target = landingPath === "/national" ? "/status" : landingPath;
-  return <Navigate to={target} replace />;
+  return <Navigate to={landingPath} replace />;
 }

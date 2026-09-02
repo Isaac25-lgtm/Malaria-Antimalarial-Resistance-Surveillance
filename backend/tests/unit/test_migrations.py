@@ -356,9 +356,7 @@ class TestMigrationEnvironmentTargetsTheRequestedDatabase:
         tree = self._tree()
         call = self._set_main_option_calls(tree)[0]
 
-        guarded = any(
-            call in ast.walk(node) for node in ast.walk(tree) if isinstance(node, ast.If)
-        )
+        guarded = any(call in ast.walk(node) for node in ast.walk(tree) if isinstance(node, ast.If))
         assert guarded, (
             "env.py assigns sqlalchemy.url unconditionally, so it overwrites a URL "
             "the caller already set and migrates the wrong database"

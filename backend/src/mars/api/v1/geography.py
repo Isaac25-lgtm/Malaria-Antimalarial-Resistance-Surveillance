@@ -1,36 +1,94 @@
 """Geography endpoints.
 
 Every route requires ``geography:view`` and applies the caller's geography scope
-inside the query. Phases 1-2 expose metadata and hierarchy only; boundary
-geometry arrives with the Prompt 5 importer.
+inside the query. Hierarchy reads come first, then the map delivery routes that
+serve simplified geometry to a browser.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any, Final
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response
 
-from mars.api.dependencies import GeographyServiceDep, require_permissions
+from mars.api.dependencies import (
+    GeographyMapServiceDep,
+    GeographyServiceDep,
+    require_permissions,
+)
 from mars.api.v1.schemas import (
     BoundaryVersionSummary,
+    BoundingBoxModel,
     GeographyAliasSummary,
+    GeographyBreadcrumb,
+    GeographyBreadcrumbsResponse,
     GeographyLevelCount,
     GeographyOverviewResponse,
     GeographyUnitDetail,
     GeographyUnitSummary,
+    MapFeature,
+    MapFeatureCollection,
+    MapLevelAvailability,
+    MapMetadataResponse,
+    NationalGeographyResponse,
     Page,
 )
+from mars.core.errors import ProblemDetail
 from mars.domain.enums import GeographyLevel
 from mars.security.permissions import Permission
 from mars.security.principal import AuthenticatedPrincipal
+from mars.services.geography_map_service import (
+    DEFAULT_FEATURE_LIMIT,
+    MAX_FEATURES,
+    BoundingBox,
+)
+from mars.services.geography_service import GeographyService
 
 router = APIRouter(prefix="/geography", tags=["geography"])
 
 GeographyViewer = Annotated[
     AuthenticatedPrincipal, Depends(require_permissions(Permission.GEOGRAPHY_VIEW))
 ]
+
+# Error responses, published so the generated client knows what it must handle.
+#
+# The wider API documents only its success shapes; that is a pre-existing gap
+# and retrofitting thirty operations is not this change's job. But the map
+# routes have designed failure modes a client branches on - a layer too large
+# to draw, a unit outside scope - and a contract that omits them would leave
+# every consumer to discover them at runtime.
+_DENIED: Final[dict[int | str, dict[str, Any]]] = {
+    403: {
+        "model": ProblemDetail,
+        "description": "The caller does not hold `geography:view`.",
+    }
+}
+
+#: 404 covers both "no such unit" and "outside your scope" - deliberately
+#: indistinguishable, so the contract does not describe them separately either.
+_NOT_FOUND: Final[dict[int | str, dict[str, Any]]] = {
+    **_DENIED,
+    404: {
+        "model": ProblemDetail,
+        "description": (
+            "No such unit, or the unit is outside the caller's geography scope. "
+            "These are the same response by design."
+        ),
+    },
+}
+
+_LAYER_RESPONSES: Final[dict[int | str, dict[str, Any]]] = {
+    **_NOT_FOUND,
+    413: {
+        "model": ProblemDetail,
+        "description": (
+            "More features match than the payload ceiling allows. The request is "
+            "refused rather than truncated; narrow it with `parent_id` or "
+            "`within_id`."
+        ),
+    },
+}
 
 
 @router.get(
@@ -59,7 +117,7 @@ def overview(
         note=(
             "Parish and village levels are supported by the schema and are "
             "intentionally empty: no parish or village boundary data has been "
-            "supplied. Geometry is imported in Prompt 5."
+            "supplied. MARS does not fabricate geography it was not given."
         ),
     )
 
@@ -196,4 +254,283 @@ def _to_summary(unit: object) -> GeographyUnitSummary:
         is_active=unit.is_active,  # type: ignore[attr-defined]
         effective_from=unit.effective_from,  # type: ignore[attr-defined]
         effective_to=unit.effective_to,  # type: ignore[attr-defined]
+    )
+
+
+# ---------------------------------------------------------------------------
+# Map delivery.
+#
+# These extend the geography namespace above rather than forming a second one:
+# a map is a way of reading the hierarchy, not a separate resource. Every route
+# resolves its subject through the same scoped service, so an out-of-scope unit
+# is not merely hidden from the drawing - it is indistinguishable from a unit
+# that does not exist.
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/map/metadata",
+    response_model=MapMetadataResponse,
+    responses=_DENIED,
+    summary="What this caller can draw, and from which boundary version",
+)
+def map_metadata(
+    principal: GeographyViewer,
+    service: GeographyMapServiceDep,
+) -> MapMetadataResponse:
+    """Describe the drawable geography before any geometry is fetched.
+
+    One request, deliberately: a client that needs several calls to learn which
+    boundary version it is drawing will eventually draw two at once.
+    """
+    metadata = service.map_metadata(principal)
+    return MapMetadataResponse(
+        is_available=metadata.is_available,
+        boundary_version_id=metadata.boundary_version_id,
+        boundary_version_code=metadata.boundary_version_code,
+        boundary_version_label=metadata.boundary_version_label,
+        source_name=metadata.source_name,
+        source_checksum=metadata.source_checksum,
+        imported_at=metadata.imported_at,
+        initial_bounds=_bounds_model(metadata.initial_bounds),
+        initial_unit_id=metadata.initial_unit_id,
+        initial_unit_name=metadata.initial_unit_name,
+        initial_unit_level=metadata.initial_unit_level,
+        levels=[
+            MapLevelAvailability(
+                level=level.level,
+                unit_count=level.unit_count,
+                geometry_count=level.geometry_count,
+                simplification_tolerance_deg=level.simplification_tolerance_deg,
+                is_drawable=level.is_drawable,
+                supports_national_layer=level.supports_national_layer,
+            )
+            for level in metadata.levels
+        ],
+        geometry_resolution=metadata.geometry_resolution,
+        max_features=metadata.max_features,
+        generated_at=metadata.generated_at,
+    )
+
+
+@router.get(
+    "/map/features",
+    response_model=MapFeatureCollection,
+    responses=_LAYER_RESPONSES,
+    summary="Simplified boundary geometry for one level, as GeoJSON",
+)
+def map_features(
+    principal: GeographyViewer,
+    service: GeographyMapServiceDep,
+    request: Request,
+    response: Response,
+    level: Annotated[GeographyLevel, Query(description="Hierarchy level to draw")],
+    parent_id: Annotated[
+        uuid.UUID | None, Query(description="Restrict to direct children of this unit")
+    ] = None,
+    within_id: Annotated[
+        uuid.UUID | None,
+        Query(description="Restrict to any descendant of this unit at the requested level"),
+    ] = None,
+    limit: Annotated[int, Query(ge=1, le=MAX_FEATURES)] = DEFAULT_FEATURE_LIMIT,
+) -> Any:
+    """Return one drawable layer.
+
+    parent_id selects direct children; within_id selects every descendant
+    at the requested level, which is how a district drills to its subcounties -
+    those hang off counties, so a parent filter would return nothing.
+
+    Always simplified: full-resolution geometry is the analytical copy and never
+    leaves the server. A request matching more units than the ceiling allows is
+    refused with 413 rather than truncated, because a partial map that looks
+    complete is worse than an error.
+
+    The response carries a strong ETag derived from the boundary version and the
+    query, so a client re-opening the national view revalidates in a few bytes.
+    A matching ``If-None-Match`` returns 304.
+    """
+    collection = service.feature_collection(
+        principal, level=level, parent_id=parent_id, within_id=within_id, limit=limit
+    )
+
+    if collection.etag:
+        response.headers["ETag"] = collection.etag
+        # Private: the payload depends on the caller's geography scope, so a
+        # shared cache must never serve one user's layer to another.
+        response.headers["Cache-Control"] = "private, max-age=300, must-revalidate"
+        if request.headers.get("if-none-match") == collection.etag:
+            return Response(status_code=304, headers=dict(response.headers))
+
+    return collection.as_geojson()
+
+
+@router.get(
+    "/national",
+    response_model=NationalGeographyResponse,
+    responses=_DENIED,
+    summary="The caller's root geography and the level below it",
+)
+def national_geography(
+    principal: GeographyViewer,
+    service: GeographyServiceDep,
+    map_service: GeographyMapServiceDep,
+) -> NationalGeographyResponse:
+    """Open the map at the top of the caller's scope.
+
+    "National" means the highest unit this caller can see, which for a district
+    account is their district. Deriving it from scope rather than assuming
+    Uganda means a delegated account opens correctly with no special case in the
+    client.
+    """
+    metadata = map_service.map_metadata(principal)
+    if metadata.initial_unit_id is None:
+        return NationalGeographyResponse(
+            root=None,
+            bounds=None,
+            child_level=None,
+            children=[],
+            boundary_version_id=metadata.boundary_version_id,
+            boundary_version_code=metadata.boundary_version_code,
+        )
+
+    root = service.get_unit(principal, metadata.initial_unit_id)
+    children = service.children_of(principal, root.id)
+
+    return NationalGeographyResponse(
+        root=_to_summary(root),
+        bounds=_bounds_model(metadata.initial_bounds),
+        child_level=children[0].level.value if children else None,
+        children=[_to_summary(child) for child in children],
+        boundary_version_id=metadata.boundary_version_id,
+        boundary_version_code=metadata.boundary_version_code,
+    )
+
+
+@router.get(
+    "/units/{unit_id}/geometry",
+    response_model=MapFeature,
+    responses=_NOT_FOUND,
+    summary="One unit's simplified boundary, as a GeoJSON Feature",
+)
+def unit_geometry(
+    unit_id: uuid.UUID,
+    principal: GeographyViewer,
+    service: GeographyMapServiceDep,
+) -> Any:
+    return service.unit_geometry(principal, unit_id)
+
+
+@router.get(
+    "/units/{unit_id}/bounds",
+    response_model=BoundingBoxModel,
+    responses=_NOT_FOUND,
+    summary="One unit's extent, without transferring its geometry",
+)
+def unit_bounds(
+    unit_id: uuid.UUID,
+    principal: GeographyViewer,
+    service: GeographyMapServiceDep,
+) -> BoundingBoxModel:
+    """Four numbers, so a client can zoom to a district without downloading it."""
+    bounds = service.unit_bounds(principal, unit_id)
+    return BoundingBoxModel(
+        min_lon=bounds.min_lon,
+        min_lat=bounds.min_lat,
+        max_lon=bounds.max_lon,
+        max_lat=bounds.max_lat,
+    )
+
+
+@router.get(
+    "/units/{unit_id}/breadcrumbs",
+    response_model=GeographyBreadcrumbsResponse,
+    responses=_NOT_FOUND,
+    summary="The ancestor chain from the caller's root down to this unit",
+)
+def unit_breadcrumbs(
+    unit_id: uuid.UUID,
+    principal: GeographyViewer,
+    service: GeographyServiceDep,
+) -> GeographyBreadcrumbsResponse:
+    """Country / region / district / subcounty, ending with the unit itself.
+
+    Only ancestors the caller may see appear, so a district user's trail starts
+    at the highest unit in their scope rather than revealing the chain above it.
+    """
+    unit = service.get_unit(principal, unit_id)
+    chain = [*service.ancestors_of(principal, unit_id), unit]
+    return GeographyBreadcrumbsResponse(
+        breadcrumbs=[
+            GeographyBreadcrumb(
+                unit_id=step.id,
+                level=step.level.value,
+                code=step.preferred_code,
+                name=step.raw_name,
+                is_current=step.id == unit.id,
+            )
+            for step in chain
+        ]
+    )
+
+
+@router.get(
+    "/districts/{code}",
+    response_model=GeographyUnitDetail,
+    responses=_NOT_FOUND,
+    summary="Look up a district by its code",
+)
+def get_district(
+    code: str,
+    principal: GeographyViewer,
+    service: GeographyServiceDep,
+) -> GeographyUnitDetail:
+    """Resolve a district code to a unit.
+
+    A code outside the caller's scope raises the same not-found as a code that
+    was never issued.
+    """
+    return _unit_detail(service, principal, GeographyLevel.DISTRICT, code)
+
+
+@router.get(
+    "/subcounties/{code}",
+    response_model=GeographyUnitDetail,
+    responses=_NOT_FOUND,
+    summary="Look up a subcounty by its code",
+)
+def get_subcounty(
+    code: str,
+    principal: GeographyViewer,
+    service: GeographyServiceDep,
+) -> GeographyUnitDetail:
+    return _unit_detail(service, principal, GeographyLevel.SUBCOUNTY, code)
+
+
+def _unit_detail(
+    service: GeographyService,
+    principal: AuthenticatedPrincipal,
+    level: GeographyLevel,
+    code: str,
+) -> GeographyUnitDetail:
+    """Shared body for the code lookups, so both levels answer identically."""
+    unit = service.get_unit_by_code(principal, level, code)
+    ancestors = service.ancestors_of(principal, unit.id)
+    children = service.children_of(principal, unit.id)
+    return GeographyUnitDetail(
+        **_to_summary(unit).model_dump(),
+        boundary_version_id=unit.boundary_version_id,
+        ancestors=[_to_summary(a) for a in ancestors],
+        child_count=len(children),
+        has_geometry=unit.geometry is not None,
+    )
+
+
+def _bounds_model(bounds: BoundingBox | None) -> BoundingBoxModel | None:
+    if bounds is None:
+        return None
+    return BoundingBoxModel(
+        min_lon=bounds.min_lon,
+        min_lat=bounds.min_lat,
+        max_lon=bounds.max_lon,
+        max_lat=bounds.max_lat,
     )
