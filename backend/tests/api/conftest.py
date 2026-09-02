@@ -144,3 +144,76 @@ def authenticated_client(app: FastAPI):
         return TestClient(app, raise_server_exceptions=False)
 
     return _as
+
+
+# ---------------------------------------------------------------------------
+# Database-state fixtures.
+#
+# Readiness is the one endpoint whose answer depends on a real connection.
+# These fixtures force each condition explicitly, so the test result never
+# depends on whether the developer happens to have a database running.
+# ---------------------------------------------------------------------------
+class _StubConnection:
+    """Connection stand-in returning fixed answers to the readiness probe."""
+
+    def __init__(self, *, postgis: bool) -> None:
+        self._postgis = postgis
+
+    def __enter__(self) -> _StubConnection:
+        return self
+
+    def __exit__(self, *_exc: Any) -> None:
+        return None
+
+    def execute(self, statement: Any, *_args: Any, **_kwargs: Any) -> Any:
+        sql = str(statement)
+        if "PostGIS_Lib_Version" in sql:
+            if not self._postgis:
+                raise RuntimeError("function postgis_lib_version() does not exist")
+            return _StubResult("3.4.2")
+        if "server_version" in sql:
+            return _StubResult("16.4")
+        return _StubResult(None)
+
+
+class _StubResult:
+    def __init__(self, value: Any) -> None:
+        self._value = value
+
+    def scalar_one(self) -> Any:
+        return self._value
+
+
+class _StubEngine:
+    def __init__(self, *, reachable: bool, postgis: bool) -> None:
+        self._reachable = reachable
+        self._postgis = postgis
+
+    def connect(self) -> _StubConnection:
+        if not self._reachable:
+            raise OSError("connection refused")
+        return _StubConnection(postgis=self._postgis)
+
+
+@pytest.fixture
+def unreachable_database(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The database cannot be reached at all."""
+    monkeypatch.setattr(
+        "mars.api.v1.health.get_engine", lambda: _StubEngine(reachable=False, postgis=False)
+    )
+
+
+@pytest.fixture
+def reachable_database(monkeypatch: pytest.MonkeyPatch) -> None:
+    """PostgreSQL and PostGIS both answer."""
+    monkeypatch.setattr(
+        "mars.api.v1.health.get_engine", lambda: _StubEngine(reachable=True, postgis=True)
+    )
+
+
+@pytest.fixture
+def database_without_postgis(monkeypatch: pytest.MonkeyPatch) -> None:
+    """PostgreSQL answers; the PostGIS extension is not installed."""
+    monkeypatch.setattr(
+        "mars.api.v1.health.get_engine", lambda: _StubEngine(reachable=True, postgis=False)
+    )

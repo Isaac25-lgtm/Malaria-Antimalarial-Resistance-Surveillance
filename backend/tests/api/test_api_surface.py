@@ -14,8 +14,15 @@ class TestHealthEndpoints:
         assert response.status_code == 200
         assert response.json() == {"status": "alive", "service": "MARS"}
 
-    def test_readiness_reports_database_unavailable(self, client: TestClient) -> None:
-        """No database is reachable in this harness, and readiness must say so."""
+    def test_readiness_reports_database_unavailable(
+        self, client: TestClient, unreachable_database: None
+    ) -> None:
+        """An unreachable database must produce 503, not an empty success.
+
+        The unreachable condition is forced rather than assumed. Relying on the
+        developer's environment happening to have no database made this test
+        pass or fail depending on where it ran.
+        """
         response = client.get("/api/v1/health/ready")
         assert response.status_code == 503
         body = response.json()
@@ -23,7 +30,36 @@ class TestHealthEndpoints:
         names = {d["name"]: d for d in body["dependencies"]}
         assert names["postgresql"]["status"] == "unavailable"
 
-    def test_readiness_does_not_leak_connection_details(self, client: TestClient) -> None:
+    def test_readiness_reports_ready_when_the_database_answers(
+        self, client: TestClient, reachable_database: None
+    ) -> None:
+        """The complementary case, so 503 is a real signal rather than a constant."""
+        response = client.get("/api/v1/health/ready")
+        assert response.status_code == 200
+        body = response.json()
+        names = {d["name"]: d for d in body["dependencies"]}
+        assert names["postgresql"]["status"] == "ok"
+        assert names["postgresql"]["version"] == "16.4"
+
+    def test_readiness_reports_postgis_absence_without_failing(
+        self, client: TestClient, database_without_postgis: None
+    ) -> None:
+        """Phases 1-2 do not need PostGIS, so its absence is degraded, not down.
+
+        Reporting it as unavailable would make every pre-geography deployment
+        look broken; reporting it as ok would hide a real gap before Prompt 5.
+        """
+        response = client.get("/api/v1/health/ready")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "degraded"
+        names = {d["name"]: d for d in body["dependencies"]}
+        assert names["postgis"]["status"] == "not_installed"
+        assert "geography import requires it" in names["postgis"]["detail"]
+
+    def test_readiness_does_not_leak_connection_details(
+        self, client: TestClient, unreachable_database: None
+    ) -> None:
         """A failed probe must not disclose the connection string."""
         body = client.get("/api/v1/health/ready").text
         assert "password" not in body.lower()

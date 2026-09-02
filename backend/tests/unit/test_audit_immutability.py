@@ -20,6 +20,9 @@ from mars.domain.audit import (
     _block_audit_update,
 )
 from mars.domain.enums import AuditAction, AuditOutcome
+from mars.security.permissions import SensitivityLevel
+from mars.security.principal import AuthenticatedPrincipal
+from mars.services.audit_service import AuditService
 
 
 def _event() -> AuditEvent:
@@ -141,3 +144,58 @@ class TestAuditServiceExposesNoMutation:
             and any(verb in name.lower() for verb in ("update", "delete", "remove", "edit"))
         ]
         assert not forbidden, f"AuditService exposes mutation methods: {forbidden}"
+
+
+class _FakeWriteSession:
+    def __init__(self) -> None:
+        self.added: list[Any] = []
+        self.commits = 0
+        self.rollbacks = 0
+        self.closed = 0
+
+    def add(self, value: Any) -> None:
+        self.added.append(value)
+
+    def flush(self) -> None:
+        pass
+
+    def commit(self) -> None:
+        self.commits += 1
+
+    def rollback(self) -> None:
+        self.rollbacks += 1
+
+    def expunge(self, _value: Any) -> None:
+        pass
+
+    def close(self) -> None:
+        self.closed += 1
+
+
+class TestDurableDenialAudit:
+    def test_denial_uses_a_separate_committed_session(self) -> None:
+        """The rejected request rolls back; its denial event must not roll back with it."""
+        request_session = _FakeWriteSession()
+        durable_session = _FakeWriteSession()
+        principal = AuthenticatedPrincipal(
+            user_id=uuid.uuid4(),
+            subject="dev:denied-user",
+            username="denied.user",
+            display_name="Denied user (synthetic)",
+            roles=frozenset(),
+            permissions=frozenset(),
+            max_sensitivity=SensitivityLevel.AGGREGATE,
+            is_synthetic=True,
+        )
+        service = AuditService(  # type: ignore[arg-type]
+            request_session,
+            durable_session_factory=lambda: durable_session,  # type: ignore[arg-type]
+        )
+
+        event = service.record_denial(principal=principal, reason="missing permission")
+
+        assert request_session.added == []
+        assert durable_session.added == [event]
+        assert durable_session.commits == 1
+        assert durable_session.rollbacks == 0
+        assert durable_session.closed == 1

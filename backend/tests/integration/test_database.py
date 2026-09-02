@@ -161,6 +161,96 @@ class TestAuditImmutabilityTrigger:
         assert stored.outcome is AuditOutcome.SUCCEEDED
 
 
+class TestDurableDenialAudit:
+    """A denial must outlive the rollback of the request that caused it.
+
+    An authorisation denial ends the request with an exception, so the request
+    transaction is rolled back by design. A denial written through that
+    transaction would vanish with it - leaving no record that someone was
+    refused, which is precisely the event blueprint section 066 requires to be
+    reconstructable.
+
+    The unit test covers this with fakes. Only a real transaction boundary
+    proves it.
+    """
+
+    def test_denial_survives_the_rejected_request_rollback(self, engine: Engine) -> None:
+        factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
+        marker = f"integration-denial-{uuid.uuid4().hex[:12]}"
+
+        principal = make_principal(role=SystemRole.DISTRICT_HSD)
+
+        request_session = factory()
+        try:
+            audit = AuditService(request_session, durable_session_factory=factory)
+            audit.record_denial(principal=principal, reason=f"missing permission: {marker}")
+            # The rejected request aborts here, exactly as a 403 would.
+            raise PermissionError("simulated authorisation denial")
+        except PermissionError:
+            request_session.rollback()
+        finally:
+            request_session.close()
+
+        with factory() as verify:
+            rows = verify.execute(
+                text(
+                    "SELECT action::text, outcome::text FROM mars_audit.audit_event "
+                    "WHERE reason LIKE :marker"
+                ),
+                {"marker": f"%{marker}%"},
+            ).all()
+
+        assert len(rows) == 1, "the denial audit was lost when the request rolled back"
+        assert rows[0][0] == AuditAction.ACCESS_DENIED.value
+        assert rows[0][1] == AuditOutcome.DENIED.value
+
+    def test_the_denial_commit_does_not_commit_the_rejected_request(self, engine: Engine) -> None:
+        """The separate session must not carry the rejected request's writes.
+
+        If the denial shared the request transaction, committing it would also
+        persist whatever the refused request had already written - the opposite
+        failure, and a worse one.
+        """
+        factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
+        marker = f"integration-isolation-{uuid.uuid4().hex[:12]}"
+
+        request_session = factory()
+        try:
+            # Work the rejected request performed before being refused.
+            request_session.add(
+                GeographyUnit(
+                    level=GeographyLevel.COUNTRY,
+                    preferred_code=marker[:32],
+                    raw_name=marker,
+                    normalised_name=marker.upper(),
+                    depth=0,
+                    path=marker[:32],
+                )
+            )
+            request_session.flush()
+
+            audit = AuditService(request_session, durable_session_factory=factory)
+            audit.record_denial(principal=make_principal(role=SystemRole.ANALYST), reason=marker)
+            raise PermissionError("simulated authorisation denial")
+        except PermissionError:
+            request_session.rollback()
+        finally:
+            request_session.close()
+
+        with factory() as verify:
+            leaked = verify.execute(
+                text("SELECT count(*) FROM mars_core.geography_unit WHERE normalised_name = :name"),
+                {"name": marker.upper()},
+            ).scalar_one()
+            audited = verify.execute(
+                text("SELECT count(*) FROM mars_audit.audit_event WHERE reason = :marker"),
+                {"marker": marker},
+            ).scalar_one()
+
+        assert leaked == 0, "the denial commit persisted work from the rejected request"
+        assert audited == 1, "the denial itself should still have been recorded"
+
+
 class TestGeographyConstraints:
     def _country(self, session: Session) -> GeographyUnit:
         unit = GeographyUnit(
@@ -203,7 +293,73 @@ class TestGeographyConstraints:
         session.flush()
 
         unit.parent_id = unit.id
-        with pytest.raises(IntegrityError, match="no_self_parent"):
+        # Two independent guards reject this: the ck_..._no_self_parent CHECK
+        # constraint and the reject_hierarchy_cycle trigger. The trigger fires
+        # first, because a BEFORE ROW trigger runs ahead of constraint
+        # evaluation, so the message names the trigger. Either is a pass; what
+        # matters is that the write is refused.
+        with pytest.raises(DatabaseError, match="own parent|no_self_parent"):
+            session.flush()
+        session.rollback()
+
+    def test_both_self_parent_guards_are_installed(self, engine: Engine) -> None:
+        """The CHECK constraint must survive alongside the trigger.
+
+        The trigger masks the constraint at run time by firing first. Without
+        this test, someone could remove the constraint and every behavioural
+        test would still pass - until the trigger was ever dropped or disabled.
+        """
+        with engine.connect() as connection:
+            constraints = set(
+                connection.execute(
+                    text(
+                        "SELECT conname FROM pg_constraint "
+                        "WHERE conrelid = 'mars_core.geography_unit'::regclass "
+                        "AND contype = 'c'"
+                    )
+                ).scalars()
+            )
+            triggers = set(
+                connection.execute(
+                    text(
+                        "SELECT trigger_name FROM information_schema.triggers "
+                        "WHERE event_object_schema = 'mars_core' "
+                        "AND event_object_table = 'geography_unit'"
+                    )
+                ).scalars()
+            )
+
+        assert "ck_geography_unit_no_self_parent" in constraints, (
+            "the no_self_parent CHECK constraint is missing; the trigger alone "
+            "would leave no protection if it were ever disabled"
+        )
+        assert "geography_unit_reject_cycle" in triggers
+
+    def test_a_multi_node_cycle_is_rejected(self, session: Session) -> None:
+        country = self._country(session)
+        region = GeographyUnit(
+            level=GeographyLevel.REGION,
+            preferred_code="3",
+            raw_name="NORTHERN",
+            normalised_name="NORTHERN",
+            parent_id=country.id,
+            depth=1,
+            path="UG/3",
+        )
+        district = GeographyUnit(
+            level=GeographyLevel.DISTRICT,
+            preferred_code="304",
+            raw_name="GULU",
+            normalised_name="GULU",
+            parent=region,
+            depth=2,
+            path="UG/3/304",
+        )
+        session.add_all([region, district])
+        session.flush()
+
+        region.parent_id = district.id
+        with pytest.raises(DatabaseError, match="creates a cycle"):
             session.flush()
         session.rollback()
 

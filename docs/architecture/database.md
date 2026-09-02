@@ -54,6 +54,11 @@ Route handlers never open a transaction. They receive a session from
 exception, so a partially applied write cannot escape a failed request. Workers
 and scripts use `session_scope()`, which behaves identically.
 
+Access-denial audit events are the deliberate exception to the request
+transaction: they use a separate short-lived session so the audit record remains
+durable when the denied request rolls back. This session cannot commit any
+application work from the rejected request.
+
 Every connection sets `statement_timeout` and `TIME ZONE 'UTC'` on connect. The
 timeout stops a runaway analytical query holding a connection indefinitely.
 
@@ -108,9 +113,10 @@ docker compose run --rm api alembic downgrade -1
 
 ## Current state
 
-20 tables, 34 indexes, 14 enum types across two migrations.
+20 tables, 36 indexes, 14 enum types across three migrations.
 
 | Migration | Creates |
 | --- | --- |
 | `0001_schema_baseline` | Six schemas, `pgcrypto` extension, schema comments |
 | `0002_core_domain` | All 20 tables, indexes, enum types, audit trigger |
+| `0003_phase2_hardening` | PostGIS `MultiPolygon` geometry columns and GIST indexes; database triggers rejecting multi-node geography and organisation hierarchy cycles |

@@ -1542,7 +1542,7 @@ def downgrade() -> None:
     op.drop_index(
         "ix_facility_identifier_facility_id", table_name="facility_identifier", schema="mars_core"
     )
-    op.drop_table("facility_identifier", schema="mars_core", create_type=False)
+    op.drop_table("facility_identifier", schema="mars_core")
     op.drop_index(
         "ix_facility_subcounty_geography_unit_id", table_name="facility", schema="mars_core"
     )
@@ -1550,7 +1550,6 @@ def downgrade() -> None:
         "ix_facility_organisation_unit_id",
         table_name="facility",
         schema="mars_core",
-        create_type=False,
     )
     op.drop_index("ix_facility_normalised_name", table_name="facility", schema="mars_core")
     op.drop_index("ix_facility_level", table_name="facility", schema="mars_core")

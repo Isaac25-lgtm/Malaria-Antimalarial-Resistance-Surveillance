@@ -1,0 +1,23 @@
+{
+  "schema": "mars.hmis-reference-documents.manifest/1",
+  "generated_on": "2026-09-02",
+  "note": "User-supplied HMIS reference forms, excluded from Git by size. These checksums identify the exact local source bytes. OPD 002 has not yet been supplied.",
+  "files": [
+    {
+      "filename": "HMIS 033b HEALTH UNIT WEEKLY EPIDEMIOLOGICAL-ka2024.pdf",
+      "role": "HMIS 033b Health Unit Weekly Epidemiological Surveillance Report reference form",
+      "sha256": "7a25fa22b021e67b9ad1e10bad8a128d1643054669648aec40879bcbe6bfcddd",
+      "size_bytes": 795406,
+      "modified_utc": "2025-01-20T13:42:00Z",
+      "inspection": "Valid seven-page A4 PDF dated July 2024 with an extractable text layer."
+    },
+    {
+      "filename": "HMIS 105 Health Unit Outpatient Monthly Report-ka2024_IPS.pdf",
+      "role": "HMIS 105 Health Unit Outpatient Monthly Report reference form",
+      "sha256": "aab36403b68448c20e0980a13dca469bf365b9fa65c8749ebc97ab3c885fa642",
+      "size_bytes": 33362242,
+      "modified_utc": "2025-07-30T11:23:28.4902541Z",
+      "inspection": "Valid 25-page A4 AcroForm PDF with essentially no extractable text layer; use visual inspection or OCR for field analysis."
+    }
+  ]
+}

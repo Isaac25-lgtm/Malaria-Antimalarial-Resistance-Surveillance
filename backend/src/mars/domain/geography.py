@@ -28,6 +28,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
+from geoalchemy2 import Geometry
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -282,15 +283,17 @@ class GeographyUnitGeometry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
                     ``Shape_Area`` attribute is wrong on four subcounties and is
                     not trusted.
 
-    The geometry columns are declared but left nullable and unpopulated. Prompt 5
-    installs PostGIS-backed spatial types and the import that fills them; this
-    model exists so that migration is additive rather than a redesign.
+    The PostGIS columns are nullable until Prompt 5 validates and imports the
+    supplied source boundaries. This model fixes the storage contract now so
+    that the importer is additive rather than a redesign.
     """
 
     __tablename__ = "geography_unit_geometry"
     __table_args__ = (
         UniqueConstraint("geography_unit_id", name="uq_geography_unit_geometry_geography_unit_id"),
         Index("ix_geography_unit_geometry_validity", "validity_state"),
+        Index("ix_geography_unit_geometry_geom", "geom", postgresql_using="gist"),
+        Index("ix_geography_unit_geometry_geom_web", "geom_web", postgresql_using="gist"),
         {"schema": CORE},
     )
 
@@ -304,6 +307,18 @@ class GeographyUnitGeometry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         pg_enum(GeometryValidityState, name="geometry_validity_state", schema=CORE),
         nullable=False,
         default=GeometryValidityState.NOT_ASSESSED,
+    )
+
+    # Polygon inputs are promoted to MultiPolygon during import so every level
+    # has one stable database type. Raw source bytes remain immutable outside
+    # the database; ``geom`` is the validated full-resolution analytical copy.
+    geom: Mapped[Any | None] = mapped_column(
+        Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=False),
+        nullable=True,
+    )
+    geom_web: Mapped[Any | None] = mapped_column(
+        Geometry(geometry_type="MULTIPOLYGON", srid=4326, spatial_index=False),
+        nullable=True,
     )
 
     #: What was found in the raw geometry: unclosed rings, degenerate slivers,

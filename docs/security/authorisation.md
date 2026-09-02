@@ -66,7 +66,8 @@ Two deliberate omissions, both from blueprint section 009:
 
 A separate, narrower axis. A facility user is scoped to named facilities, not to
 their district: sharing a district with another facility grants nothing. It is
-applied first, before geography, because it is the tightest restriction.
+intersected with geography scope, so even an erroneous cross-district facility
+assignment cannot broaden access.
 
 ## Enforcement
 
@@ -84,7 +85,14 @@ Scoping is applied **inside the query**, not as a post-filter, so there is no
 window in which out-of-scope data exists in the process.
 
 A denial names the missing permission, never the resource, so a 403 does not
-confirm that something exists. Denials of sensitive actions are audited.
+confirm that something exists. Denials of sensitive actions are audited through
+a separate short-lived transaction, because the rejected request transaction is
+rolled back by design. The audit commit never commits work from that request.
+
+Alias resolution and single-record lookups carry the same SQL-level geography
+predicates as list queries. An organisation unit without a geography link is
+globally visible only when its type is explicitly `national`; an accidentally
+unlinked district or HSD is not treated as national.
 
 ## Authentication
 

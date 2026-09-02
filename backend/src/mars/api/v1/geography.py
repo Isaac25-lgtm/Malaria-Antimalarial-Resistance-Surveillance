@@ -149,7 +149,7 @@ def resolve_alias(
     More than one result means the mapping is ambiguous and needs review. MARS
     does not pick one: an ambiguous source value stays unresolved.
     """
-    aliases = service.find_by_alias(source_system, source_code)
+    aliases = service.find_by_alias(principal, source_system, source_code)
     return [
         GeographyAliasSummary(
             id=alias.id,

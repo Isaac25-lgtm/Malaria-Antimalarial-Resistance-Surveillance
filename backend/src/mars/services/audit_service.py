@@ -8,6 +8,7 @@ a correcting event, not by editing history.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy import Select, select
@@ -23,8 +24,19 @@ from mars.security.principal import AuthenticatedPrincipal
 class AuditService:
     """Append-only writer and reader for :class:`AuditEvent`."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(
+        self,
+        session: Session,
+        *,
+        durable_session_factory: Callable[[], Session] | None = None,
+    ) -> None:
         self._session = session
+        # Security denials happen on requests that deliberately end with an
+        # exception. The request transaction is consequently rolled back, so a
+        # denial written through it would disappear. A separate short-lived
+        # session makes denial events durable without committing any work from
+        # the rejected request.
+        self._durable_session_factory = durable_session_factory
 
     def record(
         self,
@@ -98,15 +110,36 @@ class AuditService:
         section 066. The reason names the missing grant, never the resource,
         so an audit entry does not confirm that a resource exists.
         """
-        return self.record(
-            action=AuditAction.ACCESS_DENIED,
-            outcome=AuditOutcome.DENIED,
-            principal=principal,
-            object_type=object_type,
-            object_id=object_id,
-            reason=reason,
-            context=context,
-        )
+        if self._durable_session_factory is None:
+            return self.record(
+                action=AuditAction.ACCESS_DENIED,
+                outcome=AuditOutcome.DENIED,
+                principal=principal,
+                object_type=object_type,
+                object_id=object_id,
+                reason=reason,
+                context=context,
+            )
+
+        durable_session = self._durable_session_factory()
+        try:
+            event = AuditService(durable_session).record(
+                action=AuditAction.ACCESS_DENIED,
+                outcome=AuditOutcome.DENIED,
+                principal=principal,
+                object_type=object_type,
+                object_id=object_id,
+                reason=reason,
+                context=context,
+            )
+            durable_session.commit()
+            durable_session.expunge(event)
+            return event
+        except Exception:
+            durable_session.rollback()
+            raise
+        finally:
+            durable_session.close()
 
     def query(
         self,

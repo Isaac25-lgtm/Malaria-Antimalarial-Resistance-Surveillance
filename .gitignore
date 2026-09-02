@@ -27,6 +27,11 @@ secrets/
 /UGANDA_DISTRICTS.json
 /UGANDA_SUBCOUNTIES.json
 
+# Supplied HMIS reference forms. Keep the large source PDFs local and track
+# their exact bytes in data/manifests/hmis-reference-documents.sha256.json.
+/HMIS 033b HEALTH UNIT WEEKLY EPIDEMIOLOGICAL-ka2024.pdf
+/HMIS 105 Health Unit Outpatient Monthly Report-ka2024_IPS.pdf
+
 # Generated geography audit output. Regenerate with scripts/geography_audit.py.
 /data/manifests/geography-audit.json
 

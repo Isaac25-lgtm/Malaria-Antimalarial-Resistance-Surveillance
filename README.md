@@ -265,12 +265,20 @@ scripts/          Geography audit, terminology lint, contract export
 
 **Environment**
 
-- Docker was not available on the development machine when this was built, so
-  the Compose stack, the PostGIS integration tests and the applied migrations
-  have **not been executed**. Migrations were verified by rendering both
-  directions as SQL offline. See the completion report for exactly what ran.
-- PostGIS is required from the geography phase. Readiness reports its absence as
-  `not_installed` rather than failing, since phases 1–2 do not need it.
+- Docker is not installed on the development machine, so the **Compose stack has
+  not been started** and the images have not been built. `docker compose config`
+  has therefore not validated the Compose file; its YAML parses with the
+  expected five services, two volumes, health checks and dependency ordering,
+  which is a structural check rather than validation.
+- Everything requiring a live database **has** been verified, against an
+  isolated PostgreSQL 16.4 + PostGIS 3.6.2 cluster stood up on a non-default
+  port for the purpose and removed afterwards. All three migrations applied,
+  round-tripped and were re-applied; the 20 integration tests passed. Neither
+  the existing PostgreSQL services nor their installation directories were
+  touched.
+- Migration `0003_phase2_hardening` installs the PostGIS geometry contract and
+  therefore requires an extension-capable PostgreSQL server. Readiness reports
+  an absent extension as `not_installed` until migrations are applied.
 
 **Data**
 
@@ -281,9 +289,12 @@ scripts/          Geography audit, terminology lint, contract export
   empty.
 - No population denominators. Until they arrive, spatial output can only be
   counts and proportions — never incidence.
-- The three HMIS reference documents (OPD 002, 033b, 105) are **not in the
-  repository**. They are required before the canonical encounter schema can be
-  built, and are the highest-priority missing input.
+- HMIS 033b and HMIS 105 are available locally and recorded by checksum in
+  `data/manifests/hmis-reference-documents.sha256.json`; the large PDFs are
+  intentionally excluded from Git. HMIS 105 has no useful text layer, so field
+  analysis will require visual inspection or OCR. OPD 002 remains the
+  highest-priority missing reference document before the canonical encounter
+  schema is built.
 
 **Governance**
 

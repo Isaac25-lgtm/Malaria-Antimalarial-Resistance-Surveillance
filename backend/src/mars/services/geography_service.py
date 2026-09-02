@@ -11,8 +11,9 @@ import uuid
 
 from sqlalchemy import Select, false, or_, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
-from mars.core.errors import GeographyScopeDeniedError, NotFoundError
+from mars.core.errors import NotFoundError
 from mars.domain.enums import GeographyLevel
 from mars.domain.geography import BoundaryVersion, GeographyUnit, GeographyUnitAlias
 from mars.security.principal import AuthenticatedPrincipal
@@ -25,6 +26,20 @@ class GeographyService:
         self._session = session
 
     # -- Scope predicate ---------------------------------------------------
+    @staticmethod
+    def _scope_conditions(principal: AuthenticatedPrincipal) -> list[ColumnElement[bool]]:
+        """SQL predicates covering scope roots, descendants and breadcrumb ancestors."""
+        conditions: list[ColumnElement[bool]] = []
+        for scope in principal.geography_scopes:
+            conditions.append(GeographyUnit.id == scope.geography_unit_id)
+            if scope.path:
+                conditions.append(GeographyUnit.path.like(f"{scope.path}/%"))
+                conditions.extend(
+                    GeographyUnit.path == ancestor_path
+                    for ancestor_path in _ancestor_paths(scope.path)
+                )
+        return conditions
+
     def _apply_scope(
         self, statement: Select[tuple[GeographyUnit]], principal: AuthenticatedPrincipal
     ) -> Select[tuple[GeographyUnit]]:
@@ -43,17 +58,7 @@ class GeographyService:
             # No scope means no access. An empty scope is never "everywhere".
             return statement.where(false())
 
-        conditions = []
-        for scope in scopes:
-            conditions.append(GeographyUnit.id == scope.geography_unit_id)
-            if scope.path:
-                # Descendants: path begins with the scope path plus a separator.
-                conditions.append(GeographyUnit.path.like(f"{scope.path}/%"))
-                # Ancestors: the scope path begins with the candidate's path.
-                for ancestor_path in _ancestor_paths(scope.path):
-                    conditions.append(GeographyUnit.path == ancestor_path)
-
-        return statement.where(or_(*conditions))
+        return statement.where(or_(*self._scope_conditions(principal)))
 
     # -- Reads -------------------------------------------------------------
     def list_units(
@@ -84,28 +89,27 @@ class GeographyService:
         return list(self._session.execute(statement).scalars().all())
 
     def get_unit(self, principal: AuthenticatedPrincipal, unit_id: uuid.UUID) -> GeographyUnit:
-        unit = self._session.get(GeographyUnit, unit_id)
+        statement = self._apply_scope(
+            select(GeographyUnit).where(GeographyUnit.id == unit_id), principal
+        )
+        unit = self._session.execute(statement).scalar_one_or_none()
         if unit is None:
-            raise NotFoundError("geography unit not found")
-        if not principal.covers_geography(unit.id, unit.path):
-            raise GeographyScopeDeniedError(
-                "the requested area is outside your assigned geography scope"
-            )
+            raise NotFoundError("geography unit not found or outside your assigned scope")
         return unit
 
     def get_unit_by_code(
         self, principal: AuthenticatedPrincipal, level: GeographyLevel, code: str
     ) -> GeographyUnit:
-        unit = self._session.execute(
+        statement = self._apply_scope(
             select(GeographyUnit).where(
                 GeographyUnit.level == level, GeographyUnit.preferred_code == code
-            )
-        ).scalar_one_or_none()
+            ),
+            principal,
+        )
+        unit = self._session.execute(statement).scalar_one_or_none()
         if unit is None:
-            raise NotFoundError(f"no {level.value} with code {code!r}")
-        if not principal.covers_geography(unit.id, unit.path):
-            raise GeographyScopeDeniedError(
-                "the requested area is outside your assigned geography scope"
+            raise NotFoundError(
+                f"no visible {level.value} with code {code!r} in your assigned scope"
             )
         return unit
 
@@ -132,8 +136,11 @@ class GeographyService:
         for _ in range(len(GeographyLevel)):
             if current.parent_id is None:
                 break
-            parent = self._session.get(GeographyUnit, current.parent_id)
-            if parent is None or parent.id == current.id:
+            try:
+                parent = self.get_unit(principal, current.parent_id)
+            except NotFoundError:
+                break
+            if parent.id == current.id:
                 break
             chain.append(parent)
             current = parent
@@ -151,23 +158,32 @@ class GeographyService:
             counts[unit.level.value] += 1
         return counts
 
-    def find_by_alias(self, source_system: str, source_code: str) -> list[GeographyUnitAlias]:
+    def find_by_alias(
+        self,
+        principal: AuthenticatedPrincipal,
+        source_system: str,
+        source_code: str,
+    ) -> list[GeographyUnitAlias]:
         """Resolve a source system's code. Returns every candidate.
 
         Multiple rows mean the mapping is ambiguous and must be reviewed. The
         service does not choose one; blueprint appendix 120 requires ambiguous
         source values to stay unresolved.
         """
-        return list(
-            self._session.execute(
-                select(GeographyUnitAlias).where(
-                    GeographyUnitAlias.source_system == source_system,
-                    GeographyUnitAlias.source_code == source_code,
-                )
+        statement = (
+            select(GeographyUnitAlias)
+            .join(GeographyUnit, GeographyUnit.id == GeographyUnitAlias.geography_unit_id)
+            .where(
+                GeographyUnitAlias.source_system == source_system,
+                GeographyUnitAlias.source_code == source_code,
             )
-            .scalars()
-            .all()
         )
+        if not principal.has_national_scope:
+            if not principal.geography_scopes:
+                statement = statement.where(false())
+            else:
+                statement = statement.where(or_(*self._scope_conditions(principal)))
+        return list(self._session.execute(statement).scalars().all())
 
     def list_boundary_versions(self) -> list[BoundaryVersion]:
         return list(

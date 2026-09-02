@@ -110,7 +110,14 @@ class TestRevisionChain:
                 None,
             )
             assert downgrade is not None, f"{path.name} has no downgrade()"
-            body = [n for n in downgrade.body if not isinstance(n, ast.Expr)]
+            body = list(downgrade.body)
+            if (
+                body
+                and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)
+            ):
+                body = body[1:]
             assert body and not all(isinstance(n, ast.Pass) for n in body), (
                 f"{path.name} has an empty downgrade()"
             )
@@ -145,6 +152,22 @@ class TestModelMigrationParity:
         """The identity boundary must not be retrofitted."""
         first = _migration_files()[0].read_text(encoding="utf-8")
         assert "mars_identity" in first
+
+    def test_postgis_geometry_columns_and_indexes_are_migrated(self) -> None:
+        source = _module_source()
+        geometry = Base.metadata.tables["mars_core.geography_unit_geometry"]
+        assert {"geom", "geom_web"} <= set(geometry.columns.keys())
+        assert "CREATE EXTENSION IF NOT EXISTS postgis" in source
+        assert '"geom"' in source and '"geom_web"' in source
+        assert 'postgresql_using="gist"' in source
+
+    def test_hierarchy_cycle_guards_are_installed_and_removed(self) -> None:
+        source = _module_source()
+        assert "CREATE OR REPLACE FUNCTION mars_core.reject_hierarchy_cycle" in source
+        assert "CREATE TRIGGER geography_unit_reject_cycle" in source
+        assert "CREATE TRIGGER organisation_unit_reject_cycle" in source
+        assert "DROP TRIGGER IF EXISTS geography_unit_reject_cycle" in source
+        assert "DROP TRIGGER IF EXISTS organisation_unit_reject_cycle" in source
 
 
 class TestIdentifierLengths:

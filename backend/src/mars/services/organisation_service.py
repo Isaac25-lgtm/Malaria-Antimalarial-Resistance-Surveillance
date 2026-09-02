@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Select, false, or_, select
+from sqlalchemy import Select, and_, false, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from mars.core.errors import GeographyScopeDeniedError, NotFoundError, ValidationFailedError
@@ -59,10 +59,12 @@ class OrganisationService:
         return list(self._session.execute(statement).scalars().all())
 
     def get_unit(self, principal: AuthenticatedPrincipal, unit_id: uuid.UUID) -> OrganisationUnit:
-        unit = self._session.get(OrganisationUnit, unit_id)
+        statement = self._apply_scope(
+            select(OrganisationUnit).where(OrganisationUnit.id == unit_id), principal
+        )
+        unit = self._session.execute(statement).scalar_one_or_none()
         if unit is None:
-            raise NotFoundError("organisation unit not found")
-        self._assert_in_scope(principal, unit)
+            raise NotFoundError("organisation unit not found or outside your assigned scope")
         return unit
 
     def _apply_scope(
@@ -80,17 +82,29 @@ class OrganisationService:
             if scope.path:
                 conditions.append(geography.path.like(f"{scope.path}/%"))
 
-        # A unit with no geography link is national in character; it stays
-        # visible so a scoped user can still see where they sit in the hierarchy.
-        conditions.append(OrganisationUnit.primary_geography_unit_id.is_(None))
+        # Only explicitly national units may be globally visible without a
+        # geography link. Treating every unlinked row as national would expose
+        # an accidentally unlinked district or HSD to all scoped users.
+        conditions.append(
+            and_(
+                OrganisationUnit.primary_geography_unit_id.is_(None),
+                OrganisationUnit.unit_type == OrganisationUnitType.NATIONAL,
+            )
+        )
 
         return statement.outerjoin(
             geography, geography.id == OrganisationUnit.primary_geography_unit_id
         ).where(or_(*conditions))
 
     def _assert_in_scope(self, principal: AuthenticatedPrincipal, unit: OrganisationUnit) -> None:
-        if principal.has_national_scope or unit.primary_geography_unit_id is None:
+        if principal.has_national_scope:
             return
+        if unit.primary_geography_unit_id is None:
+            if unit.unit_type == OrganisationUnitType.NATIONAL:
+                return
+            raise GeographyScopeDeniedError(
+                "this unlinked organisation unit is outside your assigned geography scope"
+            )
         geography = self._session.get(GeographyUnit, unit.primary_geography_unit_id)
         path = geography.path if geography else None
         if not principal.covers_geography(unit.primary_geography_unit_id, path):
@@ -107,8 +121,11 @@ class OrganisationService:
         for _ in range(MAX_HIERARCHY_DEPTH):
             if current.parent_id is None:
                 break
-            parent = self._session.get(OrganisationUnit, current.parent_id)
-            if parent is None or parent.id == current.id:
+            try:
+                parent = self.get_unit(principal, current.parent_id)
+            except NotFoundError:
+                break
+            if parent.id == current.id:
                 break
             chain.append(parent)
             current = parent
@@ -124,9 +141,11 @@ class FacilityService:
     def _apply_scope(
         self, statement: Select[tuple[Facility]], principal: AuthenticatedPrincipal
     ) -> Select[tuple[Facility]]:
-        # Facility restriction is the narrowest axis and is applied first.
+        # Facility and geography are independent restrictions. They must be
+        # intersected; a mistaken cross-district facility assignment must not
+        # bypass the user's geography scope.
         if principal.is_facility_restricted:
-            return statement.where(Facility.id.in_(principal.facility_scopes))
+            statement = statement.where(Facility.id.in_(principal.facility_scopes))
 
         if principal.has_national_scope:
             return statement
@@ -176,26 +195,10 @@ class FacilityService:
         return list(self._session.execute(statement).scalars().all())
 
     def get_facility(self, principal: AuthenticatedPrincipal, facility_id: uuid.UUID) -> Facility:
-        facility = self._session.get(Facility, facility_id)
+        statement = self._apply_scope(select(Facility).where(Facility.id == facility_id), principal)
+        facility = self._session.execute(statement).scalar_one_or_none()
         if facility is None:
-            raise NotFoundError("facility not found")
-
-        if not principal.covers_facility(facility.id):
-            raise GeographyScopeDeniedError("this facility is outside your assigned scope")
-
-        if not principal.has_national_scope and not principal.is_facility_restricted:
-            district = (
-                self._session.get(GeographyUnit, facility.district_geography_unit_id)
-                if facility.district_geography_unit_id
-                else None
-            )
-            covered = district is not None and principal.covers_geography(
-                district.id, district.path
-            )
-            if not covered:
-                raise GeographyScopeDeniedError(
-                    "this facility is outside your assigned geography scope"
-                )
+            raise NotFoundError("facility not found or outside your assigned scope")
         return facility
 
     def create_facility(

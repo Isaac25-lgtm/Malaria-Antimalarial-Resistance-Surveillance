@@ -21,7 +21,7 @@ from mars.core.errors import (
     UnauthenticatedError,
 )
 from mars.core.settings import Settings, get_settings
-from mars.db.session import get_db_session
+from mars.db.session import get_db_session, get_session_factory
 from mars.security.permissions import PERMISSION_CATALOGUE, Permission, SensitivityLevel
 from mars.security.principal import AuthenticatedPrincipal
 from mars.security.providers import TokenVerifier, build_token_verifier
@@ -57,7 +57,7 @@ def get_token_verifier(request: Request, settings: SettingsDep) -> TokenVerifier
 
 # -- Service dependencies -------------------------------------------------
 def get_audit_service(session: SessionDep) -> AuditService:
-    return AuditService(session)
+    return AuditService(session, durable_session_factory=get_session_factory())
 
 
 AuditDep = Annotated[AuditService, Depends(get_audit_service)]
