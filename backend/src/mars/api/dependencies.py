@@ -22,6 +22,7 @@ from mars.core.errors import (
 )
 from mars.core.settings import Settings, get_settings
 from mars.db.session import get_db_session, get_session_factory
+from mars.investigations.service import InvestigationService
 from mars.security.permissions import PERMISSION_CATALOGUE, Permission, SensitivityLevel
 from mars.security.principal import AuthenticatedPrincipal
 from mars.security.providers import TokenVerifier, build_token_verifier
@@ -110,6 +111,10 @@ def get_report_service(session: SessionDep, audit: AuditDep) -> ReportService:
     return ReportService(session, audit)
 
 
+def get_investigation_service(session: SessionDep, audit: AuditDep) -> InvestigationService:
+    return InvestigationService(session, audit)
+
+
 def get_integration_status_service(
     session: SessionDep, settings: SettingsDep
 ) -> IntegrationStatusService:
@@ -138,6 +143,7 @@ SurveillanceSummaryDep = Annotated[
     SurveillanceSummaryService, Depends(get_surveillance_summary_service)
 ]
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
+InvestigationServiceDep = Annotated[InvestigationService, Depends(get_investigation_service)]
 IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integration_status_service)]
 
 

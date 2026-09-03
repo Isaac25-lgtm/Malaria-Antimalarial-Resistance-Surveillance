@@ -12,6 +12,7 @@ from mars.api.v1 import (
     health,
     indicators,
     integrations,
+    investigations,
     meta,
     organisation,
     reports,
@@ -42,6 +43,7 @@ def build_v1_router(settings: Settings) -> APIRouter:
     router.include_router(surveillance.router)
     router.include_router(reports.router)
     router.include_router(signals.router)
+    router.include_router(investigations.router)
 
     if settings.is_development_auth_active:
         router.include_router(auth.development_router)

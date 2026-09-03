@@ -771,6 +771,242 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/investigations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Investigation
+         * @description Open an investigation against a signal. Idempotent.
+         */
+        post: operations["open_investigation_api_v1_investigations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/queues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Queue Catalogue
+         * @description Which queues exist, and why the overdue one does not.
+         */
+        get: operations["queue_catalogue_api_v1_investigations_queues_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/queues/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Queue
+         * @description One action-centre queue, scoped to the caller.
+         *
+         *     There is no ``overdue`` queue in this build. It needs an approved SLA, and
+         *     an empty overdue list would read as "nothing is late" rather than "MARS has
+         *     not been told what late means".
+         */
+        get: operations["queue_api_v1_investigations_queues__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Investigation
+         * @description One investigation with its full timeline.
+         */
+        get: operations["get_investigation_api_v1_investigations__investigation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign
+         * @description Assign or reassign. Reassignment is recorded as its own event kind.
+         */
+        post: operations["assign_api_v1_investigations__investigation_id__assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close
+         * @description Close with a governed outcome.
+         *
+         *     ``validated_signal`` means the pattern held up and warrants programme
+         *     action. It does not mean resistance was confirmed.
+         */
+        post: operations["close_api_v1_investigations__investigation_id__close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}/escalate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Escalate */
+        post: operations["escalate_api_v1_investigations__investigation_id__escalate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}/evidence-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Evidence */
+        post: operations["request_evidence_api_v1_investigations__investigation_id__evidence_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}/evidence-requests/{evidence_request_id}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record External Result
+         * @description Record that an external result came back, by reference only.
+         *
+         *     MARS stores a pointer into the system holding the result under its own
+         *     governance. It never stores the clinical content, which is what keeps the
+         *     confirmed-evidence lane separate from routine surveillance.
+         */
+        post: operations["record_external_result_api_v1_investigations__investigation_id__evidence_requests__evidence_request_id__result_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Note */
+        post: operations["add_note_api_v1_investigations__investigation_id__notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start */
+        post: operations["start_api_v1_investigations__investigation_id__start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/investigations/{investigation_id}/triage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Triage */
+        post: operations["triage_api_v1_investigations__investigation_id__triage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta/evidence-lanes": {
         parameters: {
             query?: never;
@@ -1324,6 +1560,33 @@ export interface components {
             scope_description: string;
             /** Username */
             username: string;
+        };
+        /**
+         * EvidenceRequestSummary
+         * @description A request for externally supplied evidence.
+         *
+         *     ``result_reference`` is a pointer into the system that holds the result
+         *     under its own governance. MARS never stores the clinical content.
+         */
+        EvidenceRequestSummary: {
+            /** Description */
+            description: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Request Status */
+            request_status: string;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /** Result Recorded At */
+            result_recorded_at: string | null;
+            /** Result Reference */
+            result_reference: string | null;
         };
         /**
          * FacilityContribution
@@ -1910,6 +2173,143 @@ export interface components {
             /** Unresolved Mappings */
             unresolved_mappings: number;
         };
+        /**
+         * InvestigationDetail
+         * @description One investigation with its full history.
+         */
+        InvestigationDetail: {
+            /** Assigned At */
+            assigned_at: string | null;
+            /** Assigned To User Id */
+            assigned_to_user_id: string | null;
+            /** Closed At */
+            closed_at: string | null;
+            /** Escalation Reason */
+            escalation_reason: string | null;
+            /** Events */
+            events: components["schemas"]["InvestigationEventSummary"][];
+            /** Evidence Requests */
+            evidence_requests: components["schemas"]["EvidenceRequestSummary"][];
+            /** Facility Id */
+            facility_id: string | null;
+            /** Geography Unit Id */
+            geography_unit_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Investigation Status */
+            investigation_status: string;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Outcome */
+            outcome: string | null;
+            /** Outcome Note */
+            outcome_note: string | null;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Priority */
+            priority: string;
+            /** Record Version */
+            record_version: number;
+            /**
+             * Signal Id
+             * Format: uuid
+             */
+            signal_id: string;
+            /** Triaged At */
+            triaged_at: string | null;
+        };
+        /**
+         * InvestigationEventSummary
+         * @description One entry in the append-only timeline.
+         */
+        InvestigationEventSummary: {
+            /** Actor Label */
+            actor_label: string | null;
+            /** Event Kind */
+            event_kind: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            } | null;
+            /** Sequence */
+            sequence: number;
+        };
+        /**
+         * InvestigationOutcome
+         * @description What a reviewer concluded.
+         *
+         *     Blueprint 038's vocabulary. ``VALIDATED_SIGNAL`` is the strongest thing a
+         *     reviewer may record here and it means *the pattern is real and worth
+         *     programme attention* - never that resistance was confirmed. Confirmation
+         *     belongs to the separately governed evidence lane and reaches MARS from an
+         *     external reference laboratory, not from this table.
+         * @enum {string}
+         */
+        InvestigationOutcome: "validated_signal" | "explained" | "data_issue" | "insufficient_evidence";
+        /**
+         * InvestigationQueueEntry
+         * @description One row in an action-centre queue.
+         */
+        InvestigationQueueEntry: {
+            /** Assigned To User Id */
+            assigned_to_user_id: string | null;
+            /** Facility Id */
+            facility_id: string | null;
+            /** Geography Unit Id */
+            geography_unit_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Investigation Status */
+            investigation_status: string;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Priority */
+            priority: string;
+            /** Record Version */
+            record_version: number;
+            /**
+             * Signal Id
+             * Format: uuid
+             */
+            signal_id: string;
+        };
         /** LivenessResponse */
         LivenessResponse: {
             /** Service */
@@ -2198,6 +2598,22 @@ export interface components {
             children: components["schemas"]["GeographyUnitSummary"][];
             root: components["schemas"]["GeographyUnitSummary"] | null;
         };
+        /**
+         * OpenInvestigationRequest
+         * @description Open an investigation against a signal.
+         *
+         *     ``idempotency_key`` makes a retry safe: a repeated open returns the
+         *     existing investigation rather than splitting the timeline in two.
+         */
+        OpenInvestigationRequest: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /**
+             * Signal Id
+             * Format: uuid
+             */
+            signal_id: string;
+        };
         /** OrganisationUnitDetail */
         OrganisationUnitDetail: {
             /** Ancestors */
@@ -2412,6 +2828,14 @@ export interface components {
             status: string;
         };
         /**
+         * RecordExternalResultRequest
+         * @description Record that an external result came back, by reference only.
+         */
+        RecordExternalResultRequest: {
+            /** Result Reference */
+            result_reference: string;
+        };
+        /**
          * ReportRow
          * @description One measure as it appears in a report.
          *
@@ -2450,6 +2874,14 @@ export interface components {
             unit: string | null;
             /** Value */
             value: string | null;
+        };
+        /**
+         * RequestEvidenceRequest
+         * @description Ask for evidence MARS cannot produce itself, or add a note.
+         */
+        RequestEvidenceRequest: {
+            /** Description */
+            description: string;
         };
         /** SignalEvidenceSummary */
         SignalEvidenceSummary: {
@@ -2680,6 +3112,25 @@ export interface components {
             period: components["schemas"]["PeriodWindow"];
             /** Signals Generated At */
             signals_generated_at: string | null;
+        };
+        /**
+         * TransitionInvestigationRequest
+         * @description Move an investigation along.
+         *
+         *     ``expected_version`` is the optimistic-concurrency token. Two reviewers who
+         *     both loaded the investigation and both press close must not silently
+         *     overwrite one another.
+         */
+        TransitionInvestigationRequest: {
+            /** Assigned To User Id */
+            assigned_to_user_id?: string | null;
+            /** Escalation Reason */
+            escalation_reason?: string | null;
+            /** Expected Version */
+            expected_version: number;
+            /** Note */
+            note?: string | null;
+            outcome?: components["schemas"]["InvestigationOutcome"] | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -3898,6 +4349,406 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntegrationStatusSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_investigation_api_v1_investigations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    queue_catalogue_api_v1_investigations_queues_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    queue_api_v1_investigations_queues__name__get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                name: "new" | "high_priority" | "assigned_to_me" | "under_investigation" | "awaiting_external_result" | "resolved";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationQueueEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_investigation_api_v1_investigations__investigation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_api_v1_investigations__investigation_id__assign_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_api_v1_investigations__investigation_id__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    escalate_api_v1_investigations__investigation_id__escalate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_evidence_api_v1_investigations__investigation_id__evidence_requests_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEvidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceRequestSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_external_result_api_v1_investigations__investigation_id__evidence_requests__evidence_request_id__result_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+                evidence_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordExternalResultRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceRequestSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_note_api_v1_investigations__investigation_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEvidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationEventSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_api_v1_investigations__investigation_id__start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    triage_api_v1_investigations__investigation_id__triage_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                investigation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationDetail"];
                 };
             };
             /** @description Validation Error */

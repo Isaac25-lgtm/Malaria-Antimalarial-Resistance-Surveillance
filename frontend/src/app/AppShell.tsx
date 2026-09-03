@@ -27,6 +27,11 @@ const PRIMARY_NAVIGATION: NavigationItem[] = [
     label: "Command centre",
     permission: "surveillance:view_aggregate",
   },
+  {
+    to: "/action-centre",
+    label: "Action centre",
+    permission: "surveillance:view_aggregate",
+  },
   { to: "/status", label: "System status" },
   {
     to: "/national",

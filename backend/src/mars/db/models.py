@@ -60,6 +60,12 @@ from mars.domain.ingestion import (
     ImportValidationIssue,
 )
 from mars.domain.integration import IntegrationMappingProposal, IntegrationRun
+from mars.domain.investigation import (
+    Investigation,
+    InvestigationEvent,
+    InvestigationEvidenceRequest,
+    InvestigationFeedback,
+)
 from mars.domain.organisation import Facility, FacilityIdentifier, OrganisationUnit
 from mars.domain.recurrence import RecurrenceResult
 from mars.domain.security import (
@@ -118,6 +124,10 @@ __all__ = [
     "IndicatorResult",
     "IntegrationMappingProposal",
     "IntegrationRun",
+    "Investigation",
+    "InvestigationEvent",
+    "InvestigationEvidenceRequest",
+    "InvestigationFeedback",
     "LaboratoryTestObservation",
     "MethodDefinition",
     "MethodVersion",

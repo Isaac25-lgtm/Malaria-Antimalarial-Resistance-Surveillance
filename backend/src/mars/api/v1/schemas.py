@@ -12,6 +12,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from mars.domain.enums import InvestigationOutcome
+
 
 class MarsModel(BaseModel):
     """Base for every response model."""
@@ -760,6 +762,102 @@ class GeneratedReport(MarsModel):
     rows: list[ReportRow]
     interpretation_limit: str
     provenance: SurveillanceProvenance
+
+
+# ---------------------------------------------------------------------------
+# Investigation workflow — Prompt 26
+# ---------------------------------------------------------------------------
+class InvestigationEventSummary(MarsModel):
+    """One entry in the append-only timeline."""
+
+    sequence: int
+    event_kind: str
+    actor_label: str | None
+    occurred_at: datetime
+    note: str | None
+    payload: dict[str, Any] | None
+
+
+class EvidenceRequestSummary(MarsModel):
+    """A request for externally supplied evidence.
+
+    ``result_reference`` is a pointer into the system that holds the result
+    under its own governance. MARS never stores the clinical content.
+    """
+
+    id: uuid.UUID
+    request_status: str
+    description: str
+    requested_at: datetime
+    result_reference: str | None
+    result_recorded_at: datetime | None
+
+
+class InvestigationQueueEntry(MarsModel):
+    """One row in an action-centre queue."""
+
+    id: uuid.UUID
+    signal_id: uuid.UUID
+    investigation_status: str
+    priority: str
+    geography_unit_id: uuid.UUID | None
+    facility_id: uuid.UUID | None
+    period_start: date
+    period_end: date
+    assigned_to_user_id: uuid.UUID | None
+    opened_at: datetime
+    record_version: int
+
+
+class InvestigationDetail(InvestigationQueueEntry):
+    """One investigation with its full history."""
+
+    triaged_at: datetime | None
+    assigned_at: datetime | None
+    closed_at: datetime | None
+    outcome: str | None
+    outcome_note: str | None
+    escalation_reason: str | None
+    events: list[InvestigationEventSummary]
+    evidence_requests: list[EvidenceRequestSummary]
+
+
+class OpenInvestigationRequest(MarsModel):
+    """Open an investigation against a signal.
+
+    ``idempotency_key`` makes a retry safe: a repeated open returns the
+    existing investigation rather than splitting the timeline in two.
+    """
+
+    signal_id: uuid.UUID
+    idempotency_key: str | None = Field(default=None, max_length=128)
+
+
+class TransitionInvestigationRequest(MarsModel):
+    """Move an investigation along.
+
+    ``expected_version`` is the optimistic-concurrency token. Two reviewers who
+    both loaded the investigation and both press close must not silently
+    overwrite one another.
+    """
+
+    expected_version: int = Field(ge=1)
+    assigned_to_user_id: uuid.UUID | None = None
+    outcome: InvestigationOutcome | None = None
+    note: str | None = None
+    escalation_reason: str | None = None
+
+
+class RequestEvidenceRequest(MarsModel):
+    """Ask for evidence MARS cannot produce itself, or add a note."""
+
+    description: str = Field(min_length=1, max_length=4000)
+
+
+class RecordExternalResultRequest(MarsModel):
+    """Record that an external result came back, by reference only."""
+
+    result_reference: str = Field(min_length=1, max_length=256)
 
 
 # Forward references resolved after all models are declared.

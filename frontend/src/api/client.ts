@@ -334,4 +334,22 @@ export const api = {
     product: "national_brief" | "district_brief",
     query: { period_start: string; period_end: string; geography_unit_id?: string },
   ) => request<Schemas["GeneratedReport"]>(`/reports/${product}`, { query }),
+
+  // -- Investigations (Prompt 26) -------------------------------------------
+  investigationQueues: () =>
+    request<{
+      queues: string[];
+      overdue: { available: boolean; missing_configuration: string[]; detail: string | null };
+    }>("/investigations/queues"),
+
+  investigationQueue: (name: string, query?: { limit?: number }) =>
+    request<Schemas["InvestigationQueueEntry"][]>(
+      `/investigations/queues/${encodeURIComponent(name)}`,
+      { query },
+    ),
+
+  investigation: (investigationId: string) =>
+    request<Schemas["InvestigationDetail"]>(
+      `/investigations/${encodeURIComponent(investigationId)}`,
+    ),
 };

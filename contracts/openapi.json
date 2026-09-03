@@ -569,6 +569,62 @@
         "title": "DevelopmentUserSummary",
         "type": "object"
       },
+      "EvidenceRequestSummary": {
+        "description": "A request for externally supplied evidence.\n\n``result_reference`` is a pointer into the system that holds the result\nunder its own governance. MARS never stores the clinical content.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "request_status": {
+            "title": "Request Status",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "result_recorded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Recorded At"
+          },
+          "result_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Reference"
+          }
+        },
+        "required": [
+          "id",
+          "request_status",
+          "description",
+          "requested_at",
+          "result_reference",
+          "result_recorded_at"
+        ],
+        "title": "EvidenceRequestSummary",
+        "type": "object"
+      },
       "FacilityContribution": {
         "description": "One facility's share of a district figure, or its absence.\n\nA facility that reported nothing is listed with a null value and a status\nsaying so. Dropping it would hide the commonest reason a district total\nfalls: a large facility stopped reporting.",
         "properties": {
@@ -2096,6 +2152,356 @@
         "title": "IntegrationStatusSummary",
         "type": "object"
       },
+      "InvestigationDetail": {
+        "description": "One investigation with its full history.",
+        "properties": {
+          "assigned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned At"
+          },
+          "assigned_to_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To User Id"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "escalation_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Reason"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationEventSummary"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "evidence_requests": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceRequestSummary"
+            },
+            "title": "Evidence Requests",
+            "type": "array"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
+          "geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography Unit Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "investigation_status": {
+            "title": "Investigation Status",
+            "type": "string"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "outcome_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome Note"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "record_version": {
+            "title": "Record Version",
+            "type": "integer"
+          },
+          "signal_id": {
+            "format": "uuid",
+            "title": "Signal Id",
+            "type": "string"
+          },
+          "triaged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triaged At"
+          }
+        },
+        "required": [
+          "id",
+          "signal_id",
+          "investigation_status",
+          "priority",
+          "geography_unit_id",
+          "facility_id",
+          "period_start",
+          "period_end",
+          "assigned_to_user_id",
+          "opened_at",
+          "record_version",
+          "triaged_at",
+          "assigned_at",
+          "closed_at",
+          "outcome",
+          "outcome_note",
+          "escalation_reason",
+          "events",
+          "evidence_requests"
+        ],
+        "title": "InvestigationDetail",
+        "type": "object"
+      },
+      "InvestigationEventSummary": {
+        "description": "One entry in the append-only timeline.",
+        "properties": {
+          "actor_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Label"
+          },
+          "event_kind": {
+            "title": "Event Kind",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sequence",
+          "event_kind",
+          "actor_label",
+          "occurred_at",
+          "note",
+          "payload"
+        ],
+        "title": "InvestigationEventSummary",
+        "type": "object"
+      },
+      "InvestigationOutcome": {
+        "description": "What a reviewer concluded.\n\nBlueprint 038's vocabulary. ``VALIDATED_SIGNAL`` is the strongest thing a\nreviewer may record here and it means *the pattern is real and worth\nprogramme attention* - never that resistance was confirmed. Confirmation\nbelongs to the separately governed evidence lane and reaches MARS from an\nexternal reference laboratory, not from this table.",
+        "enum": [
+          "validated_signal",
+          "explained",
+          "data_issue",
+          "insufficient_evidence"
+        ],
+        "title": "InvestigationOutcome",
+        "type": "string"
+      },
+      "InvestigationQueueEntry": {
+        "description": "One row in an action-centre queue.",
+        "properties": {
+          "assigned_to_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To User Id"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
+          "geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography Unit Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "investigation_status": {
+            "title": "Investigation Status",
+            "type": "string"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "record_version": {
+            "title": "Record Version",
+            "type": "integer"
+          },
+          "signal_id": {
+            "format": "uuid",
+            "title": "Signal Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "signal_id",
+          "investigation_status",
+          "priority",
+          "geography_unit_id",
+          "facility_id",
+          "period_start",
+          "period_end",
+          "assigned_to_user_id",
+          "opened_at",
+          "record_version"
+        ],
+        "title": "InvestigationQueueEntry",
+        "type": "object"
+      },
       "LivenessResponse": {
         "properties": {
           "service": {
@@ -2860,6 +3266,33 @@
         "title": "NationalGeographyResponse",
         "type": "object"
       },
+      "OpenInvestigationRequest": {
+        "description": "Open an investigation against a signal.\n\n``idempotency_key`` makes a retry safe: a repeated open returns the\nexisting investigation rather than splitting the timeline in two.",
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "signal_id": {
+            "format": "uuid",
+            "title": "Signal Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signal_id"
+        ],
+        "title": "OpenInvestigationRequest",
+        "type": "object"
+      },
       "OrganisationUnitDetail": {
         "properties": {
           "ancestors": {
@@ -3329,6 +3762,22 @@
         "title": "ReadinessResponse",
         "type": "object"
       },
+      "RecordExternalResultRequest": {
+        "description": "Record that an external result came back, by reference only.",
+        "properties": {
+          "result_reference": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Result Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result_reference"
+        ],
+        "title": "RecordExternalResultRequest",
+        "type": "object"
+      },
       "ReportRow": {
         "description": "One measure as it appears in a report.\n\n``value`` stays null when the measure had none. A report that wrote zero\nhere would put a figure into a briefing that MARS never computed, and a\nspreadsheet cell has nowhere to carry the caveat.",
         "properties": {
@@ -3441,6 +3890,22 @@
           "method_version_id"
         ],
         "title": "ReportRow",
+        "type": "object"
+      },
+      "RequestEvidenceRequest": {
+        "description": "Ask for evidence MARS cannot produce itself, or add a note.",
+        "properties": {
+          "description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "title": "RequestEvidenceRequest",
         "type": "object"
       },
       "SignalEvidenceSummary": {
@@ -4066,6 +4531,65 @@
           "configuration_detail"
         ],
         "title": "SurveillanceProvenance",
+        "type": "object"
+      },
+      "TransitionInvestigationRequest": {
+        "description": "Move an investigation along.\n\n``expected_version`` is the optimistic-concurrency token. Two reviewers who\nboth loaded the investigation and both press close must not silently\noverwrite one another.",
+        "properties": {
+          "assigned_to_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To User Id"
+          },
+          "escalation_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Reason"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestigationOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "TransitionInvestigationRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -6383,6 +6907,680 @@
         "summary": "Whether an external exchange is configured, and what it has done",
         "tags": [
           "integrations"
+        ]
+      }
+    },
+    "/api/v1/investigations": {
+      "post": {
+        "description": "Open an investigation against a signal. Idempotent.",
+        "operationId": "open_investigation_api_v1_investigations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenInvestigationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Open Investigation",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/queues": {
+      "get": {
+        "description": "Which queues exist, and why the overdue one does not.",
+        "operationId": "queue_catalogue_api_v1_investigations_queues_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Queue Catalogue Api V1 Investigations Queues Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Queue Catalogue",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/queues/{name}": {
+      "get": {
+        "description": "One action-centre queue, scoped to the caller.\n\nThere is no ``overdue`` queue in this build. It needs an approved SLA, and\nan empty overdue list would read as \"nothing is late\" rather than \"MARS has\nnot been told what late means\".",
+        "operationId": "queue_api_v1_investigations_queues__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "enum": [
+                "new",
+                "high_priority",
+                "assigned_to_me",
+                "under_investigation",
+                "awaiting_external_result",
+                "resolved"
+              ],
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InvestigationQueueEntry"
+                  },
+                  "title": "Response Queue Api V1 Investigations Queues  Name  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Queue",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}": {
+      "get": {
+        "description": "One investigation with its full timeline.",
+        "operationId": "get_investigation_api_v1_investigations__investigation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Get Investigation",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/assign": {
+      "post": {
+        "description": "Assign or reassign. Reassignment is recorded as its own event kind.",
+        "operationId": "assign_api_v1_investigations__investigation_id__assign_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionInvestigationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Assign",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/close": {
+      "post": {
+        "description": "Close with a governed outcome.\n\n``validated_signal`` means the pattern held up and warrants programme\naction. It does not mean resistance was confirmed.",
+        "operationId": "close_api_v1_investigations__investigation_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionInvestigationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Close",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/escalate": {
+      "post": {
+        "operationId": "escalate_api_v1_investigations__investigation_id__escalate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionInvestigationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Escalate",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/evidence-requests": {
+      "post": {
+        "operationId": "request_evidence_api_v1_investigations__investigation_id__evidence_requests_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestEvidenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceRequestSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Request Evidence",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/evidence-requests/{evidence_request_id}/result": {
+      "post": {
+        "description": "Record that an external result came back, by reference only.\n\nMARS stores a pointer into the system holding the result under its own\ngovernance. It never stores the clinical content, which is what keeps the\nconfirmed-evidence lane separate from routine surveillance.",
+        "operationId": "record_external_result_api_v1_investigations__investigation_id__evidence_requests__evidence_request_id__result_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "evidence_request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Evidence Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordExternalResultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceRequestSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Record External Result",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/notes": {
+      "post": {
+        "operationId": "add_note_api_v1_investigations__investigation_id__notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestEvidenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationEventSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Add Note",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/start": {
+      "post": {
+        "operationId": "start_api_v1_investigations__investigation_id__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionInvestigationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Start",
+        "tags": [
+          "investigations"
+        ]
+      }
+    },
+    "/api/v1/investigations/{investigation_id}/triage": {
+      "post": {
+        "operationId": "triage_api_v1_investigations__investigation_id__triage_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionInvestigationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Triage",
+        "tags": [
+          "investigations"
         ]
       }
     },

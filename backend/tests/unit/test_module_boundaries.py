@@ -188,30 +188,55 @@ class TestTheDhis2AdapterIsALeaf:
 #: is worse than an absent module, because a reader cannot tell the difference
 #: without opening it.
 #:
-#: ``ingestion`` left this list at Prompt 5 (geography importer) and
-#: ``analytics`` at Prompt 13 (indicator registry and aggregation). Each
-#: entry is removed only by the prompt that genuinely fills it.
-UNIMPLEMENTED_PACKAGES = ["investigations"]
+#: ``ingestion`` left this list at Prompt 5 (geography importer),
+#: ``analytics`` at Prompt 13 (indicator registry and aggregation), ``signals``
+#: and ``explainability`` at Prompts 21-22, and ``investigations`` at Prompt 26
+#: once the workflow, API, migration, permissions and tests existed. Each entry
+#: was removed only by the prompt that genuinely filled it, and the list is now
+#: empty: every declared package carries an implementation.
+UNIMPLEMENTED_PACKAGES: list[str] = []
 
 
 class TestPlaceholderPackagesAreEmpty:
-    """Capabilities not yet implemented must stay visibly absent."""
+    """Capabilities not yet implemented must stay visibly absent.
 
-    @pytest.mark.parametrize("package", UNIMPLEMENTED_PACKAGES)
-    def test_package_contains_only_its_docstring(self, package: str) -> None:
-        files = _package_files(package)
-        assert files, f"{package} package is missing entirely"
-        non_init = [f for f in files if f.name != "__init__.py"]
-        assert not non_init, (
-            f"{package} contains implementation, but no prompt implemented so far "
-            f"defines that capability: {[str(f.relative_to(SRC)) for f in non_init]}"
-        )
+    The list is empty now that every declared package carries an
+    implementation. The checks below are written so that they still run - and
+    still mean something - in that state, rather than collapsing into an empty
+    parametrisation that reports as a skip and proves nothing.
+    """
 
-    @pytest.mark.parametrize("package", UNIMPLEMENTED_PACKAGES)
-    def test_docstring_names_the_prompt_that_fills_it(self, package: str) -> None:
+    def test_no_package_is_still_awaiting_an_implementation(self) -> None:
+        """The end state this suite was built to reach.
+
+        If a later prompt adds a placeholder package, it belongs in the list
+        above and this assertion is the reminder to put it there.
+        """
+        assert UNIMPLEMENTED_PACKAGES == []
+
+    def test_any_listed_package_contains_only_its_docstring(self) -> None:
+        for package in UNIMPLEMENTED_PACKAGES:
+            files = _package_files(package)
+            assert files, f"{package} package is missing entirely"
+            non_init = [f for f in files if f.name != "__init__.py"]
+            assert not non_init, (
+                f"{package} contains implementation, but no prompt implemented so far "
+                f"defines that capability: {[str(f.relative_to(SRC)) for f in non_init]}"
+            )
+
+    def test_any_listed_package_names_the_prompt_that_fills_it(self) -> None:
         """A reader should know when the module becomes real."""
-        source = (SRC / package / "__init__.py").read_text(encoding="utf-8")
-        assert "Prompt" in source, f"{package}/__init__.py does not say which phase implements it"
+        for package in UNIMPLEMENTED_PACKAGES:
+            source = (SRC / package / "__init__.py").read_text(encoding="utf-8")
+            assert "Prompt" in source, (
+                f"{package}/__init__.py does not say which phase implements it"
+            )
+
+    def test_the_investigations_package_is_now_implemented(self) -> None:
+        """Prompt 26 filled it. Asserted positively so that deleting the
+        implementation cannot quietly return this suite to green."""
+        files = {f.name for f in _package_files("investigations")}
+        assert "service.py" in files
 
 
 class TestIngestionContainsOnlyWhatHasBeenBuilt:

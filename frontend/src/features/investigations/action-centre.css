@@ -1,0 +1,44 @@
+/* Action centre. */
+
+.action-centre {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.action-centre__tabs ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--line-default);
+}
+
+.action-centre__tab {
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  background: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+}
+
+.action-centre__tab:hover {
+  color: var(--ink-primary);
+  background: var(--surface-sunken);
+}
+
+/* The selected queue carries aria-current as well as a visual treatment:
+   the border alone would be colour-and-position only. */
+.action-centre__tab[aria-current="true"] {
+  color: var(--ink-primary);
+  font-weight: var(--weight-semibold);
+  background: var(--surface-raised);
+  border-color: var(--line-default);
+  margin-bottom: -1px;
+}

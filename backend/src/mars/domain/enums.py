@@ -1282,3 +1282,78 @@ class SignalEvidenceKind(str, enum.Enum):
     TESTING = "testing"
     TREATMENT = "treatment"
     COMMODITY_ALERT = "commodity_alert"
+
+
+# ---------------------------------------------------------------------------
+# Investigation workflow — Prompt 26
+# ---------------------------------------------------------------------------
+class InvestigationStatus(str, enum.Enum):
+    """Where an investigation has reached.
+
+    A signal that nobody acts on is a signal that was never worth generating,
+    so this is the state machine that closes the loop from detection to
+    programme action. The transitions are validated rather than advisory: an
+    investigation that jumped from new to closed would record a decision no
+    reviewer made.
+    """
+
+    NEW = "new"
+    TRIAGED = "triaged"
+    ASSIGNED = "assigned"
+    UNDER_INVESTIGATION = "under_investigation"
+    CLOSED = "closed"
+    ESCALATED = "escalated"
+
+
+class InvestigationOutcome(str, enum.Enum):
+    """What a reviewer concluded.
+
+    Blueprint 038's vocabulary. ``VALIDATED_SIGNAL`` is the strongest thing a
+    reviewer may record here and it means *the pattern is real and worth
+    programme attention* - never that resistance was confirmed. Confirmation
+    belongs to the separately governed evidence lane and reaches MARS from an
+    external reference laboratory, not from this table.
+    """
+
+    #: The pattern held up under review and warrants programme action.
+    VALIDATED_SIGNAL = "validated_signal"
+    #: A benign explanation was found - a new clinician, a referral change, a
+    #: reporting change. The commonest outcome, and a useful one.
+    EXPLAINED = "explained"
+    #: The pattern was an artefact of the data rather than of malaria.
+    DATA_ISSUE = "data_issue"
+    #: Review could not settle it either way.
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+
+
+class InvestigationEventKind(str, enum.Enum):
+    """One entry in an investigation's append-only timeline.
+
+    The timeline is the record of who did what and when. It is never edited,
+    because an investigation whose history can be rewritten cannot support the
+    decision it led to.
+    """
+
+    OPENED = "opened"
+    TRIAGED = "triaged"
+    ASSIGNED = "assigned"
+    REASSIGNED = "reassigned"
+    NOTE_ADDED = "note_added"
+    EVIDENCE_REQUESTED = "evidence_requested"
+    EXTERNAL_RESULT_RECORDED = "external_result_recorded"
+    OUTCOME_RECORDED = "outcome_recorded"
+    CLOSED = "closed"
+    ESCALATED = "escalated"
+
+
+class EvidenceRequestStatus(str, enum.Enum):
+    """Whether an externally supplied result has come back.
+
+    ``AWAITING`` is what the action centre's "awaiting external result" queue
+    counts. It is a real operational state: an investigation waiting on a
+    reference laboratory is neither idle nor overdue.
+    """
+
+    AWAITING = "awaiting"
+    RECEIVED = "received"
+    CANCELLED = "cancelled"
