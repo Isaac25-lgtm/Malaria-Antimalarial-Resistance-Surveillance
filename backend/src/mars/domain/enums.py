@@ -1187,3 +1187,98 @@ class SpatialRunStatus(str, enum.Enum):
     #: red colour.
     NOT_CONFIGURED = "not_configured"
     FAILED = "failed"
+
+
+# ---------------------------------------------------------------------------
+# Spatial clustering — Prompt 20
+# ---------------------------------------------------------------------------
+class ClusterMethod(str, enum.Enum):
+    """How spatial concentration is judged.
+
+    Implemented here; **chosen** by governance. Both are local methods: they
+    ask whether an area stands out from the areas around it, which is a
+    different question from whether it stands out from its own past.
+    """
+
+    #: One area against the areas that touch it. Answers "is this district
+    #: unusual for its neighbourhood", which a temporal baseline cannot.
+    NEIGHBOUR_CONCENTRATION = "neighbour_concentration"
+    #: A connected run of adjacent areas that are each already a hotspot. A
+    #: block of five neighbouring districts is a different problem from five
+    #: scattered ones, and needs a different response.
+    CONTIGUOUS_HIGH_CLUSTER = "contiguous_high_cluster"
+
+
+class ClusterOutcome(str, enum.Enum):
+    """What a clustering evaluation could conclude about one area.
+
+    As everywhere else in MARS, "could not judge" never becomes "judged
+    normal". An island district with no land neighbours is not a quiet
+    district; it is a district this method cannot speak about.
+    """
+
+    CLUSTERED = "clustered"
+    NOT_CLUSTERED = "not_clustered"
+    #: No adjacency is known for this area - no geometry, or nothing touching.
+    NOT_EVALUATED_NO_NEIGHBOURS = "not_evaluated_no_neighbours"
+    #: Fewer neighbours carrying a usable figure than the approved minimum.
+    NOT_EVALUATED_INSUFFICIENT_NEIGHBOURS = "not_evaluated_insufficient_neighbours"
+    NOT_EVALUATED_NO_OBSERVATION = "not_evaluated_no_observation"
+    NOT_EVALUATED_BELOW_MINIMUM_COUNT = "not_evaluated_below_minimum_count"
+    NOT_EVALUATED_INCOMPLETE_REPORTING = "not_evaluated_incomplete_reporting"
+    NOT_EVALUATED_METHOD_INAPPLICABLE = "not_evaluated_method_inapplicable"
+
+
+# ---------------------------------------------------------------------------
+# Signals and evidence — Prompts 21-22
+# ---------------------------------------------------------------------------
+class SignalType(str, enum.Enum):
+    REPEAT_POSITIVE = "repeat_positive"
+    RECURRENCE_CLUSTER = "recurrence_cluster"
+    TEMPORAL_ANOMALY = "temporal_anomaly"
+    SPATIAL_CLUSTER = "spatial_cluster"
+    TESTING_ANOMALY = "testing_anomaly"
+    TREATMENT_ANOMALY = "treatment_anomaly"
+    COMMODITY_ASSOCIATED = "commodity_associated"
+    FACILITY_ANOMALY = "facility_anomaly"
+    DATA_QUALITY = "data_quality"
+    RECONCILIATION = "reconciliation"
+
+
+class SignalPriority(str, enum.Enum):
+    """Governed operational priority; MARS chooses only UNCLASSIFIED."""
+
+    UNCLASSIFIED = "unclassified"
+    INFORMATIONAL = "informational"
+    ATTENTION = "attention"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class SignalStatus(str, enum.Enum):
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"
+
+
+class SignalGenerationStatus(str, enum.Enum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    NOT_CONFIGURED = "not_configured"
+    FAILED = "failed"
+
+
+class SignalEvidenceRole(str, enum.Enum):
+    SUPPORTING = "supporting"
+    COUNTER = "counter"
+    CONTEXT = "context"
+
+
+class SignalEvidenceKind(str, enum.Enum):
+    TEMPORAL_ANOMALY = "temporal_anomaly"
+    HOTSPOT = "hotspot"
+    SPATIAL_CLUSTER = "spatial_cluster"
+    RECURRENCE = "recurrence"
+    RECONCILIATION = "reconciliation"
+    TESTING = "testing"
+    TREATMENT = "treatment"
+    COMMODITY_ALERT = "commodity_alert"

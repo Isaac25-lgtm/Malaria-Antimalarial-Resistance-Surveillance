@@ -8,6 +8,7 @@ remembering to touch the migration environment.
 from __future__ import annotations
 
 from mars.db.base import Base
+from mars.domain.adjacency import GeographyAdjacency
 from mars.domain.aggregate import (
     AggregateObservation,
     AggregateSubmission,
@@ -18,6 +19,7 @@ from mars.domain.aggregate import (
 from mars.domain.anomaly import AnomalyBuild, AnomalyPersistence, TemporalAnomalyResult
 from mars.domain.audit import AuditEvent
 from mars.domain.baseline import BaselineBuild, BaselineResult
+from mars.domain.clustering import SpatialClusterResult, SpatialClusterRun
 from mars.domain.encounter import (
     OpdEncounter,
     OpdEncounterDiagnosis,
@@ -27,6 +29,7 @@ from mars.domain.encounter import (
     PatientReference,
 )
 from mars.domain.episode import EpisodeBuild, EpisodeCandidate, EpisodeMember
+from mars.domain.explanation import SignalExplanation
 from mars.domain.geography import (
     BoundaryVersion,
     GeographyUnit,
@@ -68,6 +71,7 @@ from mars.domain.security import (
     UserRole,
     UserSensitivityScope,
 )
+from mars.domain.signal import SignalEvidence, SignalGenerationRun, SurveillanceSignal
 from mars.domain.spatial import GeographicAggregationResult, HotspotResult, SpatialRun
 from mars.domain.surveillance import (
     CommodityOperationalAlert,
@@ -97,6 +101,7 @@ __all__ = [
     "Facility",
     "FacilityIdentifier",
     "GeographicAggregationResult",
+    "GeographyAdjacency",
     "GeographyUnit",
     "GeographyUnitAlias",
     "GeographyUnitGeometry",
@@ -128,7 +133,13 @@ __all__ = [
     "ReidentificationEvent",
     "Role",
     "RolePermission",
+    "SignalEvidence",
+    "SignalExplanation",
+    "SignalGenerationRun",
+    "SpatialClusterResult",
+    "SpatialClusterRun",
     "SpatialRun",
+    "SurveillanceSignal",
     "TemporalAnomalyResult",
     "TestingSurveillanceResult",
     "TreatmentSurveillanceResult",

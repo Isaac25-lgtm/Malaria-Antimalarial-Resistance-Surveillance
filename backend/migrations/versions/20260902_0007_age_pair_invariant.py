@@ -25,7 +25,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision: str = "0007_age_pair_invariant"
 down_revision: str | None = "0006_identity_vault"
@@ -47,28 +47,31 @@ _PAIRED = (
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
+    # Offline migrations render SQL without a connection, so there is no data
+    # to inspect.  The live path retains the fail-closed preflight; the offline
+    # path emits the constraint for deployment review and CI validation.
+    if not context.is_offline_mode():
+        bind = op.get_bind()
+        offending = bind.execute(
+            sa.text(f"SELECT count(*) FROM {CORE}.{TABLE} WHERE NOT ({_PAIRED})")  # noqa: S608
+        ).scalar_one()
 
-    offending = bind.execute(
-        sa.text(f"SELECT count(*) FROM {CORE}.{TABLE} WHERE NOT ({_PAIRED})")  # noqa: S608
-    ).scalar_one()
-
-    if offending:
-        raise RuntimeError(
-            f"{offending} row(s) in {CORE}.{TABLE} carry an age value without a "
-            "unit, or a unit without a value. This migration will not guess "
-            "which unit was meant: an age recorded as bare '3' could be three "
-            "years, three months or three days, and the difference changes "
-            "every age-banded figure derived from it.\n"
-            "\n"
-            "To remediate, find them with:\n"
-            f"    SELECT id, source_system, source_row_reference, age_value, age_unit\n"
-            f"      FROM {CORE}.{TABLE} WHERE NOT ({_PAIRED});\n"
-            "\n"
-            "then either set both columns from the source register, or set both "
-            "to NULL to record that the age is unknown - which is honest, and "
-            "which the constraint permits."
-        )
+        if offending:
+            raise RuntimeError(
+                f"{offending} row(s) in {CORE}.{TABLE} carry an age value without a "
+                "unit, or a unit without a value. This migration will not guess "
+                "which unit was meant: an age recorded as bare '3' could be three "
+                "years, three months or three days, and the difference changes "
+                "every age-banded figure derived from it.\n"
+                "\n"
+                "To remediate, find them with:\n"
+                f"    SELECT id, source_system, source_row_reference, age_value, age_unit\n"
+                f"      FROM {CORE}.{TABLE} WHERE NOT ({_PAIRED});\n"
+                "\n"
+                "then either set both columns from the source register, or set both "
+                "to NULL to record that the age is unknown - which is honest, and "
+                "which the constraint permits."
+            )
 
     op.create_check_constraint(
         CONSTRAINT,

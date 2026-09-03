@@ -229,8 +229,10 @@ Every row carries, in `quality_context.interpretation_limit`:
   leaves a differencing risk where a total and its parts are both published.
   Closing it requires a governed rule about which additional cells to withhold,
   and MARS does not invent one.
-* **Local clustering, adjacency-based concentration and scan statistics**
-  (blueprint 036) are not implemented here; they require validation before use.
+* **Adjacency-based concentration and contiguous-hotspot clustering** are
+  implemented in Prompt 20 but run only under an approved method version and
+  privacy policy. Advanced statistics such as Local Moran's I, Getis-Ord Gi*
+  and spatial scan statistics remain absent pending epidemiological validation.
 * **Parish and village levels** remain unavailable because no parish or village
   boundary data has been supplied. MARS does not fabricate geography.
 * Residence aggregation covers `testing_coverage` and `test_positivity`. Other

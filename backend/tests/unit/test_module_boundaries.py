@@ -191,7 +191,7 @@ class TestTheDhis2AdapterIsALeaf:
 #: ``ingestion`` left this list at Prompt 5 (geography importer) and
 #: ``analytics`` at Prompt 13 (indicator registry and aggregation). Each
 #: entry is removed only by the prompt that genuinely fills it.
-UNIMPLEMENTED_PACKAGES = ["signals", "explainability", "investigations"]
+UNIMPLEMENTED_PACKAGES = ["investigations"]
 
 
 class TestPlaceholderPackagesAreEmpty:

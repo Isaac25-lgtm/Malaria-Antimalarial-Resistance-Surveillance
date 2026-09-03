@@ -568,8 +568,8 @@ class DemoDatasetGenerator:
             "lane": (
                 "Everything here is Lane A: routine-derived. A storyline may "
                 "produce a surveillance signal. None of it is, or can become, a "
-                "confirmed antimalarial resistance finding - that is Lane B, "
-                "established externally under separate governance."
+                "Lane B finding of antimalarial resistance - established "
+                "externally under separate governance."
             ),
             "schema_version": SCHEMA_VERSION,
             "source_system": SOURCE_SYSTEM,

@@ -163,10 +163,46 @@ class TestEvidenceLanesEndpoint:
         confirmed = next(lane for lane in body["lanes"] if lane["id"] == "confirmed_evidence")
         assert "never populated from routine data" in confirmed["boundary"].lower()
 
-    def test_reports_neither_lane_is_implemented_yet(self, client: TestClient) -> None:
+    def test_reports_routine_lane_implemented_but_confirmed_lane_absent(
+        self, client: TestClient
+    ) -> None:
         status = client.get("/api/v1/meta/evidence-lanes").json()["implementation_status"]
-        assert status["routine_surveillance"] == "not_implemented"
+        assert status["routine_surveillance"] == "implemented_requires_approved_configuration"
         assert status["confirmed_evidence"] == "not_implemented"
+
+
+class TestAnalyticalAndSignalRoutes:
+    def test_national_reader_can_list_aggregate_analytics(
+        self, authenticated_client, national_principal: AuthenticatedPrincipal
+    ) -> None:
+        client = authenticated_client(national_principal)
+        assert client.get("/api/v1/analytics/results/anomaly").json() == []
+
+    def test_national_reader_can_list_signals(
+        self, authenticated_client, national_principal: AuthenticatedPrincipal
+    ) -> None:
+        client = authenticated_client(national_principal)
+        assert client.get("/api/v1/signals").json() == []
+
+    def test_episode_route_requires_pseudonymous_case_sensitivity(
+        self,
+        authenticated_client,
+        administrator_principal: AuthenticatedPrincipal,
+    ) -> None:
+        client = authenticated_client(administrator_principal)
+        response = client.get("/api/v1/analytics/episodes")
+        assert response.status_code == 403
+        assert "pseudonymous case sensitivity" in response.json()["detail"]
+
+    def test_out_of_scope_signal_is_indistinguishable_from_absent(
+        self,
+        authenticated_client,
+        gulu_district_principal: AuthenticatedPrincipal,
+    ) -> None:
+        client = authenticated_client(gulu_district_principal)
+        response = client.get("/api/v1/signals/00000000-0000-4000-8000-000000000999")
+        assert response.status_code == 404
+        assert response.json()["code"] == "not_found"
 
 
 class TestRouteAuthorisation:

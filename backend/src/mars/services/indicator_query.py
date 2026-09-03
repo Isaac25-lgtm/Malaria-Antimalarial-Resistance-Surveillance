@@ -18,7 +18,7 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from mars.domain.enums import GeographyGrain
@@ -86,10 +86,13 @@ class IndicatorQueryService:
             query = query.where(IndicatorResult.indicator_code.in_(codes))
         if grain is not None:
             query = query.where(IndicatorResult.geography_grain == grain)
+        scope_predicates = []
         if geography_unit_ids is not None:
-            query = query.where(IndicatorResult.geography_unit_id.in_(geography_unit_ids))
+            scope_predicates.append(IndicatorResult.geography_unit_id.in_(geography_unit_ids))
         if facility_ids is not None:
-            query = query.where(IndicatorResult.facility_id.in_(facility_ids))
+            scope_predicates.append(IndicatorResult.facility_id.in_(facility_ids))
+        if scope_predicates:
+            query = query.where(or_(*scope_predicates))
         if period_from is not None:
             query = query.where(IndicatorResult.period_start >= period_from)
         if period_to is not None:

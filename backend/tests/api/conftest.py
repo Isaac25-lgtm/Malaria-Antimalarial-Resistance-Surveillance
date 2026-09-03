@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from mars.api.dependencies import (
+    get_analytics_query_service,
     get_audit_service,
     get_configuration_service,
     get_current_principal,
@@ -24,6 +25,7 @@ from mars.api.dependencies import (
     get_geography_service,
     get_method_registry_service,
     get_organisation_service,
+    get_signal_query_service,
 )
 from mars.core.settings import Environment, Settings
 from mars.main import create_app
@@ -149,6 +151,43 @@ class FakeFacilityService:
     def list_facilities(self, *_a: Any, **_k: Any) -> list[Any]:
         return []
 
+    def get_facility(self, *_a: Any, **_k: Any) -> Any:
+        from mars.core.errors import NotFoundError
+
+        raise NotFoundError("facility not found or outside your assigned scope")
+
+
+class FakeAnalyticsQueryService:
+    def geography_ids(self, principal: AuthenticatedPrincipal) -> set[Any] | None:
+        return None if principal.has_national_scope else set(principal.scope_unit_ids())
+
+    def facility_ids(self, principal: AuthenticatedPrincipal) -> set[Any] | None:
+        return None if principal.has_national_scope else set(principal.facility_scopes)
+
+    def episodes(self, *_a: Any, **_k: Any) -> list[Any]:
+        return []
+
+    def aggregate_results(self, *_a: Any, **_k: Any) -> list[Any]:
+        return []
+
+    def commodity_alerts(self, *_a: Any, **_k: Any) -> list[Any]:
+        return []
+
+
+class FakeSignalQueryService:
+    def list(self, *_a: Any, **_k: Any) -> list[Any]:
+        return []
+
+    def get(self, *_a: Any, **_k: Any) -> Any:
+        from mars.core.errors import NotFoundError
+
+        raise NotFoundError("signal not found or outside your assigned scope")
+
+    def explanation(self, *_a: Any, **_k: Any) -> Any:
+        from mars.core.errors import NotFoundError
+
+        raise NotFoundError("no explanation has been generated for this signal")
+
 
 class FakeConfigurationService:
     def list_keys(self) -> list[Any]:
@@ -192,6 +231,8 @@ def app(api_settings: Settings, audit_recorder: FakeAuditService) -> Iterator[Fa
     application.dependency_overrides[get_facility_service] = FakeFacilityService
     application.dependency_overrides[get_configuration_service] = FakeConfigurationService
     application.dependency_overrides[get_method_registry_service] = FakeMethodRegistryService
+    application.dependency_overrides[get_analytics_query_service] = FakeAnalyticsQueryService
+    application.dependency_overrides[get_signal_query_service] = FakeSignalQueryService
 
     yield application
 

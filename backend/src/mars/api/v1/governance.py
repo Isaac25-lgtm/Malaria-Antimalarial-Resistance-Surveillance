@@ -80,8 +80,9 @@ def list_methods(
 ) -> list[MethodDefinitionSummary]:
     """List registered methods and their versions.
 
-    Empty until Prompt 13. An empty registry is the honest state: no analytical
-    method has been defined, let alone validated or approved.
+    Definitions may exist without an active version. An empty or entirely
+    inactive registry is an honest unconfigured state, not permission to use a
+    hidden default.
     """
     return [
         MethodDefinitionSummary(

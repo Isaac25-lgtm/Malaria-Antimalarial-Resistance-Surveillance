@@ -161,11 +161,13 @@ def evidence_lanes() -> dict[str, object]:
             },
         ],
         "implementation_status": {
-            "routine_surveillance": "not_implemented",
+            "routine_surveillance": "implemented_requires_approved_configuration",
             "confirmed_evidence": "not_implemented",
             "note": (
-                "Phases 1-2 establish the repository, database, access model and "
-                "reference-data schema. No signal or confirmed-evidence tables exist yet."
+                "Routine-data engines, signals and deterministic explanations are "
+                "implemented. They refuse governed judgements until approved method "
+                "and configuration versions exist. The separate confirmed-evidence "
+                "lane is not implemented."
             ),
         },
     }

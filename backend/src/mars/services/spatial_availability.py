@@ -142,10 +142,16 @@ def privacy_policy(session: Session) -> tuple[PrivacyPolicy | None, list[str]]:
 
     try:
         level = GeographyGrain(values["minimum_aggregation_level"])
-    except ValueError:
+    except (TypeError, ValueError):
         return None, ["minimum_aggregation_level"]
 
-    minimum = int(values["minimum_cell_count"])
+    raw_minimum = values["minimum_cell_count"]
+    if isinstance(raw_minimum, bool):
+        return None, ["minimum_cell_count"]
+    try:
+        minimum = int(raw_minimum)
+    except (TypeError, ValueError):
+        return None, ["minimum_cell_count"]
     if minimum < 1:
         return None, ["minimum_cell_count"]
 
@@ -188,7 +194,7 @@ def _approved_level_only(session: Session) -> GeographyGrain | None:
         return None
     try:
         return GeographyGrain(raw)
-    except ValueError:
+    except (TypeError, ValueError):
         return None
 
 

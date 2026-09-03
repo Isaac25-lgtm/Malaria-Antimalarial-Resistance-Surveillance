@@ -625,7 +625,7 @@ class TestTreatmentSurveillanceEngine:
         self, session: Session, facility: Facility, march_attendances: None
     ) -> None:
         """Routine data may produce a surveillance signal. It may never claim
-        confirmed drug resistance."""
+        that drug resistance has been established."""
         TreatmentSurveillanceEngine(session).compute_facility(facility, PERIOD_START, PERIOD_END)
         session.commit()
         for row in read_treatment_results(session).values():

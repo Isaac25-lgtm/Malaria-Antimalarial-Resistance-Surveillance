@@ -18,25 +18,30 @@ surveillance signals that a named person is accountable for investigating.
 
 ## What exists today
 
-This build covers the repository foundation through **Prompt 11: routine HMIS
-aggregate ingestion and reconciliation**.
+This build covers the repository foundation through **Prompt 22: deterministic
+signal explainability**.
 
 | Delivered | Detail |
 | --- | --- |
 | Repository and runtime foundation | Monorepo, Docker Compose, CI, quality gates |
-| Database foundation | Six schemas, 39 mapped tables, migrations through `0010`, audit trail, governance registries |
+| Database foundation | Six schemas, 67 mapped tables, migrations through `0021`, audit trail, governance registries |
 | Authentication and authorisation | OIDC-ready, three authorisation axes, permission matrix |
 | Geography and maps | Versioned Uganda boundaries, PostGIS import, scoped map API and national map workspace |
 | OPD/e-register | HMIS OPD 002 canonical encounters, strict JSONL ingestion, quarantine and lineage |
 | Protected identity | Pseudonymous analytical records; encrypted identity vault behind a separate database role |
 | Demonstration data | Deterministic synthetic data loaded through the real ingestion path |
 | Routine HMIS | HMIS 033b/105 aggregate submissions, immutable revisions and reported-versus-derived reconciliation |
+| Interoperability | Disabled-by-default DHIS2 adapter, resumable exchange runs and governed mapping proposals |
+| Governed analytics | Indicator registry, materialisation, episode and recurrence engines, testing/treatment/commodity surveillance |
+| Temporal and spatial surveillance | Historical baselines, anomaly persistence, recomputed geographic summaries, hotspots, adjacency and clustering |
+| Surveillance signals | Versioned rule-based scoring, typed supporting/counter/context evidence and safe supersession |
+| Explainability | Deterministic why/evidence/counter-evidence/data-quality/uncertainty/action snapshots; no LLM dependency |
 
-**Not built yet, and deliberately absent rather than stubbed:** DHIS2 exchange,
-the governed indicator engine, malaria episodes and recurrence analysis,
-temporal/spatial detection, signals, investigations, action-centre workflows
-and the optional AI assistant. MARS can hold and reconcile routine source data
-now; it does not yet turn discrepancies or patterns into operational signals.
+**Not built yet, and deliberately absent rather than stubbed:** investigations,
+action-centre workflows, the complete national/district/facility dashboard and
+the optional AI assistant. On a fresh deployment analytical methods and
+thresholds are intentionally unapproved, so engines record `not_configured`
+rather than inventing a value or presenting an empty map as good news.
 
 ---
 
@@ -55,7 +60,9 @@ now; it does not yet turn discrepancies or patterns into operational signals.
  encrypted + separate role          ------------>       geography · encounters
                                                         aggregates · facilities
         |                                                       |
-                                                        ANALYTICS  (Prompt 13+)
+                                                        ANALYTICS
+                                                        indicators Â· episodes
+                                                        temporal Â· spatial
                                                                 |
                                                         SIGNAL + EXPLAINABILITY
                                                                 |
@@ -249,7 +256,10 @@ backend/          FastAPI application, domain model, services, migrations
     services/     Business logic and repositories
     security/     Permissions, principal, auth providers
     geo/          FScode parsing, name normalisation
-    analytics/ signals/ explainability/ investigations/   Empty; later phases
+    analytics/      Versioned indicator, episode, temporal and spatial engines
+    signals/        Governed taxonomy, scoring and evidence composition
+    explainability/ Deterministic explanation snapshots
+    investigations/ Empty until its owning phase
 frontend/         React application
   src/
     api/          Generated types and typed client

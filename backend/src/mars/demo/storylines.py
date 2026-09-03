@@ -13,8 +13,8 @@ measured against, and `must_not` is the half that matters: a detector that fires
 on the control district is worse than one that fires on nothing.
 
 **Nothing here claims resistance.** Repeat positivity in routine data is a
-reason to *look*, and MARS may say so. Confirmed antimalarial resistance is a
-Lane B finding, established by an external reference laboratory under separate
+reason to *look*, and MARS may say so. A finding of antimalarial resistance is
+reserved for Lane B and established by an external reference laboratory under separate
 governance, and no amount of routine data becomes it.
 """
 
@@ -81,7 +81,7 @@ STORYLINES: tuple[Storyline, ...] = (
             "signal is attributed to the facility rather than the district",
         ),
         must_not=(
-            "claim confirmed antimalarial resistance - repeat positivity in "
+            "claim a finding of antimalarial resistance - repeat positivity in "
             "routine data is a reason to look, never a finding",
             "surface the other facilities in the same district",
             "merge two demo patients who share no identifier",

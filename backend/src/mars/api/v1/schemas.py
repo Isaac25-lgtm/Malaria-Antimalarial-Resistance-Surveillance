@@ -71,7 +71,7 @@ class VersionResponse(MarsModel):
     development_auth_active: bool
     active_method_versions: list[str] = Field(
         default_factory=list,
-        description="Qualified identifiers, e.g. 'IND-TPR@1.2.0'. Empty until Prompt 13.",
+        description="Qualified identifiers, e.g. 'IND-TPR@1.2.0'. Empty when unconfigured.",
     )
     active_configuration_keys: list[str] = Field(
         default_factory=list,
@@ -556,6 +556,78 @@ class IndicatorResultSummary(MarsModel):
     boundary_version_id: uuid.UUID | None
     engine_version: str
     computed_at: datetime
+
+
+# -- Analytical surveillance and signals ---------------------------------
+class AnalyticalRecordSummary(MarsModel):
+    id: uuid.UUID
+    record_type: str
+    code: str
+    geography_unit_id: uuid.UUID | None
+    facility_id: uuid.UUID | None
+    period_start: date
+    period_end: date
+    numerator: int | None
+    denominator: int | None
+    value: float | None
+    value_status: str
+    details: dict[str, Any]
+
+
+class SignalEvidenceSummary(MarsModel):
+    kind: str
+    role: str
+    source_table: str
+    source_record_id: uuid.UUID
+    contribution: float | None
+    summary: str
+    facts: dict[str, Any]
+    quality_context: dict[str, Any] | None
+
+
+class SignalSummary(MarsModel):
+    id: uuid.UUID
+    signal_type: str
+    status: str
+    priority: str
+    geography_unit_id: uuid.UUID | None
+    facility_id: uuid.UUID | None
+    period_start: date
+    period_end: date
+    title: str
+    statement: str
+    score: float | None
+    evidence_count: int
+    counter_evidence_count: int
+    data_quality: dict[str, Any]
+    uncertainty: list[str]
+    recommended_action_codes: list[str]
+    method_version_id: uuid.UUID
+    rule_code: str
+    source_cutoff: datetime
+    generated_at: datetime
+    supersedes_id: uuid.UUID | None
+    superseded_by_id: uuid.UUID | None
+    evidence: list[SignalEvidenceSummary] | None = None
+
+
+class SignalExplanationSummary(MarsModel):
+    id: uuid.UUID
+    signal_id: uuid.UUID
+    method_version_id: uuid.UUID
+    why_flagged: str
+    evidence: list[dict[str, Any]]
+    counter_evidence: list[dict[str, Any]]
+    data_quality: dict[str, Any]
+    method_steps: list[dict[str, Any]]
+    uncertainty: list[str]
+    missing_information: list[str]
+    recommended_actions: list[dict[str, str]]
+    interpretation_limit: str
+    signal_input_fingerprint: str
+    input_fingerprint: str
+    generator_version: str
+    generated_at: datetime
 
 
 # Forward references resolved after all models are declared.

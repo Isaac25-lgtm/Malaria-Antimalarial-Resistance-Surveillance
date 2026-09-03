@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from mars.api.v1 import (
+    analytics,
     auth,
     geography,
     governance,
@@ -13,6 +14,7 @@ from mars.api.v1 import (
     integrations,
     meta,
     organisation,
+    signals,
 )
 from mars.core.settings import Settings
 
@@ -34,6 +36,8 @@ def build_v1_router(settings: Settings) -> APIRouter:
     router.include_router(governance.router)
     router.include_router(indicators.router)
     router.include_router(integrations.router)
+    router.include_router(analytics.router)
+    router.include_router(signals.router)
 
     if settings.is_development_auth_active:
         router.include_router(auth.development_router)

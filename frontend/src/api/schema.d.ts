@@ -4,6 +4,80 @@
  */
 
 export interface paths {
+    "/api/v1/analytics/commodity-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Commodity Alerts */
+        get: operations["commodity_alerts_api_v1_analytics_commodity_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/episodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Episodes
+         * @description Pseudonymous episode candidates; never direct patient identity.
+         */
+        get: operations["episodes_api_v1_analytics_episodes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/results/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Analytical Results */
+        get: operations["analytical_results_api_v1_analytics_results__kind__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/spatial/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Map Cells
+         * @description Map-ready cells with missing/suppressed/unavailable kept distinct.
+         */
+        get: operations["map_cells_api_v1_analytics_spatial_cells_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/dev/login": {
         parameters: {
             query?: never;
@@ -465,8 +539,9 @@ export interface paths {
          * The analytical method registry
          * @description List registered methods and their versions.
          *
-         *     Empty until Prompt 13. An empty registry is the honest state: no analytical
-         *     method has been defined, let alone validated or approved.
+         *     Definitions may exist without an active version. An empty or entirely
+         *     inactive registry is an honest unconfigured state, not permission to use a
+         *     hidden default.
          */
         get: operations["list_methods_api_v1_governance_methods_get"];
         put?: never;
@@ -807,10 +882,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Signals */
+        get: operations["list_signals_api_v1_signals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signals/{signal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Signal */
+        get: operations["get_signal_api_v1_signals__signal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signals/{signal_id}/explanation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Explanation */
+        get: operations["get_explanation_api_v1_signals__signal_id__explanation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnalyticalRecordSummary */
+        AnalyticalRecordSummary: {
+            /** Code */
+            code: string;
+            /** Denominator */
+            denominator: number | null;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Facility Id */
+            facility_id: string | null;
+            /** Geography Unit Id */
+            geography_unit_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Numerator */
+            numerator: number | null;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Record Type */
+            record_type: string;
+            /** Value */
+            value: number | null;
+            /** Value Status */
+            value_status: string;
+        };
+        /**
+         * BaselineSeriesKind
+         * @description Which analytical series a baseline is built over.
+         *
+         *     Kept explicit rather than inferred from the series key, because the same
+         *     word can name an indicator and a measure, and a baseline built from the
+         *     wrong table would compare a facility against a history that is not its own.
+         * @enum {string}
+         */
+        BaselineSeriesKind: "indicator" | "testing_measure" | "treatment_measure";
         /** BoundaryVersionSummary */
         BoundaryVersionSummary: {
             /** Code */
@@ -1945,6 +2119,170 @@ export interface components {
              */
             status: string;
         };
+        /** SignalEvidenceSummary */
+        SignalEvidenceSummary: {
+            /** Contribution */
+            contribution: number | null;
+            /** Facts */
+            facts: {
+                [key: string]: unknown;
+            };
+            /** Kind */
+            kind: string;
+            /** Quality Context */
+            quality_context: {
+                [key: string]: unknown;
+            } | null;
+            /** Role */
+            role: string;
+            /**
+             * Source Record Id
+             * Format: uuid
+             */
+            source_record_id: string;
+            /** Source Table */
+            source_table: string;
+            /** Summary */
+            summary: string;
+        };
+        /** SignalExplanationSummary */
+        SignalExplanationSummary: {
+            /** Counter Evidence */
+            counter_evidence: {
+                [key: string]: unknown;
+            }[];
+            /** Data Quality */
+            data_quality: {
+                [key: string]: unknown;
+            };
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Generator Version */
+            generator_version: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Input Fingerprint */
+            input_fingerprint: string;
+            /** Interpretation Limit */
+            interpretation_limit: string;
+            /** Method Steps */
+            method_steps: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Method Version Id
+             * Format: uuid
+             */
+            method_version_id: string;
+            /** Missing Information */
+            missing_information: string[];
+            /** Recommended Actions */
+            recommended_actions: {
+                [key: string]: string;
+            }[];
+            /**
+             * Signal Id
+             * Format: uuid
+             */
+            signal_id: string;
+            /** Signal Input Fingerprint */
+            signal_input_fingerprint: string;
+            /** Uncertainty */
+            uncertainty: string[];
+            /** Why Flagged */
+            why_flagged: string;
+        };
+        /** SignalSummary */
+        SignalSummary: {
+            /** Counter Evidence Count */
+            counter_evidence_count: number;
+            /** Data Quality */
+            data_quality: {
+                [key: string]: unknown;
+            };
+            /** Evidence */
+            evidence?: components["schemas"]["SignalEvidenceSummary"][] | null;
+            /** Evidence Count */
+            evidence_count: number;
+            /** Facility Id */
+            facility_id: string | null;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Geography Unit Id */
+            geography_unit_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Method Version Id
+             * Format: uuid
+             */
+            method_version_id: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Priority */
+            priority: string;
+            /** Recommended Action Codes */
+            recommended_action_codes: string[];
+            /** Rule Code */
+            rule_code: string;
+            /** Score */
+            score: number | null;
+            /** Signal Type */
+            signal_type: string;
+            /**
+             * Source Cutoff
+             * Format: date-time
+             */
+            source_cutoff: string;
+            /** Statement */
+            statement: string;
+            /** Status */
+            status: string;
+            /** Superseded By Id */
+            superseded_by_id: string | null;
+            /** Supersedes Id */
+            supersedes_id: string | null;
+            /** Title */
+            title: string;
+            /** Uncertainty */
+            uncertainty: string[];
+        };
+        /**
+         * SpatialAggregationBasis
+         * @description Which geography a figure was rolled up by.
+         *
+         *     A patient may attend a clinic outside their own district. Rolling up by
+         *     where care was given and rolling up by where people live answer different
+         *     questions - one points at a clinic, the other at a village - and merging
+         *     them attributes a pattern to the wrong place. Stored so the two can never
+         *     be summed together.
+         * @enum {string}
+         */
+        SpatialAggregationBasis: "residence" | "facility_location";
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1970,7 +2308,7 @@ export interface components {
             active_configuration_keys?: string[];
             /**
              * Active Method Versions
-             * @description Qualified identifiers, e.g. 'IND-TPR@1.2.0'. Empty until Prompt 13.
+             * @description Qualified identifiers, e.g. 'IND-TPR@1.2.0'. Empty when unconfigured.
              */
             active_method_versions?: string[];
             /** Ai Assistant Enabled */
@@ -2003,6 +2341,146 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    commodity_alerts_api_v1_analytics_commodity_alerts_get: {
+        parameters: {
+            query?: {
+                period_from?: string | null;
+                period_to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticalRecordSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    episodes_api_v1_analytics_episodes_get: {
+        parameters: {
+            query?: {
+                period_from?: string | null;
+                period_to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticalRecordSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analytical_results_api_v1_analytics_results__kind__get: {
+        parameters: {
+            query?: {
+                period_from?: string | null;
+                period_to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                kind: "recurrence" | "testing" | "treatment" | "baseline" | "anomaly" | "hotspot" | "cluster";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticalRecordSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    map_cells_api_v1_analytics_spatial_cells_get: {
+        parameters: {
+            query: {
+                series_kind: components["schemas"]["BaselineSeriesKind"];
+                series_key: string;
+                period_start: string;
+                geography_grain: components["schemas"]["GeographyGrain"];
+                basis: components["schemas"]["SpatialAggregationBasis"];
+                boundary_version_id: string;
+                unit_id?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     development_login_api_v1_auth_dev_login_post: {
         parameters: {
             query?: never;
@@ -3152,6 +3630,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganisationUnitDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_signals_api_v1_signals_get: {
+        parameters: {
+            query?: {
+                period_from?: string | null;
+                period_to?: string | null;
+                active_only?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_signal_api_v1_signals__signal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_explanation_api_v1_signals__signal_id__explanation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalExplanationSummary"];
                 };
             };
             /** @description Validation Error */

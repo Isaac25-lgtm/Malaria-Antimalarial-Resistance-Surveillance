@@ -25,6 +25,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from mars.api.dependencies import (
+    AnalyticsQueryDep,
+    FacilityServiceDep,
     GeographyServiceDep,
     IndicatorQueryDep,
     require_permissions,
@@ -95,6 +97,8 @@ def get_summary(
     principal: SummaryReader,
     service: IndicatorQueryDep,
     geography: GeographyServiceDep,
+    facilities: FacilityServiceDep,
+    scope: AnalyticsQueryDep,
     code: Annotated[list[str] | None, Query(description="Indicator codes")] = None,
     grain: Annotated[GeographyGrain | None, Query()] = None,
     geography_unit_id: Annotated[list[uuid.UUID] | None, Query()] = None,
@@ -120,17 +124,39 @@ def get_summary(
         # noticed had drifted.
         for unit_id in geography_unit_id:
             geography.get_unit(principal, unit_id)
-        allowed_units = geography_unit_id
-    elif principal.has_national_scope:
-        allowed_units = None
+        allowed_units: list[uuid.UUID] | None = geography_unit_id
     else:
-        allowed_units = list(principal.scope_unit_ids())
+        scoped_units = scope.geography_ids(principal)
+        allowed_units = None if scoped_units is None else list(scoped_units)
+
+    if facility_id:
+        for requested_facility_id in facility_id:
+            facilities.get_facility(principal, requested_facility_id)
+        allowed_facilities: list[uuid.UUID] | None = facility_id
+    else:
+        scoped_facilities = scope.facility_ids(principal)
+        allowed_facilities = None if scoped_facilities is None else list(scoped_facilities)
+
+    if principal.is_facility_restricted:
+        # A facility user's district scope only proves that the facility itself
+        # sits inside the assigned geography. It does not grant district-wide
+        # surveillance access or access to sibling facilities.
+        allowed_units = []
+
+    # An explicit filter on only one scope dimension should not also return
+    # every row from the other dimension. With no explicit filter both are
+    # included, because the summary endpoint spans administrative and facility
+    # grains.
+    if geography_unit_id and not facility_id:
+        allowed_facilities = []
+    elif facility_id and not geography_unit_id:
+        allowed_units = []
 
     results = service.summary(
         codes=code,
         grain=grain,
         geography_unit_ids=allowed_units,
-        facility_ids=facility_id,
+        facility_ids=allowed_facilities,
         period_from=period_from,
         period_to=period_to,
         limit=limit,

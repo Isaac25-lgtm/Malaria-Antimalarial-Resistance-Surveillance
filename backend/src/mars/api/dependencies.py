@@ -25,6 +25,7 @@ from mars.db.session import get_db_session, get_session_factory
 from mars.security.permissions import PERMISSION_CATALOGUE, Permission, SensitivityLevel
 from mars.security.principal import AuthenticatedPrincipal
 from mars.security.providers import TokenVerifier, build_token_verifier
+from mars.services.analytics_query import AnalyticsQueryService
 from mars.services.audit_service import AuditService
 from mars.services.auth_service import AuthService
 from mars.services.geography_map_service import GeographyMapService
@@ -33,6 +34,7 @@ from mars.services.governance_service import ConfigurationService, MethodRegistr
 from mars.services.indicator_query import IndicatorQueryService
 from mars.services.integration_status import IntegrationStatusService
 from mars.services.organisation_service import FacilityService, OrganisationService
+from mars.services.signal_query import SignalQueryService
 
 # auto_error=False so a missing credential produces our problem+json shape
 # rather than FastAPI's default body.
@@ -90,6 +92,14 @@ def get_indicator_query_service(session: SessionDep) -> IndicatorQueryService:
     return IndicatorQueryService(session)
 
 
+def get_analytics_query_service(session: SessionDep) -> AnalyticsQueryService:
+    return AnalyticsQueryService(session)
+
+
+def get_signal_query_service(session: SessionDep) -> SignalQueryService:
+    return SignalQueryService(session)
+
+
 def get_integration_status_service(
     session: SessionDep, settings: SettingsDep
 ) -> IntegrationStatusService:
@@ -112,6 +122,8 @@ FacilityServiceDep = Annotated[FacilityService, Depends(get_facility_service)]
 ConfigurationServiceDep = Annotated[ConfigurationService, Depends(get_configuration_service)]
 MethodRegistryDep = Annotated[MethodRegistryService, Depends(get_method_registry_service)]
 IndicatorQueryDep = Annotated[IndicatorQueryService, Depends(get_indicator_query_service)]
+AnalyticsQueryDep = Annotated[AnalyticsQueryService, Depends(get_analytics_query_service)]
+SignalQueryDep = Annotated[SignalQueryService, Depends(get_signal_query_service)]
 IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integration_status_service)]
 
 
