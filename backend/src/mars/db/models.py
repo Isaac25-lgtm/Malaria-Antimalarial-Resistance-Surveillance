@@ -24,6 +24,7 @@ from mars.domain.encounter import (
     OpdEncounterTest,
     PatientReference,
 )
+from mars.domain.episode import EpisodeBuild, EpisodeCandidate, EpisodeMember
 from mars.domain.geography import (
     BoundaryVersion,
     GeographyUnit,
@@ -74,6 +75,9 @@ __all__ = [
     "CommodityStockObservation",
     "ConfigurationKey",
     "ConfigurationVersion",
+    "EpisodeBuild",
+    "EpisodeCandidate",
+    "EpisodeMember",
     "Facility",
     "FacilityIdentifier",
     "GeographyUnit",

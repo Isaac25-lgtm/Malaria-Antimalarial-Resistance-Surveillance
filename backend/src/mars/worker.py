@@ -32,7 +32,11 @@ from mars.core.settings import Settings, get_settings
 #: Prompt 19 - geographic aggregation
 #: Prompt 20 - spatial clustering
 #: Prompt 21 - signal generation
-REGISTERED_JOBS: tuple[str, ...] = ("geography.import", "indicator.materialise")
+REGISTERED_JOBS: tuple[str, ...] = (
+    "geography.import",
+    "indicator.materialise",
+    "episode.build",
+)
 
 
 class Worker:
