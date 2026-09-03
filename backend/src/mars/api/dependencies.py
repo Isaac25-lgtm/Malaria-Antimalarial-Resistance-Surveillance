@@ -35,6 +35,7 @@ from mars.services.indicator_query import IndicatorQueryService
 from mars.services.integration_status import IntegrationStatusService
 from mars.services.organisation_service import FacilityService, OrganisationService
 from mars.services.signal_query import SignalQueryService
+from mars.services.surveillance_summary import SurveillanceSummaryService
 
 # auto_error=False so a missing credential produces our problem+json shape
 # rather than FastAPI's default body.
@@ -100,6 +101,10 @@ def get_signal_query_service(session: SessionDep) -> SignalQueryService:
     return SignalQueryService(session)
 
 
+def get_surveillance_summary_service(session: SessionDep) -> SurveillanceSummaryService:
+    return SurveillanceSummaryService(session)
+
+
 def get_integration_status_service(
     session: SessionDep, settings: SettingsDep
 ) -> IntegrationStatusService:
@@ -124,6 +129,9 @@ MethodRegistryDep = Annotated[MethodRegistryService, Depends(get_method_registry
 IndicatorQueryDep = Annotated[IndicatorQueryService, Depends(get_indicator_query_service)]
 AnalyticsQueryDep = Annotated[AnalyticsQueryService, Depends(get_analytics_query_service)]
 SignalQueryDep = Annotated[SignalQueryService, Depends(get_signal_query_service)]
+SurveillanceSummaryDep = Annotated[
+    SurveillanceSummaryService, Depends(get_surveillance_summary_service)
+]
 IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integration_status_service)]
 
 

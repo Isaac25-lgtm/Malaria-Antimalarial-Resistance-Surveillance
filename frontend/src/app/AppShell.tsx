@@ -22,6 +22,11 @@ interface NavigationItem {
 }
 
 const PRIMARY_NAVIGATION: NavigationItem[] = [
+  {
+    to: "/command-centre",
+    label: "Command centre",
+    permission: "surveillance:view_aggregate",
+  },
   { to: "/status", label: "System status" },
   {
     to: "/national",

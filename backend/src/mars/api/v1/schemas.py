@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -628,6 +628,81 @@ class SignalExplanationSummary(MarsModel):
     input_fingerprint: str
     generator_version: str
     generated_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# National command centre — Prompt 23
+# ---------------------------------------------------------------------------
+class PeriodWindow(MarsModel):
+    """The reporting window a figure belongs to.
+
+    Always returned beside a value. A number without its period is a number
+    nobody can check.
+    """
+
+    start: date
+    end: date
+
+
+class MeasureComparison(MarsModel):
+    """The same measure over the preceding window of equal length."""
+
+    period: PeriodWindow
+    value: str | None
+    direction: Literal["up", "down", "unchanged"] | None
+    status: str
+    status_detail: str | None
+
+
+class SurveillanceMeasure(MarsModel):
+    """One governed figure, or an explicit statement that there is none.
+
+    ``status`` distinguishes a real value from the several ways a value can be
+    absent, so a screen never has to render an absence as a zero.
+    """
+
+    code: str
+    label: str
+    value: str | None
+    unit: str | None
+    numerator: int | None
+    denominator: int | None
+    period: PeriodWindow
+    geography_grain: str
+    geography_unit_id: uuid.UUID | None
+    source: str
+    method_version_id: uuid.UUID | None
+    source_freshness: datetime | None
+    comparison: MeasureComparison | None
+    status: str
+    status_detail: str | None
+    missing_configuration: list[str]
+
+
+class PriorityDistrict(MarsModel):
+    """A district with active signals, and what that ordering means."""
+
+    geography_unit_id: uuid.UUID
+    preferred_code: str | None
+    name: str
+    active_signals: int
+    commodity_alerts: int
+    period: PeriodWindow
+    ordering: str
+    ordering_detail: str
+
+
+class SurveillanceProvenance(MarsModel):
+    """What the screen was built from, and whether it is configured at all."""
+
+    period: PeriodWindow
+    indicators_registered: int
+    indicators_approved: int
+    analytics_refreshed_at: datetime | None
+    signals_generated_at: datetime | None
+    interpretation_boundary: str
+    analytically_configured: bool
+    configuration_detail: str | None
 
 
 # Forward references resolved after all models are declared.

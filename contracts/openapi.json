@@ -2473,6 +2473,65 @@
         "title": "MappingProposalSummary",
         "type": "object"
       },
+      "MeasureComparison": {
+        "description": "The same measure over the preceding window of equal length.",
+        "properties": {
+          "direction": {
+            "anyOf": [
+              {
+                "enum": [
+                  "up",
+                  "down",
+                  "unchanged"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Detail"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "period",
+          "value",
+          "direction",
+          "status",
+          "status_detail"
+        ],
+        "title": "MeasureComparison",
+        "type": "object"
+      },
       "MethodDefinitionSummary": {
         "properties": {
           "code": {
@@ -2922,6 +2981,83 @@
           "offset"
         ],
         "title": "Page[OrganisationUnitSummary]",
+        "type": "object"
+      },
+      "PeriodWindow": {
+        "description": "The reporting window a figure belongs to.\n\nAlways returned beside a value. A number without its period is a number\nnobody can check.",
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "PeriodWindow",
+        "type": "object"
+      },
+      "PriorityDistrict": {
+        "description": "A district with active signals, and what that ordering means.",
+        "properties": {
+          "active_signals": {
+            "title": "Active Signals",
+            "type": "integer"
+          },
+          "commodity_alerts": {
+            "title": "Commodity Alerts",
+            "type": "integer"
+          },
+          "geography_unit_id": {
+            "format": "uuid",
+            "title": "Geography Unit Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ordering": {
+            "title": "Ordering",
+            "type": "string"
+          },
+          "ordering_detail": {
+            "title": "Ordering Detail",
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "preferred_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Code"
+          }
+        },
+        "required": [
+          "geography_unit_id",
+          "preferred_code",
+          "name",
+          "active_signals",
+          "commodity_alerts",
+          "period",
+          "ordering",
+          "ordering_detail"
+        ],
+        "title": "PriorityDistrict",
         "type": "object"
       },
       "ProblemDetail": {
@@ -3422,6 +3558,233 @@
         ],
         "title": "SpatialAggregationBasis",
         "type": "string"
+      },
+      "SurveillanceMeasure": {
+        "description": "One governed figure, or an explicit statement that there is none.\n\n``status`` distinguishes a real value from the several ways a value can be\nabsent, so a screen never has to render an absence as a zero.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasureComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "geography_grain": {
+            "title": "Geography Grain",
+            "type": "string"
+          },
+          "geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography Unit Id"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "missing_configuration": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Configuration",
+            "type": "array"
+          },
+          "numerator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numerator"
+          },
+          "period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_freshness": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Freshness"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Detail"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "value",
+          "unit",
+          "numerator",
+          "denominator",
+          "period",
+          "geography_grain",
+          "geography_unit_id",
+          "source",
+          "method_version_id",
+          "source_freshness",
+          "comparison",
+          "status",
+          "status_detail",
+          "missing_configuration"
+        ],
+        "title": "SurveillanceMeasure",
+        "type": "object"
+      },
+      "SurveillanceProvenance": {
+        "description": "What the screen was built from, and whether it is configured at all.",
+        "properties": {
+          "analytically_configured": {
+            "title": "Analytically Configured",
+            "type": "boolean"
+          },
+          "analytics_refreshed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analytics Refreshed At"
+          },
+          "configuration_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configuration Detail"
+          },
+          "indicators_approved": {
+            "title": "Indicators Approved",
+            "type": "integer"
+          },
+          "indicators_registered": {
+            "title": "Indicators Registered",
+            "type": "integer"
+          },
+          "interpretation_boundary": {
+            "title": "Interpretation Boundary",
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "signals_generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals Generated At"
+          }
+        },
+        "required": [
+          "period",
+          "indicators_registered",
+          "indicators_approved",
+          "analytics_refreshed_at",
+          "signals_generated_at",
+          "interpretation_boundary",
+          "analytically_configured",
+          "configuration_detail"
+        ],
+        "title": "SurveillanceProvenance",
+        "type": "object"
       },
       "ValidationError": {
         "properties": {
@@ -6155,6 +6518,276 @@
         "summary": "Get Explanation",
         "tags": [
           "signals"
+        ]
+      }
+    },
+    "/api/v1/surveillance/districts/{geography_unit_id}/summary": {
+      "get": {
+        "description": "The same measures for one district.",
+        "operationId": "district_summary_api_v1_surveillance_districts__geography_unit_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "geography_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Geography Unit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurveillanceMeasure"
+                  },
+                  "title": "Response District Summary Api V1 Surveillance Districts  Geography Unit Id  Summary Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "District Summary",
+        "tags": [
+          "surveillance"
+        ]
+      }
+    },
+    "/api/v1/surveillance/national/summary": {
+      "get": {
+        "description": "The KPI strip: one governed measure per record.\n\nA measure with no approved indicator version reports ``not_configured``\nand names what is missing, rather than reporting zero.",
+        "operationId": "national_summary_api_v1_surveillance_national_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurveillanceMeasure"
+                  },
+                  "title": "Response National Summary Api V1 Surveillance National Summary Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "National Summary",
+        "tags": [
+          "surveillance"
+        ]
+      }
+    },
+    "/api/v1/surveillance/priority-districts": {
+      "get": {
+        "description": "Districts ordered by active signal count.\n\nA count of records, not a governed priority score - MARS has no approved\nway to rank districts against one another, and the ordering says so.",
+        "operationId": "priority_districts_api_v1_surveillance_priority_districts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PriorityDistrict"
+                  },
+                  "title": "Response Priority Districts Api V1 Surveillance Priority Districts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Priority Districts",
+        "tags": [
+          "surveillance"
+        ]
+      }
+    },
+    "/api/v1/surveillance/provenance": {
+      "get": {
+        "description": "Freshness, configuration state and the interpretation boundary.",
+        "operationId": "provenance_api_v1_surveillance_provenance_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurveillanceProvenance"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Provenance",
+        "tags": [
+          "surveillance"
         ]
       }
     }

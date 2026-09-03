@@ -933,6 +933,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/surveillance/districts/{geography_unit_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Summary
+         * @description The same measures for one district.
+         */
+        get: operations["district_summary_api_v1_surveillance_districts__geography_unit_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/surveillance/national/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * National Summary
+         * @description The KPI strip: one governed measure per record.
+         *
+         *     A measure with no approved indicator version reports ``not_configured``
+         *     and names what is missing, rather than reporting zero.
+         */
+        get: operations["national_summary_api_v1_surveillance_national_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/surveillance/priority-districts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Priority Districts
+         * @description Districts ordered by active signal count.
+         *
+         *     A count of records, not a governed priority score - MARS has no approved
+         *     way to rank districts against one another, and the ordering says so.
+         */
+        get: operations["priority_districts_api_v1_surveillance_priority_districts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/surveillance/provenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Provenance
+         * @description Freshness, configuration state and the interpretation boundary.
+         */
+        get: operations["provenance_api_v1_surveillance_provenance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1891,6 +1977,21 @@ export interface components {
             /** System */
             system: string;
         };
+        /**
+         * MeasureComparison
+         * @description The same measure over the preceding window of equal length.
+         */
+        MeasureComparison: {
+            /** Direction */
+            direction: ("up" | "down" | "unchanged") | null;
+            period: components["schemas"]["PeriodWindow"];
+            /** Status */
+            status: string;
+            /** Status Detail */
+            status_detail: string | null;
+            /** Value */
+            value: string | null;
+        };
         /** MethodDefinitionSummary */
         MethodDefinitionSummary: {
             /** Code */
@@ -2052,6 +2153,49 @@ export interface components {
              * @description Omitted when counting would be costly.
              */
             total?: number | null;
+        };
+        /**
+         * PeriodWindow
+         * @description The reporting window a figure belongs to.
+         *
+         *     Always returned beside a value. A number without its period is a number
+         *     nobody can check.
+         */
+        PeriodWindow: {
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+        };
+        /**
+         * PriorityDistrict
+         * @description A district with active signals, and what that ordering means.
+         */
+        PriorityDistrict: {
+            /** Active Signals */
+            active_signals: number;
+            /** Commodity Alerts */
+            commodity_alerts: number;
+            /**
+             * Geography Unit Id
+             * Format: uuid
+             */
+            geography_unit_id: string;
+            /** Name */
+            name: string;
+            /** Ordering */
+            ordering: string;
+            /** Ordering Detail */
+            ordering_detail: string;
+            period: components["schemas"]["PeriodWindow"];
+            /** Preferred Code */
+            preferred_code: string | null;
         };
         /**
          * ProblemDetail
@@ -2283,6 +2427,66 @@ export interface components {
          * @enum {string}
          */
         SpatialAggregationBasis: "residence" | "facility_location";
+        /**
+         * SurveillanceMeasure
+         * @description One governed figure, or an explicit statement that there is none.
+         *
+         *     ``status`` distinguishes a real value from the several ways a value can be
+         *     absent, so a screen never has to render an absence as a zero.
+         */
+        SurveillanceMeasure: {
+            /** Code */
+            code: string;
+            comparison: components["schemas"]["MeasureComparison"] | null;
+            /** Denominator */
+            denominator: number | null;
+            /** Geography Grain */
+            geography_grain: string;
+            /** Geography Unit Id */
+            geography_unit_id: string | null;
+            /** Label */
+            label: string;
+            /** Method Version Id */
+            method_version_id: string | null;
+            /** Missing Configuration */
+            missing_configuration: string[];
+            /** Numerator */
+            numerator: number | null;
+            period: components["schemas"]["PeriodWindow"];
+            /** Source */
+            source: string;
+            /** Source Freshness */
+            source_freshness: string | null;
+            /** Status */
+            status: string;
+            /** Status Detail */
+            status_detail: string | null;
+            /** Unit */
+            unit: string | null;
+            /** Value */
+            value: string | null;
+        };
+        /**
+         * SurveillanceProvenance
+         * @description What the screen was built from, and whether it is configured at all.
+         */
+        SurveillanceProvenance: {
+            /** Analytically Configured */
+            analytically_configured: boolean;
+            /** Analytics Refreshed At */
+            analytics_refreshed_at: string | null;
+            /** Configuration Detail */
+            configuration_detail: string | null;
+            /** Indicators Approved */
+            indicators_approved: number;
+            /** Indicators Registered */
+            indicators_registered: number;
+            /** Interpretation Boundary */
+            interpretation_boundary: string;
+            period: components["schemas"]["PeriodWindow"];
+            /** Signals Generated At */
+            signals_generated_at: string | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -3726,6 +3930,137 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignalExplanationSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    district_summary_api_v1_surveillance_districts__geography_unit_id__summary_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+            };
+            header?: never;
+            path: {
+                geography_unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveillanceMeasure"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    national_summary_api_v1_surveillance_national_summary_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveillanceMeasure"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    priority_districts_api_v1_surveillance_priority_districts_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriorityDistrict"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    provenance_api_v1_surveillance_provenance_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveillanceProvenance"];
                 };
             };
             /** @description Validation Error */

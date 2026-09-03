@@ -1,0 +1,102 @@
+/*
+ * KPI cards.
+ *
+ * Neutral surfaces, one accent, status only on chips (blueprint 047). A card
+ * never changes colour because its number is bad; if every card could shout,
+ * none of them would be heard.
+ */
+
+.measure-grid {
+  display: grid;
+  gap: var(--space-3);
+  /* Cards find their own number per row. At 1440px this is a strip of four to
+     six; on a tablet it folds to two; on a phone it stacks. */
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.measure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  /* Depth from a border, not a blur. */
+  box-shadow: var(--shadow-raised);
+}
+
+/* A measure with no figure is visually quieter, never alarming: an absent
+   number is not a bad number. */
+.measure[data-status="not_configured"],
+.measure[data-status="unavailable"],
+.measure[data-status="outside_scope"] {
+  background: var(--surface-inset);
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.measure__label {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+}
+
+.measure__value {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--ink-primary);
+  /* Tabular figures so a column of numbers aligns and a changing value does
+     not shift the layout under the reader. */
+  font-variant-numeric: tabular-nums;
+}
+
+.measure__note,
+.measure__comparison,
+.measure__detail,
+.measure__missing,
+.measure__source {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-tertiary);
+  line-height: var(--leading-normal);
+}
+
+.measure__note {
+  color: var(--ink-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.measure__detail {
+  color: var(--ink-secondary);
+}
+
+.measure__missing {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.measure__absent {
+  margin: 0;
+}
+
+.measure__source {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-subtle);
+  font-size: var(--text-2xs);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 40rem) {
+  .measure-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -14,6 +14,7 @@ import { ApiError } from "../api/client";
 import { AuthProvider } from "../auth/AuthProvider";
 import { useAuth } from "../auth/context";
 import { RedirectIfAuthenticated, RequireAuth } from "../auth/RouteGuard";
+import { CommandCentreView } from "../features/command-centre/CommandCentreView";
 import { AppShell } from "./AppShell";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotFoundView } from "./NotFoundView";
@@ -80,6 +81,15 @@ function AppRoutes() {
         }
       >
         <Route index element={<LandingRedirect />} />
+
+        <Route
+          path="command-centre"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <CommandCentreView />
+            </RequireAuth>
+          }
+        />
 
         <Route path="status" element={<SystemStatusView />} />
         <Route path="profile" element={<AccessProfileView />} />

@@ -1,0 +1,68 @@
+/*
+ * National command centre layout.
+ *
+ * Blueprint 046: one dominant region, not a wall of equal cards. The KPI strip
+ * orients, the two-column body carries the operational lists, and the panels
+ * below are secondary. Neutral surfaces throughout - only chips carry status
+ * colour.
+ */
+
+.command-centre {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.command-centre__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.section-heading {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-primary);
+}
+
+.command-centre__columns {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  align-items: start;
+}
+
+.panel__lede,
+.panel__footnote {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--ink-secondary);
+}
+
+.panel__footnote {
+  margin: var(--space-3) var(--space-4) 0;
+  padding-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink-tertiary);
+}
+
+.table__meta {
+  font-size: var(--text-2xs);
+  color: var(--ink-tertiary);
+}
+
+@media (max-width: 60rem) {
+  .command-centre__columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 48rem) {
+  .command-centre__header {
+    flex-direction: column;
+  }
+}

@@ -250,4 +250,54 @@ export const api = {
     request<Schemas["ConfigurationKeySummary"][]>("/governance/configuration-keys"),
 
   methods: () => request<Schemas["MethodDefinitionSummary"][]>("/governance/methods"),
+
+  // -- Surveillance command centre (Prompt 23) ------------------------------
+  //
+  // Each returns records, not numbers. A measure carries its own period,
+  // scope, source, method version and availability status, so the interface
+  // renders "not configured" from the server's own words rather than
+  // inventing a zero.
+  nationalSummary: (query: { period_start: string; period_end: string }) =>
+    request<Schemas["SurveillanceMeasure"][]>("/surveillance/national/summary", { query }),
+
+  districtSummary: (unitId: string, query: { period_start: string; period_end: string }) =>
+    request<Schemas["SurveillanceMeasure"][]>(
+      `/surveillance/districts/${encodeURIComponent(unitId)}/summary`,
+      { query },
+    ),
+
+  priorityDistricts: (query: {
+    period_start: string;
+    period_end: string;
+    limit?: number;
+  }) => request<Schemas["PriorityDistrict"][]>("/surveillance/priority-districts", { query }),
+
+  surveillanceProvenance: (query: { period_start: string; period_end: string }) =>
+    request<Schemas["SurveillanceProvenance"]>("/surveillance/provenance", { query }),
+
+  analyticalResults: (
+    kind:
+      | "recurrence"
+      | "testing"
+      | "treatment"
+      | "baseline"
+      | "anomaly"
+      | "hotspot"
+      | "cluster",
+    query: { period_from?: string; period_to?: string; limit?: number },
+  ) =>
+    request<Schemas["AnalyticalRecordSummary"][]>(
+      `/analytics/results/${kind}`,
+      { query },
+    ),
+
+  commodityAlerts: (query: { period_from?: string; period_to?: string; limit?: number }) =>
+    request<Schemas["AnalyticalRecordSummary"][]>("/analytics/commodity-alerts", { query }),
+
+  signals: (query: {
+    period_from?: string;
+    period_to?: string;
+    active_only?: boolean;
+    limit?: number;
+  }) => request<Schemas["SignalSummary"][]>("/signals", { query }),
 };
