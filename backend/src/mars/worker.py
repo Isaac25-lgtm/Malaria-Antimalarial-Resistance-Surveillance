@@ -27,6 +27,7 @@ from mars.core.settings import Settings, get_settings
 #: Prompt 12 - DHIS2 exchange
 #: Prompt 13 - indicator materialisation
 #: Prompt 14 - episode construction
+#: Prompt 15 - recurrence surveillance
 #: Prompt 17 - historical baseline refresh
 #: Prompt 18 - temporal anomaly and persistence
 #: Prompt 19 - geographic aggregation
@@ -36,6 +37,7 @@ REGISTERED_JOBS: tuple[str, ...] = (
     "geography.import",
     "indicator.materialise",
     "episode.build",
+    "recurrence.compute",
 )
 
 

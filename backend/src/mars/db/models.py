@@ -56,6 +56,7 @@ from mars.domain.ingestion import (
 )
 from mars.domain.integration import IntegrationMappingProposal, IntegrationRun
 from mars.domain.organisation import Facility, FacilityIdentifier, OrganisationUnit
+from mars.domain.recurrence import RecurrenceResult
 from mars.domain.security import (
     Role,
     RolePermission,
@@ -106,6 +107,7 @@ __all__ = [
     "OrganisationUnit",
     "PatientReference",
     "ReconciliationFinding",
+    "RecurrenceResult",
     "ReidentificationEvent",
     "Role",
     "RolePermission",

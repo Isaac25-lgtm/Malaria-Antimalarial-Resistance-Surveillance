@@ -837,3 +837,41 @@ class EpisodeBuildStatus(str, enum.Enum):
     #: is a governance fact rather than a bug.
     NOT_CONFIGURED = "not_configured"
     FAILED = "failed"
+
+
+# ---------------------------------------------------------------------------
+# Recurrence surveillance — Prompt 15
+# ---------------------------------------------------------------------------
+class RecurrenceMeasure(str, enum.Enum):
+    """What a recurrence result counts.
+
+    Every value is a count or a proportion of *observed patterns*. None is a
+    clinical outcome: routine data cannot establish that a repeat positive is
+    treatment failure, recrudescence, reinfection or resistance, and no measure
+    here is permitted to imply otherwise.
+    """
+
+    #: Patients with two or more positive results within the analysis window.
+    REPEAT_POSITIVE_PATIENTS = "repeat_positive_patients"
+    #: Episodes containing two or more positive results.
+    REPEAT_POSITIVE_EPISODES = "repeat_positive_episodes"
+    #: Patients with more than one distinct episode.
+    PATIENTS_WITH_MULTIPLE_EPISODES = "patients_with_multiple_episodes"
+    #: Repeat-positive patients over linked patients with any positive.
+    REPEAT_POSITIVE_PROPORTION = "repeat_positive_proportion"
+    #: Return intervals falling in a governed band.
+    INTERVAL_BAND_COUNT = "interval_band_count"
+
+
+class RecurrenceScopeKind(str, enum.Enum):
+    """Which population a recurrence figure describes.
+
+    Facility of care and residence geography are kept apart on purpose. A
+    patient may attend a facility outside their own district, and merging the
+    two attributes a pattern to the wrong place - which is the difference
+    between investigating a clinic and investigating a village.
+    """
+
+    FACILITY = "facility"
+    RESIDENCE_DISTRICT = "residence_district"
+    RESIDENCE_SUBCOUNTY = "residence_subcounty"
