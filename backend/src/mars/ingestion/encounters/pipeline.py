@@ -336,6 +336,7 @@ class EncounterIngestionPipeline:
         """
         existing = self._session.execute(
             select(ImportBatch).where(
+                ImportBatch.import_domain == "encounter",
                 ImportBatch.source_system == envelope.source_system,
                 ImportBatch.artefact_checksum == checksum,
             )
@@ -347,6 +348,7 @@ class EncounterIngestionPipeline:
             # A dry run must not create a batch: it reports what a load would do.
             return (
                 ImportBatch(
+                    import_domain="encounter",
                     source_system=envelope.source_system,
                     schema_version=envelope.schema_version,
                     artefact_checksum=checksum,
@@ -361,6 +363,7 @@ class EncounterIngestionPipeline:
             )
 
         batch = ImportBatch(
+            import_domain="encounter",
             source_system=envelope.source_system,
             schema_version=envelope.schema_version,
             artefact_checksum=checksum,
@@ -385,6 +388,7 @@ class EncounterIngestionPipeline:
             savepoint.rollback()
             raced = self._session.execute(
                 select(ImportBatch).where(
+                    ImportBatch.import_domain == "encounter",
                     ImportBatch.source_system == envelope.source_system,
                     ImportBatch.artefact_checksum == checksum,
                 )

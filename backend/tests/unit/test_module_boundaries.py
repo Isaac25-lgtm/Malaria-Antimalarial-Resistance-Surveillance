@@ -170,7 +170,7 @@ class TestIngestionContainsOnlyWhatHasBeenBuilt:
     """
 
     #: Update this only when the prompt that owns the sub-package is done.
-    IMPLEMENTED: ClassVar[list[str]] = ["encounters", "geography"]
+    IMPLEMENTED: ClassVar[list[str]] = ["aggregate", "encounters", "geography"]
 
     def test_only_the_implemented_sub_packages_exist(self) -> None:
         directory = SRC / "ingestion"

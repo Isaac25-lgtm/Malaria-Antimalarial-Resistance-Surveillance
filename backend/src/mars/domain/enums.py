@@ -520,3 +520,104 @@ class ValidationSeverity(str, enum.Enum):
     WARNING = "warning"
     ERROR = "error"
     FATAL = "fatal"
+
+
+# ---------------------------------------------------------------------------
+# Aggregate reporting — Prompt 11
+# ---------------------------------------------------------------------------
+class AggregateForm(str, enum.Enum):
+    """Which printed form a submission transcribes.
+
+    The form is part of a submission's identity, not a label. HMIS 033b and
+    HMIS 105 both report malaria testing and treatment, over different periods
+    and with different disaggregation, and a figure from one is not
+    interchangeable with a figure from the other.
+    """
+
+    #: Health Unit Weekly Epidemiological Surveillance Report.
+    HMIS_033B = "hmis_033b"
+    #: Health Unit Outpatient Monthly Report.
+    HMIS_105 = "hmis_105"
+
+
+class AggregatePeriodType(str, enum.Enum):
+    """The reporting period a form covers.
+
+    033b is weekly - Monday to Sunday, stated on the form itself. 105 is
+    monthly, due on the 7th of the following month. Storing the type alongside
+    the dates means a weekly and a monthly figure can never be summed by
+    accident.
+    """
+
+    WEEK = "week"
+    MONTH = "month"
+
+
+class AgeBand(str, enum.Enum):
+    """The age bands HMIS 105 prints.
+
+    Exactly the form's own bands, in the form's own order. MARS does not
+    invent a band, and does not re-band a reported figure: an aggregate arrives
+    already summarised, and splitting it again would be inventing detail the
+    facility never reported.
+
+    ``UNSPECIFIED`` is for forms with no age disaggregation at all - 033b
+    reports a single total per field - so the same table serves both without
+    pretending 033b carries a band it does not.
+    """
+
+    DAYS_0_28 = "days_0_28"
+    DAYS_29_TO_YEARS_4 = "days_29_to_years_4"
+    YEARS_5_9 = "years_5_9"
+    YEARS_10_19 = "years_10_19"
+    YEARS_20_PLUS = "years_20_plus"
+    UNSPECIFIED = "unspecified"
+
+
+class AggregateSubmissionStatus(str, enum.Enum):
+    """Where a submission is in its life.
+
+    ``SUPERSEDED`` exists because a corrected weekly report is a real event.
+    The original was already acted on, so it is kept and marked rather than
+    overwritten - otherwise the record would show a district that never had the
+    figure anyone reacted to.
+    """
+
+    RECEIVED = "received"
+    VALIDATED = "validated"
+    QUARANTINED = "quarantined"
+    ACCEPTED = "accepted"
+    SUPERSEDED = "superseded"
+
+
+class StockMetric(str, enum.Enum):
+    """The four columns HMIS 105 section 6.1 prints for every commodity.
+
+    ``DAYS_OUT_OF_STOCK`` is the one that matters for surveillance: the form
+    defines out of stock as *none left in the health unit store*, and a testing
+    decline that coincides with days out of stock has a commodity explanation
+    rather than an epidemiological one.
+    """
+
+    QUANTITY_CONSUMED = "quantity_consumed"
+    DAYS_OUT_OF_STOCK = "days_out_of_stock"
+    STOCK_ON_HAND = "stock_on_hand"
+    QUANTITY_EXPIRED = "quantity_expired"
+
+
+class ReconciliationStatus(str, enum.Enum):
+    """How a reported aggregate compares with the same figure derived from
+    encounters.
+
+    ``UNCOMPARABLE`` is a first-class outcome, not a failure. If MARS holds no
+    e-register data for that facility and period, there is nothing to compare
+    against, and saying so is more useful than reporting a difference of
+    everything.
+    """
+
+    MATCHED = "matched"
+    WITHIN_TOLERANCE = "within_tolerance"
+    DIFFERS = "differs"
+    REPORTED_ONLY = "reported_only"
+    DERIVED_ONLY = "derived_only"
+    UNCOMPARABLE = "uncomparable"

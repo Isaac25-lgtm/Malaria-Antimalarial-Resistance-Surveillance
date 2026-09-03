@@ -46,6 +46,7 @@ mars-worker = "mars.worker:run"
 mars-import-geography = "mars.ingestion.geography.cli:run"
 mars-import-encounters = "mars.ingestion.encounters.cli:run"
 mars-demo-dataset = "mars.demo.cli:run"
+mars-import-aggregate = "mars.ingestion.aggregate.cli:run"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

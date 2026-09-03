@@ -18,24 +18,25 @@ surveillance signals that a named person is accountable for investigating.
 
 ## What exists today
 
-This build covers **phases 1 and 2** of a fourteen-phase plan.
+This build covers the repository foundation through **Prompt 11: routine HMIS
+aggregate ingestion and reconciliation**.
 
 | Delivered | Detail |
 | --- | --- |
 | Repository and runtime foundation | Monorepo, Docker Compose, CI, quality gates |
-| Database foundation | Six schemas, 20 tables, audit trail, governance registries |
+| Database foundation | Six schemas, 39 mapped tables, migrations through `0010`, audit trail, governance registries |
 | Authentication and authorisation | OIDC-ready, three authorisation axes, permission matrix |
-| Reference-data domain model | Geography, organisation units, facilities |
+| Geography and maps | Versioned Uganda boundaries, PostGIS import, scoped map API and national map workspace |
+| OPD/e-register | HMIS OPD 002 canonical encounters, strict JSONL ingestion, quarantine and lineage |
+| Protected identity | Pseudonymous analytical records; encrypted identity vault behind a separate database role |
+| Demonstration data | Deterministic synthetic data loaded through the real ingestion path |
+| Routine HMIS | HMIS 033b/105 aggregate submissions, immutable revisions and reported-versus-derived reconciliation |
 
-**Not built yet, and deliberately absent rather than stubbed:** encounter
-ingestion, patient episodes, indicators, anomaly detection, signals,
-investigations, the national dashboard, and the optional AI assistant. A
-navigation item leading to a fabricated dashboard would be worse than one that
-is not there.
-
-The application therefore has no surveillance data. Every view says so
-specifically — "no boundary version has been imported" is a different fact from
-"no facility master has been supplied", and the interface distinguishes them.
+**Not built yet, and deliberately absent rather than stubbed:** DHIS2 exchange,
+the governed indicator engine, malaria episodes and recurrence analysis,
+temporal/spatial detection, signals, investigations, action-centre workflows
+and the optional AI assistant. MARS can hold and reconcile routine source data
+now; it does not yet turn discrepancies or patterns into operational signals.
 
 ---
 
@@ -51,7 +52,8 @@ specifically — "no boundary version has been imported" is a different fact fro
  IDENTITY VAULT                                         CANONICAL STORE
  mars_identity                                          mars_core
  separate DB role                    person_key         no direct identifiers
- empty until Prompt 8               ------------>       geography · facilities
+ encrypted + separate role          ------------>       geography · encounters
+                                                        aggregates · facilities
         |                                                       |
                                                         ANALYTICS  (Prompt 13+)
                                                                 |
@@ -273,12 +275,11 @@ scripts/          Geography audit, terminology lint, contract export
   has therefore not validated the Compose file; its YAML parses with the
   expected five services, two volumes, health checks and dependency ordering,
   which is a structural check rather than validation.
-- Everything requiring a live database **has** been verified, against an
-  isolated PostgreSQL 16.4 + PostGIS 3.6.2 cluster stood up on a non-default
-  port for the purpose and removed afterwards. All three migrations applied,
-  round-tripped and were re-applied; the 20 integration tests passed. Neither
-  the existing PostgreSQL services nor their installation directories were
-  touched.
+- Database-backed work through Prompt 10 was verified against an isolated
+  PostgreSQL 16 + PostGIS cluster. Prompt 11 migration `0010` was separately
+  upgrade/downgrade tested and its 32 live integration assertions passed on an
+  isolated local test database. Test databases were removed afterwards; the
+  user's existing databases were not modified.
 - Migration `0003_phase2_hardening` installs the PostGIS geometry contract and
   therefore requires an extension-capable PostgreSQL server. Readiness reports
   an absent extension as `not_installed` and returns HTTP 503.
@@ -292,12 +293,11 @@ scripts/          Geography audit, terminology lint, contract export
   empty.
 - No population denominators. Until they arrive, spatial output can only be
   counts and proportions — never incidence.
-- HMIS 033b and HMIS 105 are available locally and recorded by checksum in
+- HMIS OPD 002, HMIS 033b and HMIS 105 are available locally and recorded by checksum in
   `data/manifests/hmis-reference-documents.sha256.json`; the large PDFs are
   intentionally excluded from Git. HMIS 105 has no useful text layer, so field
-  analysis will require visual inspection or OCR. OPD 002 remains the
-  highest-priority missing reference document before the canonical encounter
-  schema is built.
+  analysis uses visual inspection/OCR. Their implemented canonical subsets are
+  documented in `docs/data-dictionary/`.
 
 **Governance**
 

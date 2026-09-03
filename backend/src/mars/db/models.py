@@ -8,6 +8,13 @@ remembering to touch the migration environment.
 from __future__ import annotations
 
 from mars.db.base import Base
+from mars.domain.aggregate import (
+    AggregateObservation,
+    AggregateSubmission,
+    CommodityStockObservation,
+    LaboratoryTestObservation,
+    ReconciliationFinding,
+)
 from mars.domain.audit import AuditEvent
 from mars.domain.encounter import (
     OpdEncounter,
@@ -53,9 +60,12 @@ from mars.domain.security import (
 )
 
 __all__ = [
+    "AggregateObservation",
+    "AggregateSubmission",
     "AuditEvent",
     "Base",
     "BoundaryVersion",
+    "CommodityStockObservation",
     "ConfigurationKey",
     "ConfigurationVersion",
     "Facility",
@@ -70,6 +80,7 @@ __all__ = [
     "ImportSourceRow",
     "ImportStageExecution",
     "ImportValidationIssue",
+    "LaboratoryTestObservation",
     "MethodDefinition",
     "MethodVersion",
     "OpdEncounter",
@@ -79,6 +90,7 @@ __all__ = [
     "OpdEncounterTest",
     "OrganisationUnit",
     "PatientReference",
+    "ReconciliationFinding",
     "ReidentificationEvent",
     "Role",
     "RolePermission",

@@ -60,7 +60,14 @@ class ImportBatch(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         # same file at the same moment is exactly when a check-then-act race
         # produces two batches and twice the encounters.
         UniqueConstraint(
-            "source_system", "artefact_checksum", name="uq_import_batch_source_checksum"
+            "import_domain",
+            "source_system",
+            "artefact_checksum",
+            name="uq_import_batch_domain_source_checksum",
+        ),
+        CheckConstraint(
+            "import_domain IN ('encounter', 'aggregate')",
+            name="import_domain_known",
         ),
         CheckConstraint("length(artefact_checksum) = 64", name="checksum_is_sha256_hex"),
         CheckConstraint("declared_row_count >= 0", name="declared_row_count_not_negative"),
@@ -77,6 +84,10 @@ class ImportBatch(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         },
     )
 
+    #: Which canonical ingestion path owns the artefact. The same producer and
+    #: bytes can legitimately be offered to different contracts; domain is
+    #: therefore part of batch identity.
+    import_domain: Mapped[str] = mapped_column(String(24), nullable=False, default="encounter")
     source_system: Mapped[str] = mapped_column(String(64), nullable=False)
     schema_version: Mapped[str] = mapped_column(String(16), nullable=False)
 
@@ -220,6 +231,7 @@ class ImportSourceRow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_import_source_row_batch", "import_batch_id"),
         Index("ix_import_source_row_outcome", "import_batch_id", "outcome"),
         Index("ix_import_source_row_encounter", "opd_encounter_id"),
+        Index("ix_import_source_row_aggregate", "aggregate_submission_id"),
         {
             "schema": CORE,
             "comment": (
@@ -251,6 +263,17 @@ class ImportSourceRow(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     opd_encounter_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(f"{CORE}.opd_encounter.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    #: The aggregate submission this row produced, for HMIS 033b/105 imports.
+    aggregate_submission_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(
+            f"{CORE}.aggregate_submission.id",
+            ondelete="SET NULL",
+            name="fk_import_row_aggregate_submission",
+        ),
         nullable=True,
     )
 
