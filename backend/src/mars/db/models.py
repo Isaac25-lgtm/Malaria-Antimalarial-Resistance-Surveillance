@@ -68,6 +68,7 @@ from mars.domain.security import (
     UserRole,
     UserSensitivityScope,
 )
+from mars.domain.spatial import GeographicAggregationResult, HotspotResult, SpatialRun
 from mars.domain.surveillance import (
     CommodityOperationalAlert,
     CommodityStockFact,
@@ -95,10 +96,12 @@ __all__ = [
     "EpisodeMember",
     "Facility",
     "FacilityIdentifier",
+    "GeographicAggregationResult",
     "GeographyUnit",
     "GeographyUnitAlias",
     "GeographyUnitGeometry",
     "GeographyUnitRevision",
+    "HotspotResult",
     "IdentityIdentifier",
     "IdentityRecord",
     "ImportBatch",
@@ -125,6 +128,7 @@ __all__ = [
     "ReidentificationEvent",
     "Role",
     "RolePermission",
+    "SpatialRun",
     "TemporalAnomalyResult",
     "TestingSurveillanceResult",
     "TreatmentSurveillanceResult",

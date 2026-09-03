@@ -1117,3 +1117,73 @@ class AnomalyBuildStatus(str, enum.Enum):
     #: programme has not decided how large a departure has to be.
     NOT_CONFIGURED = "not_configured"
     FAILED = "failed"
+
+
+# ---------------------------------------------------------------------------
+# Geographic aggregation and hotspots — Prompt 19
+# ---------------------------------------------------------------------------
+class SpatialAggregationBasis(str, enum.Enum):
+    """Which geography a figure was rolled up by.
+
+    A patient may attend a clinic outside their own district. Rolling up by
+    where care was given and rolling up by where people live answer different
+    questions - one points at a clinic, the other at a village - and merging
+    them attributes a pattern to the wrong place. Stored so the two can never
+    be summed together.
+    """
+
+    RESIDENCE = "residence"
+    FACILITY_LOCATION = "facility_location"
+
+
+class SpatialCellStatus(str, enum.Enum):
+    """Why a map cell has the value it has - or has none.
+
+    Six states, deliberately distinct. A blank cell on a map is read as "no
+    malaria here" unless the reader is told otherwise, and every one of these
+    means something different from that.
+    """
+
+    #: A value, possibly zero. Zero is a figure, not an absence.
+    AVAILABLE = "available"
+    #: The unit reported nothing for the period.
+    MISSING = "missing"
+    #: A real value withheld because the cell is too small under an approved
+    #: suppression rule.
+    SUPPRESSED = "suppressed"
+    #: Computed, but the measure has no defined value here - no denominator,
+    #: insufficient data.
+    UNAVAILABLE = "unavailable"
+    #: MARS refuses this detail because no approved privacy configuration
+    #: exists. Not a statement about the data.
+    NOT_CONFIGURED = "not_configured"
+    #: Outside the requesting principal's authorised geography.
+    OUTSIDE_SCOPE = "outside_scope"
+
+
+class HotspotOutcome(str, enum.Enum):
+    """What a hotspot evaluation could conclude about one area.
+
+    As with temporal anomalies, "could not judge" never becomes "judged
+    normal". A red-free map is worth nothing if it cannot say which areas were
+    examined.
+    """
+
+    HOTSPOT = "hotspot"
+    NOT_HOTSPOT = "not_hotspot"
+    NOT_EVALUATED_NO_OBSERVATION = "not_evaluated_no_observation"
+    NOT_EVALUATED_NO_BASELINE = "not_evaluated_no_baseline"
+    NOT_EVALUATED_BELOW_MINIMUM_COUNT = "not_evaluated_below_minimum_count"
+    #: Too few of the area's facilities reported for the figure to describe it.
+    NOT_EVALUATED_INCOMPLETE_REPORTING = "not_evaluated_incomplete_reporting"
+
+
+class SpatialRunStatus(str, enum.Enum):
+    """Where a geographic aggregation or hotspot run got to."""
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    #: No approved hotspot definition. A hotspot must have a method, not just a
+    #: red colour.
+    NOT_CONFIGURED = "not_configured"
+    FAILED = "failed"

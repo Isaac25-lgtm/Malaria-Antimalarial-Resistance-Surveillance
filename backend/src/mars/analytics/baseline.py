@@ -668,50 +668,63 @@ class BaselineEngine:
         used: int,
         completeness: Decimal,
     ) -> tuple[BaselineSufficiency, IndicatorValueStatus, Decimal | None, Decimal | None]:
-        """Centre and spread, or an explicit statement that there is neither."""
-        if used == 0:
-            return (
-                BaselineSufficiency.NO_HISTORY,
-                IndicatorValueStatus.UNAVAILABLE_INSUFFICIENT_DATA,
-                None,
-                None,
-            )
-        if used < specification.minimum_history_periods:
-            return (
-                BaselineSufficiency.INSUFFICIENT_HISTORY,
-                IndicatorValueStatus.UNAVAILABLE_INSUFFICIENT_DATA,
-                None,
-                None,
-            )
-        if completeness < specification.minimum_completeness:
-            return (
-                BaselineSufficiency.INSUFFICIENT_COMPLETENESS,
-                IndicatorValueStatus.UNAVAILABLE_INSUFFICIENT_DATA,
-                None,
-                None,
-            )
+        return summarise_history(specification, values, used, completeness)
 
-        if specification.method is BaselineMethod.HISTORICAL_MEAN:
-            expected = sum(values, Decimal(0)) / Decimal(used)
-            spread = (
-                Decimal(str(statistics.stdev([float(v) for v in values]))) if used > 1 else None
-            )
-        else:
-            expected = Decimal(str(statistics.median([float(v) for v in values])))
-            if used > 1:
-                deviations = [abs(v - expected) for v in values]
-                spread = Decimal(str(statistics.median([float(d) for d in deviations])))
-            else:
-                # One period has a centre and no spread. Calling that spread
-                # zero would make the series look perfectly stable.
-                spread = None
 
+def summarise_history(
+    specification: BaselineSpecification,
+    values: list[Decimal],
+    used: int,
+    completeness: Decimal,
+) -> tuple[BaselineSufficiency, IndicatorValueStatus, Decimal | None, Decimal | None]:
+    """Centre and spread, or an explicit statement that there is neither.
+
+    Module-level so the spatial engines summarise an area's history with
+    exactly this arithmetic and these sufficiency rules. Two
+    implementations would drift, and the one that drifted would be the one
+    nobody was reading.
+    """
+    if used == 0:
         return (
-            BaselineSufficiency.SUFFICIENT,
-            IndicatorValueStatus.AVAILABLE,
-            expected.quantize(Decimal("0.000001")),
-            spread.quantize(Decimal("0.000001")) if spread is not None else None,
+            BaselineSufficiency.NO_HISTORY,
+            IndicatorValueStatus.UNAVAILABLE_INSUFFICIENT_DATA,
+            None,
+            None,
         )
+    if used < specification.minimum_history_periods:
+        return (
+            BaselineSufficiency.INSUFFICIENT_HISTORY,
+            IndicatorValueStatus.UNAVAILABLE_INSUFFICIENT_DATA,
+            None,
+            None,
+        )
+    if completeness < specification.minimum_completeness:
+        return (
+            BaselineSufficiency.INSUFFICIENT_COMPLETENESS,
+            IndicatorValueStatus.UNAVAILABLE_INSUFFICIENT_DATA,
+            None,
+            None,
+        )
+
+    if specification.method is BaselineMethod.HISTORICAL_MEAN:
+        expected = sum(values, Decimal(0)) / Decimal(used)
+        spread = Decimal(str(statistics.stdev([float(v) for v in values]))) if used > 1 else None
+    else:
+        expected = Decimal(str(statistics.median([float(v) for v in values])))
+        if used > 1:
+            deviations = [abs(v - expected) for v in values]
+            spread = Decimal(str(statistics.median([float(d) for d in deviations])))
+        else:
+            # One period has a centre and no spread. Calling that spread
+            # zero would make the series look perfectly stable.
+            spread = None
+
+    return (
+        BaselineSufficiency.SUFFICIENT,
+        IndicatorValueStatus.AVAILABLE,
+        expected.quantize(Decimal("0.000001")),
+        spread.quantize(Decimal("0.000001")) if spread is not None else None,
+    )
 
 
 def _shortfall_note(
@@ -792,4 +805,5 @@ __all__ = [
     "latest_build",
     "preceding_periods",
     "seasonal_periods",
+    "summarise_history",
 ]
