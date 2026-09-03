@@ -66,6 +66,12 @@ from mars.domain.security import (
     UserRole,
     UserSensitivityScope,
 )
+from mars.domain.surveillance import (
+    CommodityOperationalAlert,
+    CommodityStockFact,
+    TestingSurveillanceResult,
+    TreatmentSurveillanceResult,
+)
 
 __all__ = [
     "AggregateObservation",
@@ -73,6 +79,8 @@ __all__ = [
     "AuditEvent",
     "Base",
     "BoundaryVersion",
+    "CommodityOperationalAlert",
+    "CommodityStockFact",
     "CommodityStockObservation",
     "ConfigurationKey",
     "ConfigurationVersion",
@@ -111,6 +119,8 @@ __all__ = [
     "ReidentificationEvent",
     "Role",
     "RolePermission",
+    "TestingSurveillanceResult",
+    "TreatmentSurveillanceResult",
     "UserAccount",
     "UserFacilityScope",
     "UserGeographyScope",

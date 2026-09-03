@@ -875,3 +875,95 @@ class RecurrenceScopeKind(str, enum.Enum):
     FACILITY = "facility"
     RESIDENCE_DISTRICT = "residence_district"
     RESIDENCE_SUBCOUNTY = "residence_subcounty"
+
+
+# ---------------------------------------------------------------------------
+# Testing, treatment and commodity surveillance — Prompt 16
+# ---------------------------------------------------------------------------
+class TestingMeasure(str, enum.Enum):
+    """What a testing-surveillance result counts.
+
+    Testing practice, not disease. Every value describes what a facility did
+    with its tests; none describes how much malaria there is. Conflating the
+    two is how a testing collapse gets read as an improvement.
+    """
+
+    TESTING_COVERAGE = "testing_coverage"
+    RDT_SHARE = "rdt_share"
+    MICROSCOPY_SHARE = "microscopy_share"
+    TEST_POSITIVITY = "test_positivity"
+    NEGATIVE_CASES_TREATED = "negative_cases_treated"
+    UNTESTED_CASES_TREATED = "untested_cases_treated"
+    TESTING_VOLUME_CHANGE = "testing_volume_change"
+    MISSING_RESULT_COUNT = "missing_result_count"
+
+
+class TreatmentMeasure(str, enum.Enum):
+    """What a treatment-surveillance result counts.
+
+    Prescribing practice as the register records it. None of these establishes
+    that a patient received, took, or completed a drug: routine data cannot.
+    """
+
+    CONFIRMED_TREATED = "confirmed_treated"
+    CONFIRMED_NOT_TREATED = "confirmed_not_treated"
+    TREATED_WITHOUT_CONFIRMATION = "treated_without_confirmation"
+    REPEAT_TREATMENT_EPISODES = "repeat_treatment_episodes"
+    MISSING_TREATMENT_INFORMATION = "missing_treatment_information"
+
+
+class CommodityFactKind(str, enum.Enum):
+    """A commodity condition the source states outright.
+
+    Each of these is read directly off a reported field. None involves a
+    statistical judgement, which is why they can exist before any configuration
+    is approved - "the facility reported zero stock on hand" is a fact, not an
+    inference.
+
+    What is *not* here: prolonged, repeated, low and imminent. Those require
+    governed thresholds and appear only once a programme approves them.
+    """
+
+    #: The facility reported a stock balance of exactly zero.
+    STOCK_ON_HAND_ZERO = "stock_on_hand_zero"
+    #: The facility reported one or more days with none in the store.
+    DAYS_OUT_OF_STOCK_REPORTED = "days_out_of_stock_reported"
+    #: Every commodity cell for the period was blank. Not a stock-out - a
+    #: reporting gap, and the difference matters most when supply has failed.
+    STOCK_NOT_REPORTED = "stock_not_reported"
+
+
+class CommodityAlertKind(str, enum.Enum):
+    """A direct operational commodity alert.
+
+    Operational, not epidemiological. These say a supply chain needs
+    attention; they say nothing about malaria transmission, treatment response
+    or resistance, and Prompt 21 may reference one as context without ever
+    converting it into a treatment-response signal.
+
+    Only ``STOCK_OUT_REPORTED`` can be raised without governed configuration,
+    because it restates a fact the facility itself reported. Everything else
+    requires an approved rule and stays absent until one exists.
+    """
+
+    STOCK_OUT_REPORTED = "stock_out_reported"
+    PROLONGED_STOCK_OUT = "prolonged_stock_out"
+    REPEATED_STOCK_OUT = "repeated_stock_out"
+    MULTI_COMMODITY_STOCK_OUT = "multi_commodity_stock_out"
+    LOW_STOCK = "low_stock"
+    IMMINENT_STOCK_OUT = "imminent_stock_out"
+
+
+class AlertSeverity(str, enum.Enum):
+    """How urgent an operational alert is.
+
+    ``UNCLASSIFIED`` is the default and the only value MARS assigns on its own.
+    Mapping a condition to a severity is a programme decision: what counts as
+    critical depends on resupply times, buffer stocks and district capacity,
+    and an invented severity would drive a real prioritisation queue.
+    """
+
+    UNCLASSIFIED = "unclassified"
+    INFORMATIONAL = "informational"
+    ATTENTION = "attention"
+    URGENT = "urgent"
