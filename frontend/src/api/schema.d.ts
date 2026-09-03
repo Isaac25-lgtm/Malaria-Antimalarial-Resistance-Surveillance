@@ -882,6 +882,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/{product}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Generate Report
+         * @description One governed report, composed from the same records the screens show.
+         */
+        get: operations["generate_report_api_v1_reports__product__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{product}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Report
+         * @description The same report as CSV.
+         *
+         *     Requires the export permission separately from report generation: reading
+         *     a figure on screen and carrying it out of the system in a file are
+         *     different acts with different risks.
+         */
+        get: operations["export_report_api_v1_reports__product__export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/signals": {
         parameters: {
             query?: never;
@@ -1415,6 +1459,36 @@ export interface components {
             field: string;
             /** Message */
             message: string;
+        };
+        /**
+         * GeneratedReport
+         * @description A governed report, carrying its own provenance and interpretation limit.
+         */
+        GeneratedReport: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Geography Unit Id */
+            geography_unit_id: string | null;
+            /** Interpretation Limit */
+            interpretation_limit: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Product */
+            product: string;
+            provenance: components["schemas"]["SurveillanceProvenance"];
+            /** Rows */
+            rows: components["schemas"]["ReportRow"][];
         };
         /** GeographyAliasSummary */
         GeographyAliasSummary: {
@@ -2337,6 +2411,46 @@ export interface components {
              */
             status: string;
         };
+        /**
+         * ReportRow
+         * @description One measure as it appears in a report.
+         *
+         *     ``value`` stays null when the measure had none. A report that wrote zero
+         *     here would put a figure into a briefing that MARS never computed, and a
+         *     spreadsheet cell has nowhere to carry the caveat.
+         */
+        ReportRow: {
+            /** Code */
+            code: string;
+            /** Denominator */
+            denominator: number | null;
+            /** Label */
+            label: string;
+            /** Method Version Id */
+            method_version_id: string | null;
+            /** Numerator */
+            numerator: number | null;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Source */
+            source: string;
+            /** Status */
+            status: string;
+            /** Status Detail */
+            status_detail: string | null;
+            /** Unit */
+            unit: string | null;
+            /** Value */
+            value: string | null;
+        };
         /** SignalEvidenceSummary */
         SignalEvidenceSummary: {
             /** Contribution */
@@ -2441,11 +2555,15 @@ export interface components {
             generated_at: string;
             /** Geography Unit Id */
             geography_unit_id: string | null;
+            /** Group Key */
+            group_key: string;
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Input Fingerprint */
+            input_fingerprint: string;
             /**
              * Method Version Id
              * Format: uuid
@@ -3910,6 +4028,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganisationUnitDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_report_api_v1_reports__product__get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+                geography_unit_id?: string | null;
+            };
+            header?: never;
+            path: {
+                product: "national_brief" | "district_brief";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_report_api_v1_reports__product__export_csv_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+                geography_unit_id?: string | null;
+            };
+            header?: never;
+            path: {
+                product: "national_brief" | "district_brief";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV export */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
                 };
             };
             /** @description Validation Error */

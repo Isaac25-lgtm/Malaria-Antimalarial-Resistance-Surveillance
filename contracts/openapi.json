@@ -960,6 +960,68 @@
         "title": "FieldError",
         "type": "object"
       },
+      "GeneratedReport": {
+        "description": "A governed report, carrying its own provenance and interpretation limit.",
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography Unit Id"
+          },
+          "interpretation_limit": {
+            "title": "Interpretation Limit",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/SurveillanceProvenance"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ReportRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product",
+          "generated_at",
+          "period_start",
+          "period_end",
+          "geography_unit_id",
+          "rows",
+          "interpretation_limit",
+          "provenance"
+        ],
+        "title": "GeneratedReport",
+        "type": "object"
+      },
       "GeographyAliasSummary": {
         "properties": {
           "geography_unit_id": {
@@ -3267,6 +3329,120 @@
         "title": "ReadinessResponse",
         "type": "object"
       },
+      "ReportRow": {
+        "description": "One measure as it appears in a report.\n\n``value`` stays null when the measure had none. A report that wrote zero\nhere would put a figure into a briefing that MARS never computed, and a\nspreadsheet cell has nowhere to carry the caveat.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "numerator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numerator"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Detail"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "value",
+          "unit",
+          "numerator",
+          "denominator",
+          "status",
+          "status_detail",
+          "period_start",
+          "period_end",
+          "source",
+          "method_version_id"
+        ],
+        "title": "ReportRow",
+        "type": "object"
+      },
       "SignalEvidenceSummary": {
         "properties": {
           "contribution": {
@@ -3507,9 +3683,17 @@
             ],
             "title": "Geography Unit Id"
           },
+          "group_key": {
+            "title": "Group Key",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
+            "type": "string"
+          },
+          "input_fingerprint": {
+            "title": "Input Fingerprint",
             "type": "string"
           },
           "method_version_id": {
@@ -3625,6 +3809,8 @@
           "recommended_action_codes",
           "method_version_id",
           "rule_code",
+          "input_fingerprint",
+          "group_key",
           "source_cutoff",
           "generated_at",
           "supersedes_id",
@@ -6420,6 +6606,180 @@
         "summary": "One organisation unit, with its ancestor chain",
         "tags": [
           "organisation"
+        ]
+      }
+    },
+    "/api/v1/reports/{product}": {
+      "get": {
+        "description": "One governed report, composed from the same records the screens show.",
+        "operationId": "generate_report_api_v1_reports__product__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "enum": [
+                "national_brief",
+                "district_brief"
+              ],
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geography_unit_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geography Unit Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Generate Report",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/{product}/export.csv": {
+      "get": {
+        "description": "The same report as CSV.\n\nRequires the export permission separately from report generation: reading\na figure on screen and carrying it out of the system in a file are\ndifferent acts with different risks.",
+        "operationId": "export_report_api_v1_reports__product__export_csv_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "enum": [
+                "national_brief",
+                "district_brief"
+              ],
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geography_unit_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geography Unit Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {}
+            },
+            "description": "CSV export"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Export Report",
+        "tags": [
+          "reports"
         ]
       }
     },

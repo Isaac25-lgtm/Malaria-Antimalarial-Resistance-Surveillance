@@ -140,6 +140,12 @@ class SignalQueryService:
             "recommended_action_codes": signal.recommended_action_codes,
             "method_version_id": signal.method_version_id,
             "rule_code": signal.rule_code,
+            # Lineage a reviewer needs to reproduce the result. The
+            # fingerprint is the identity of the evidence set that produced
+            # this signal, so a reader can tell a recomputation from a
+            # genuinely new finding.
+            "input_fingerprint": signal.input_fingerprint,
+            "group_key": signal.group_key,
             "source_cutoff": signal.source_cutoff,
             "generated_at": signal.generated_at,
             "supersedes_id": signal.supersedes_id,

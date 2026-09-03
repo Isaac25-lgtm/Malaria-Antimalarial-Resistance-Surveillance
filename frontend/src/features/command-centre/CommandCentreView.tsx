@@ -106,7 +106,10 @@ export function CommandCentreView() {
             period, scope and provenance.
           </p>
         </div>
-        <PeriodControl period={period} onChange={setPeriod} />
+        <div className="command-centre__actions">
+          <PeriodControl period={period} onChange={setPeriod} />
+          <ReportLink period={period} />
+        </div>
       </header>
 
       <ProvenanceBar provenance={provenance.data} />
@@ -289,6 +292,25 @@ export function CommandCentreView() {
         </div>
       </section>
     </div>
+  );
+}
+
+/**
+ * A link to the governed national brief.
+ *
+ * A plain anchor to the server route rather than a client-side assembly: the
+ * export is authorised, scoped and audited on the server, and a file built in
+ * the browser would carry none of that. The permission is checked there too -
+ * hiding a button is not access control.
+ */
+function ReportLink({ period }: { period: PeriodSelection }) {
+  const href =
+    `/api/v1/reports/national_brief/export.csv` +
+    `?period_start=${period.start}&period_end=${period.end}`;
+  return (
+    <a className="button" href={href} download>
+      Download national brief (CSV)
+    </a>
   );
 }
 

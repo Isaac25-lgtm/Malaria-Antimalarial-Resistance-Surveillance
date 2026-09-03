@@ -604,6 +604,8 @@ class SignalSummary(MarsModel):
     recommended_action_codes: list[str]
     method_version_id: uuid.UUID
     rule_code: str
+    input_fingerprint: str
+    group_key: str
     source_cutoff: datetime
     generated_at: datetime
     supersedes_id: uuid.UUID | None
@@ -723,6 +725,41 @@ class FacilityContribution(MarsModel):
     source_freshness: datetime | None
     status: str
     status_detail: str | None
+
+
+class ReportRow(MarsModel):
+    """One measure as it appears in a report.
+
+    ``value`` stays null when the measure had none. A report that wrote zero
+    here would put a figure into a briefing that MARS never computed, and a
+    spreadsheet cell has nowhere to carry the caveat.
+    """
+
+    code: str
+    label: str
+    value: str | None
+    unit: str | None
+    numerator: int | None
+    denominator: int | None
+    status: str
+    status_detail: str | None
+    period_start: date
+    period_end: date
+    source: str
+    method_version_id: uuid.UUID | None
+
+
+class GeneratedReport(MarsModel):
+    """A governed report, carrying its own provenance and interpretation limit."""
+
+    product: str
+    generated_at: datetime
+    period_start: date
+    period_end: date
+    geography_unit_id: uuid.UUID | None
+    rows: list[ReportRow]
+    interpretation_limit: str
+    provenance: SurveillanceProvenance
 
 
 # Forward references resolved after all models are declared.

@@ -321,4 +321,17 @@ export const api = {
     active_only?: boolean;
     limit?: number;
   }) => request<Schemas["SignalSummary"][]>("/signals", { query }),
+
+  signal: (signalId: string) =>
+    request<Schemas["SignalSummary"]>(`/signals/${encodeURIComponent(signalId)}`),
+
+  signalExplanation: (signalId: string) =>
+    request<Schemas["SignalExplanationSummary"]>(
+      `/signals/${encodeURIComponent(signalId)}/explanation`,
+    ),
+
+  report: (
+    product: "national_brief" | "district_brief",
+    query: { period_start: string; period_end: string; geography_unit_id?: string },
+  ) => request<Schemas["GeneratedReport"]>(`/reports/${product}`, { query }),
 };

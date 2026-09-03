@@ -17,6 +17,7 @@ import { RedirectIfAuthenticated, RequireAuth } from "../auth/RouteGuard";
 import { CommandCentreView } from "../features/command-centre/CommandCentreView";
 import { DistrictWorkspaceView } from "../features/workspaces/DistrictWorkspaceView";
 import { FacilityWorkspaceView } from "../features/workspaces/FacilityWorkspaceView";
+import { SignalEvidenceView } from "../features/signals/SignalEvidenceView";
 import { AppShell } from "./AppShell";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotFoundView } from "./NotFoundView";
@@ -157,6 +158,14 @@ function AppRoutes() {
           element={
             <RequireAuth permissions={["surveillance:view_aggregate"]}>
               <FacilityWorkspaceView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="signals/:signalId"
+          element={
+            <RequireAuth permissions={["signal:view"]}>
+              <SignalEvidenceView />
             </RequireAuth>
           }
         />
