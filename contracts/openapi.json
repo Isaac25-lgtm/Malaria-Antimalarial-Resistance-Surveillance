@@ -1207,6 +1207,206 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IntegrationRunSummary": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "error_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Category"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mappings_unresolved": {
+            "title": "Mappings Unresolved",
+            "type": "integer"
+          },
+          "pages_fetched": {
+            "title": "Pages Fetched",
+            "type": "integer"
+          },
+          "records_accepted": {
+            "title": "Records Accepted",
+            "type": "integer"
+          },
+          "records_received": {
+            "title": "Records Received",
+            "type": "integer"
+          },
+          "records_rejected": {
+            "title": "Records Rejected",
+            "type": "integer"
+          },
+          "resource": {
+            "title": "Resource",
+            "type": "string"
+          },
+          "run_status": {
+            "title": "Run Status",
+            "type": "string"
+          },
+          "scope_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Description"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "system": {
+            "title": "System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "system",
+          "resource",
+          "run_status",
+          "attempt",
+          "scope_description",
+          "started_at",
+          "finished_at",
+          "pages_fetched",
+          "records_received",
+          "records_accepted",
+          "records_rejected",
+          "mappings_unresolved",
+          "error_category"
+        ],
+        "title": "IntegrationRunSummary",
+        "type": "object"
+      },
+      "IntegrationStatusSummary": {
+        "description": "Whether an exchange is configured, and what it has done.\n\nDeliberately says *whether* credentials are present, never what they are.\nA status endpoint is exactly where a token gets pasted into a support\nticket.",
+        "properties": {
+          "adapter_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Version"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "credentials_present": {
+            "title": "Credentials Present",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "last_run_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run Status"
+          },
+          "outbound_push_enabled": {
+            "title": "Outbound Push Enabled",
+            "type": "boolean"
+          },
+          "system": {
+            "title": "System",
+            "type": "string"
+          },
+          "tls_verification": {
+            "title": "Tls Verification",
+            "type": "boolean"
+          },
+          "total_runs": {
+            "title": "Total Runs",
+            "type": "integer"
+          },
+          "unresolved_mappings": {
+            "title": "Unresolved Mappings",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "system",
+          "enabled",
+          "configured",
+          "credentials_present",
+          "tls_verification",
+          "outbound_push_enabled",
+          "adapter_version",
+          "base_url",
+          "total_runs",
+          "last_run_at",
+          "last_run_status",
+          "unresolved_mappings"
+        ],
+        "title": "IntegrationStatusSummary",
+        "type": "object"
+      },
       "LivenessResponse": {
         "properties": {
           "service": {
@@ -1663,6 +1863,70 @@
           "generated_at"
         ],
         "title": "MapMetadataResponse",
+        "type": "object"
+      },
+      "MappingProposalSummary": {
+        "description": "A remote identifier with no MARS mapping.\n\nA configuration gap someone has to close. MARS does not guess a mapping by\nname similarity, so this list is the only way the gap becomes visible.",
+        "properties": {
+          "first_seen_at": {
+            "format": "date-time",
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "occurrences": {
+            "title": "Occurrences",
+            "type": "integer"
+          },
+          "proposal_status": {
+            "title": "Proposal Status",
+            "type": "string"
+          },
+          "remote_id": {
+            "title": "Remote Id",
+            "type": "string"
+          },
+          "remote_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remote Name"
+          },
+          "remote_type": {
+            "title": "Remote Type",
+            "type": "string"
+          },
+          "system": {
+            "title": "System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "system",
+          "remote_type",
+          "remote_id",
+          "remote_name",
+          "proposal_status",
+          "occurrences",
+          "first_seen_at",
+          "last_seen_at"
+        ],
+        "title": "MappingProposalSummary",
         "type": "object"
       },
       "MethodDefinitionSummary": {
@@ -3682,6 +3946,238 @@
         "summary": "Report which MARS schemas exist",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/integrations/{system}/mapping-proposals": {
+      "get": {
+        "description": "Unresolved mappings, most frequent first.\n\nThese are configuration gaps, not failures. MARS refuses to match a remote\nidentifier by name similarity: two districts with similar names are exactly\nthe case a fuzzy match gets wrong, and the figures still look plausible\nafterwards.",
+        "operationId": "list_mapping_proposals_api_v1_integrations__system__mapping_proposals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "system",
+            "required": true,
+            "schema": {
+              "title": "System",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MappingProposalSummary"
+                  },
+                  "title": "Response List Mapping Proposals Api V1 Integrations  System  Mapping Proposals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Remote identifiers MARS could not place",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/{system}/runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_integrations__system__runs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "system",
+            "required": true,
+            "schema": {
+              "title": "System",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IntegrationRunSummary"
+                  },
+                  "title": "Response List Runs Api V1 Integrations  System  Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Recent exchanges, most recent first",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/{system}/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_integrations__system__runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "system",
+            "required": true,
+            "schema": {
+              "title": "System",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationRunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "One exchange",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/{system}/status": {
+      "get": {
+        "description": "Configuration and activity for one external system.\n\nAn unconfigured system is reported as unconfigured rather than 404: \"MARS\ndoes not exchange with DHIS2\" is a fact worth stating, and it is a\ndifferent fact from \"that system does not exist\".",
+        "operationId": "get_status_api_v1_integrations__system__status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "system",
+            "required": true,
+            "schema": {
+              "title": "System",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationStatusSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Whether an external exchange is configured, and what it has done",
+        "tags": [
+          "integrations"
         ]
       }
     },

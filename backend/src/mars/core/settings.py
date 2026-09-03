@@ -174,6 +174,50 @@ class Settings(BaseSettings):
     # data. Refused in protected environments.
     demo_mode_enabled: bool = False
 
+    # -- DHIS2 exchange ---------------------------------------------------
+    # Disabled by default and unconfigured by default. A deployment that has
+    # not been given a URL and credentials must report the integration as
+    # unconfigured, not fail at the first request and not quietly do nothing.
+    dhis2_enabled: bool = False
+
+    dhis2_base_url: str | None = Field(
+        default=None,
+        description=(
+            "Base URL of the DHIS2 instance, e.g. https://dhis2.example.org. "
+            "Supplied through the environment only."
+        ),
+    )
+    dhis2_username: str | None = Field(default=None, max_length=128)
+    #: Held as a SecretStr so it cannot be printed by an accidental repr, and
+    #: never written to a log, an audit record or an integration run row.
+    dhis2_password: SecretStr | None = Field(default=None)
+    #: Personal access token, an alternative to username/password. If both are
+    #: present the token wins, because a token can be scoped and revoked.
+    dhis2_token: SecretStr | None = Field(default=None)
+
+    dhis2_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    dhis2_max_retries: int = Field(default=3, ge=0, le=10)
+    dhis2_retry_backoff_seconds: float = Field(default=1.0, ge=0, le=60)
+    dhis2_page_size: int = Field(default=500, ge=1, le=10_000)
+
+    #: Refuse a response larger than this rather than loading it into memory. A
+    #: DHIS2 analytics request with a careless dimension can return hundreds of
+    #: megabytes, and an ingestion process that dies on memory takes the whole
+    #: worker with it.
+    dhis2_max_response_bytes: int = Field(default=64 * 1024 * 1024, ge=1024)
+
+    #: TLS verification. True by default and separately settable so that a
+    #: deployment disabling it has to say so explicitly, in writing, in its
+    #: environment - where a reviewer can see it.
+    dhis2_verify_tls: bool = True
+
+    #: Outbound writes to DHIS2. Off by default and independent of
+    #: ``dhis2_enabled``: reading another system's data and writing into it are
+    #: different authorities, and MARS must not acquire the second by being
+    #: granted the first.
+    dhis2_push_enabled: bool = False
+    dhis2_push_dataset_uid: str | None = Field(default=None, max_length=32)
+
     @field_validator("database_url")
     @classmethod
     def _require_psycopg_driver(cls, value: str) -> str:

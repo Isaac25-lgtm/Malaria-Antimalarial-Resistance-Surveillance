@@ -30,6 +30,7 @@ from mars.services.auth_service import AuthService
 from mars.services.geography_map_service import GeographyMapService
 from mars.services.geography_service import GeographyService
 from mars.services.governance_service import ConfigurationService, MethodRegistryService
+from mars.services.integration_status import IntegrationStatusService
 from mars.services.organisation_service import FacilityService, OrganisationService
 
 # auto_error=False so a missing credential produces our problem+json shape
@@ -84,6 +85,12 @@ def get_facility_service(session: SessionDep) -> FacilityService:
     return FacilityService(session)
 
 
+def get_integration_status_service(
+    session: SessionDep, settings: SettingsDep
+) -> IntegrationStatusService:
+    return IntegrationStatusService(session, settings)
+
+
 def get_configuration_service(session: SessionDep, audit: AuditDep) -> ConfigurationService:
     return ConfigurationService(session, audit)
 
@@ -99,6 +106,7 @@ OrganisationServiceDep = Annotated[OrganisationService, Depends(get_organisation
 FacilityServiceDep = Annotated[FacilityService, Depends(get_facility_service)]
 ConfigurationServiceDep = Annotated[ConfigurationService, Depends(get_configuration_service)]
 MethodRegistryDep = Annotated[MethodRegistryService, Depends(get_method_registry_service)]
+IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integration_status_service)]
 
 
 # -- Authentication -------------------------------------------------------

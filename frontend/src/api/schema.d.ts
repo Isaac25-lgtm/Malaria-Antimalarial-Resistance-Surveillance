@@ -544,6 +544,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/{system}/mapping-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Remote identifiers MARS could not place
+         * @description Unresolved mappings, most frequent first.
+         *
+         *     These are configuration gaps, not failures. MARS refuses to match a remote
+         *     identifier by name similarity: two districts with similar names are exactly
+         *     the case a fuzzy match gets wrong, and the figures still look plausible
+         *     afterwards.
+         */
+        get: operations["list_mapping_proposals_api_v1_integrations__system__mapping_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{system}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent exchanges, most recent first */
+        get: operations["list_runs_api_v1_integrations__system__runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{system}/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One exchange */
+        get: operations["get_run_api_v1_integrations__system__runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{system}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether an external exchange is configured, and what it has done
+         * @description Configuration and activity for one external system.
+         *
+         *     An unconfigured system is reported as unconfigured rather than 404: "MARS
+         *     does not exchange with DHIS2" is a fact worth stating, and it is a
+         *     different fact from "that system does not exist".
+         */
+        get: operations["get_status_api_v1_integrations__system__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta/evidence-lanes": {
         parameters: {
             query?: never;
@@ -1112,6 +1195,77 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IntegrationRunSummary */
+        IntegrationRunSummary: {
+            /** Attempt */
+            attempt: number;
+            /** Error Category */
+            error_category: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mappings Unresolved */
+            mappings_unresolved: number;
+            /** Pages Fetched */
+            pages_fetched: number;
+            /** Records Accepted */
+            records_accepted: number;
+            /** Records Received */
+            records_received: number;
+            /** Records Rejected */
+            records_rejected: number;
+            /** Resource */
+            resource: string;
+            /** Run Status */
+            run_status: string;
+            /** Scope Description */
+            scope_description: string | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** System */
+            system: string;
+        };
+        /**
+         * IntegrationStatusSummary
+         * @description Whether an exchange is configured, and what it has done.
+         *
+         *     Deliberately says *whether* credentials are present, never what they are.
+         *     A status endpoint is exactly where a token gets pasted into a support
+         *     ticket.
+         */
+        IntegrationStatusSummary: {
+            /** Adapter Version */
+            adapter_version: string | null;
+            /** Base Url */
+            base_url: string | null;
+            /** Configured */
+            configured: boolean;
+            /** Credentials Present */
+            credentials_present: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Last Run At */
+            last_run_at: string | null;
+            /** Last Run Status */
+            last_run_status: string | null;
+            /** Outbound Push Enabled */
+            outbound_push_enabled: boolean;
+            /** System */
+            system: string;
+            /** Tls Verification */
+            tls_verification: boolean;
+            /** Total Runs */
+            total_runs: number;
+            /** Unresolved Mappings */
+            unresolved_mappings: number;
+        };
         /** LivenessResponse */
         LivenessResponse: {
             /** Service */
@@ -1290,6 +1444,42 @@ export interface components {
             source_checksum: string | null;
             /** Source Name */
             source_name: string | null;
+        };
+        /**
+         * MappingProposalSummary
+         * @description A remote identifier with no MARS mapping.
+         *
+         *     A configuration gap someone has to close. MARS does not guess a mapping by
+         *     name similarity, so this list is the only way the gap becomes visible.
+         */
+        MappingProposalSummary: {
+            /**
+             * First Seen At
+             * Format: date-time
+             */
+            first_seen_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /** Occurrences */
+            occurrences: number;
+            /** Proposal Status */
+            proposal_status: string;
+            /** Remote Id */
+            remote_id: string;
+            /** Remote Name */
+            remote_name: string | null;
+            /** Remote Type */
+            remote_type: string;
+            /** System */
+            system: string;
         };
         /** MethodDefinitionSummary */
         MethodDefinitionSummary: {
@@ -2388,6 +2578,135 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_mapping_proposals_api_v1_integrations__system__mapping_proposals_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                system: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MappingProposalSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_api_v1_integrations__system__runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                system: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationRunSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_v1_integrations__system__runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                system: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationRunSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_status_api_v1_integrations__system__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                system: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationStatusSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

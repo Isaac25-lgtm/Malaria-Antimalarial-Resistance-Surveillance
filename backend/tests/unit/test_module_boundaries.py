@@ -130,6 +130,60 @@ class TestRoutersStayThin:
         assert not offenders, f"routers importing ORM models: {offenders}"
 
 
+class TestTheDhis2AdapterIsALeaf:
+    """ADR 0003: no external system's shape reaches the core.
+
+    The rule is only real if something checks it. An adapter import inside the
+    domain would make a DHIS2 field-rename a domain change, and the coupling is
+    invisible until the day DHIS2 changes.
+    """
+
+    #: Everything that must be able to run with the adapter deleted.
+    INDEPENDENT: ClassVar[list[str]] = [
+        "domain",
+        "services",
+        "analytics",
+        "signals",
+        "explainability",
+        "investigations",
+        "geo",
+        "api",
+    ]
+
+    @pytest.mark.parametrize("package", INDEPENDENT)
+    def test_no_module_imports_the_dhis2_adapter(self, package: str) -> None:
+        offenders: list[tuple[str, str]] = []
+        for path in _package_files(package):
+            for module in _imports_of(path):
+                if module.startswith("mars.integrations.dhis2"):
+                    offenders.append((str(path.relative_to(SRC)), module))
+        assert not offenders, (
+            f"{package} imports the DHIS2 adapter; the domain must depend on the "
+            f"ports in mars.integrations.ports instead: {offenders}"
+        )
+
+    def test_the_ports_module_names_no_external_system(self) -> None:
+        """A port that mentions DHIS2 is not a seam, it is the adapter with a
+        different filename."""
+        source = (SRC / "integrations" / "ports.py").read_text(encoding="utf-8")
+        body = "\n".join(line for line in source.splitlines() if not line.strip().startswith("#"))
+        # The module docstring may say what it is *not* coupled to; the code
+        # must not name it at all.
+        code = body.split('"""', 2)[-1]
+        for system in ("dhis2", "DHIS2", "httpx"):
+            assert system not in code, f"the ports module names {system}"
+
+    def test_the_adapter_does_not_import_analytics_or_signals(self) -> None:
+        """The dependency runs one way. An adapter reaching into analytics would
+        make the exchange layer part of the calculation."""
+        offenders: list[tuple[str, str]] = []
+        for path in _package_files("integrations"):
+            for module in _imports_of(path):
+                if module.startswith(("mars.analytics", "mars.signals", "mars.explainability")):
+                    offenders.append((str(path.relative_to(SRC)), module))
+        assert not offenders, f"the integration layer imports analytics: {offenders}"
+
+
 #: Packages that no implemented prompt fills yet. A stub that looks implemented
 #: is worse than an absent module, because a reader cannot tell the difference
 #: without opening it.

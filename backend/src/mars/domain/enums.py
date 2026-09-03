@@ -621,3 +621,75 @@ class ReconciliationStatus(str, enum.Enum):
     REPORTED_ONLY = "reported_only"
     DERIVED_ONLY = "derived_only"
     UNCOMPARABLE = "uncomparable"
+
+
+# ---------------------------------------------------------------------------
+# External integration — Prompt 12
+# ---------------------------------------------------------------------------
+class IntegrationResource(str, enum.Enum):
+    """What an integration run asked the remote system for.
+
+    Named for the *MARS* concept, not the remote endpoint. DHIS2 calls it
+    ``organisationUnits``; another system will call it something else, and the
+    run record has to stay readable when a second adapter arrives.
+    """
+
+    ORGANISATION_UNIT_METADATA = "organisation_unit_metadata"
+    FACILITY_METADATA = "facility_metadata"
+    DATA_ELEMENT_METADATA = "data_element_metadata"
+    DATASET_METADATA = "dataset_metadata"
+    AGGREGATE_DATA_VALUES = "aggregate_data_values"
+    ANALYTICS_QUERY = "analytics_query"
+
+
+class IntegrationRunStatus(str, enum.Enum):
+    """Where an exchange got to.
+
+    ``PARTIAL`` is a first-class outcome, not a failure: a paginated pull that
+    read eleven of fourteen pages has genuinely fetched eleven pages, and
+    resuming from page twelve is cheaper and more honest than discarding them.
+    """
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    PARTIAL = "partial"
+    FAILED = "failed"
+
+
+class IntegrationErrorCategory(str, enum.Enum):
+    """Why an exchange failed, in terms that decide what to do next.
+
+    The distinction that matters operationally is between "retry later"
+    (timeout, rate limit, server error) and "someone must change something"
+    (authentication, authorisation, configuration). A single ``error`` value
+    would leave an operator re-running a request that can never succeed.
+    """
+
+    NOT_CONFIGURED = "not_configured"
+    DISABLED = "disabled"
+    AUTHENTICATION = "authentication"
+    AUTHORISATION = "authorisation"
+    NOT_FOUND = "not_found"
+    RATE_LIMITED = "rate_limited"
+    TIMEOUT = "timeout"
+    TRANSPORT = "transport"
+    REMOTE_SERVER_ERROR = "remote_server_error"
+    RESPONSE_TOO_LARGE = "response_too_large"
+    MALFORMED_RESPONSE = "malformed_response"
+    MAPPING_INCOMPLETE = "mapping_incomplete"
+
+
+class MappingProposalStatus(str, enum.Enum):
+    """Whether a remote identifier has been reconciled with MARS.
+
+    A proposal is never promoted by an import. ``ACCEPTED`` and ``REJECTED``
+    are recorded by a governance action, because deciding that a DHIS2 UID is a
+    particular Ugandan district is an administrative judgement, not a parsing
+    outcome.
+    """
+
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"

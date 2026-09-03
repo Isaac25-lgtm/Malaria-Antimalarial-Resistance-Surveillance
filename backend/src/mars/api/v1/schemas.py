@@ -423,6 +423,63 @@ class MethodDefinitionSummary(MarsModel):
     versions: list[MethodVersionSummary] = Field(default_factory=list)
 
 
+class IntegrationStatusSummary(MarsModel):
+    """Whether an exchange is configured, and what it has done.
+
+    Deliberately says *whether* credentials are present, never what they are.
+    A status endpoint is exactly where a token gets pasted into a support
+    ticket.
+    """
+
+    system: str
+    enabled: bool
+    configured: bool
+    credentials_present: bool
+    tls_verification: bool
+    outbound_push_enabled: bool
+    adapter_version: str | None
+    base_url: str | None
+    total_runs: int
+    last_run_at: datetime | None
+    last_run_status: str | None
+    unresolved_mappings: int
+
+
+class IntegrationRunSummary(MarsModel):
+    id: uuid.UUID
+    system: str
+    resource: str
+    run_status: str
+    attempt: int
+    scope_description: str | None
+    started_at: datetime
+    finished_at: datetime | None
+    pages_fetched: int
+    records_received: int
+    records_accepted: int
+    records_rejected: int
+    mappings_unresolved: int
+    error_category: str | None
+
+
+class MappingProposalSummary(MarsModel):
+    """A remote identifier with no MARS mapping.
+
+    A configuration gap someone has to close. MARS does not guess a mapping by
+    name similarity, so this list is the only way the gap becomes visible.
+    """
+
+    id: uuid.UUID
+    system: str
+    remote_type: str
+    remote_id: str
+    remote_name: str | None
+    proposal_status: str
+    occurrences: int
+    first_seen_at: datetime
+    last_seen_at: datetime
+
+
 # Forward references resolved after all models are declared.
 GeographyOverviewResponse.model_rebuild()
 FacilityDetail.model_rebuild()

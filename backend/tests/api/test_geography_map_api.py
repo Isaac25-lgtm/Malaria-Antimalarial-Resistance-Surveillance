@@ -345,9 +345,19 @@ class TestOpenApiContract:
         assert set(schema["properties"]) == FEATURE_PROPERTIES
 
     def test_the_geography_namespace_was_extended_not_duplicated(self, app) -> None:
-        """Prompt 6 asked for one geography API, not a competing one."""
+        """Prompt 6 asked for one geography API, not a competing one.
+
+        Matched on whole path segments. A substring test also catches
+        ``mapping-proposals`` under an unrelated namespace, and a guard that
+        fires on an innocent route teaches people to widen it until it fires on
+        nothing.
+        """
         paths = app.openapi()["paths"]
-        map_paths = [p for p in paths if "map" in p or "geometry" in p or "bounds" in p]
+        map_paths = [
+            path
+            for path in paths
+            if {"map", "geometry", "bounds"} & set(path.strip("/").split("/"))
+        ]
         assert map_paths, "no map routes found"
         assert all(p.startswith("/api/v1/geography/") for p in map_paths), map_paths
 

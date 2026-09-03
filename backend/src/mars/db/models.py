@@ -48,6 +48,7 @@ from mars.domain.ingestion import (
     ImportStageExecution,
     ImportValidationIssue,
 )
+from mars.domain.integration import IntegrationMappingProposal, IntegrationRun
 from mars.domain.organisation import Facility, FacilityIdentifier, OrganisationUnit
 from mars.domain.security import (
     Role,
@@ -80,6 +81,8 @@ __all__ = [
     "ImportSourceRow",
     "ImportStageExecution",
     "ImportValidationIssue",
+    "IntegrationMappingProposal",
+    "IntegrationRun",
     "LaboratoryTestObservation",
     "MethodDefinition",
     "MethodVersion",
