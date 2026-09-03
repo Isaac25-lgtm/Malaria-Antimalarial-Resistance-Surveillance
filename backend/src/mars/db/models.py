@@ -16,6 +16,7 @@ from mars.domain.aggregate import (
     ReconciliationFinding,
 )
 from mars.domain.audit import AuditEvent
+from mars.domain.baseline import BaselineBuild, BaselineResult
 from mars.domain.encounter import (
     OpdEncounter,
     OpdEncounterDiagnosis,
@@ -78,6 +79,8 @@ __all__ = [
     "AggregateSubmission",
     "AuditEvent",
     "Base",
+    "BaselineBuild",
+    "BaselineResult",
     "BoundaryVersion",
     "CommodityOperationalAlert",
     "CommodityStockFact",

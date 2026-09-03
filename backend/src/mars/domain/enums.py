@@ -967,3 +967,78 @@ class AlertSeverity(str, enum.Enum):
     INFORMATIONAL = "informational"
     ATTENTION = "attention"
     URGENT = "urgent"
+
+
+# ---------------------------------------------------------------------------
+# Historical baselines — Prompt 17
+# ---------------------------------------------------------------------------
+class BaselineSeriesKind(str, enum.Enum):
+    """Which analytical series a baseline is built over.
+
+    Kept explicit rather than inferred from the series key, because the same
+    word can name an indicator and a measure, and a baseline built from the
+    wrong table would compare a facility against a history that is not its own.
+    """
+
+    INDICATOR = "indicator"
+    TESTING_MEASURE = "testing_measure"
+    TREATMENT_MEASURE = "treatment_measure"
+
+
+class BaselineMethod(str, enum.Enum):
+    """How an expected value is derived from history.
+
+    Implemented here; **chosen** by governance. Which method suits a series
+    depends on its seasonality and its noise, and picking one on a programme's
+    behalf would decide what counts as normal.
+    """
+
+    #: Median of the most recent comparable periods. Robust to one bad period.
+    HISTORICAL_MEDIAN = "historical_median"
+    #: Mean of the most recent comparable periods.
+    HISTORICAL_MEAN = "historical_mean"
+    #: Median of the same period-of-year across previous years. The seasonal
+    #: form: malaria transmission in Uganda is seasonal, and comparing March
+    #: against the preceding February flags the season rather than an event.
+    SEASONAL_PERIOD_OF_YEAR_MEDIAN = "seasonal_period_of_year_median"
+
+
+class DispersionMeasure(str, enum.Enum):
+    """How the spread of a baseline's history was summarised.
+
+    Paired with the method rather than chosen freely: a median summarised by a
+    standard deviation would report a robust centre with a non-robust spread.
+    """
+
+    MEDIAN_ABSOLUTE_DEVIATION = "median_absolute_deviation"
+    STANDARD_DEVIATION = "standard_deviation"
+    #: A single historical period has a centre but no spread.
+    NONE = "none"
+
+
+class BaselineSufficiency(str, enum.Enum):
+    """Whether the history behind a baseline was enough to use it.
+
+    Recorded on every row, including the rows with no expected value. A
+    facility that opened last month has no baseline, and saying so is more
+    useful than an expected value computed from two periods.
+    """
+
+    SUFFICIENT = "sufficient"
+    #: History exists but fewer comparable periods than the approved minimum.
+    INSUFFICIENT_HISTORY = "insufficient_history"
+    #: Enough periods, too few of them carrying a usable value.
+    INSUFFICIENT_COMPLETENESS = "insufficient_completeness"
+    #: No comparable period at all - a new facility, or a new series.
+    NO_HISTORY = "no_history"
+
+
+class BaselineBuildStatus(str, enum.Enum):
+    """Where a baseline build run got to."""
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    #: No approved temporal baseline method. Not a failure of the run - a
+    #: statement that the programme has not decided what normal means.
+    NOT_CONFIGURED = "not_configured"
+    FAILED = "failed"
