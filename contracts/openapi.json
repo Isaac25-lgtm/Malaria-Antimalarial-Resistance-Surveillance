@@ -569,6 +569,89 @@
         "title": "DevelopmentUserSummary",
         "type": "object"
       },
+      "FacilityContribution": {
+        "description": "One facility's share of a district figure, or its absence.\n\nA facility that reported nothing is listed with a null value and a status\nsaying so. Dropping it would hide the commonest reason a district total\nfalls: a large facility stopped reporting.",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "facility_id": {
+            "format": "uuid",
+            "title": "Facility Id",
+            "type": "string"
+          },
+          "indicator_code": {
+            "title": "Indicator Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "source_freshness": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Freshness"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Detail"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "facility_id",
+          "code",
+          "name",
+          "period",
+          "indicator_code",
+          "value",
+          "source_freshness",
+          "status",
+          "status_detail"
+        ],
+        "title": "FacilityContribution",
+        "type": "object"
+      },
       "FacilityDetail": {
         "properties": {
           "closed_on": {
@@ -3587,6 +3670,18 @@
             ],
             "title": "Denominator"
           },
+          "facility_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
           "geography_grain": {
             "title": "Geography Grain",
             "type": "string"
@@ -3704,6 +3799,7 @@
           "period",
           "geography_grain",
           "geography_unit_id",
+          "facility_id",
           "source",
           "method_version_id",
           "source_freshness",
@@ -6521,6 +6617,91 @@
         ]
       }
     },
+    "/api/v1/surveillance/districts/{geography_unit_id}/facilities": {
+      "get": {
+        "description": "Which facilities contributed to a district figure, and which did not.",
+        "operationId": "district_facilities_api_v1_surveillance_districts__geography_unit_id__facilities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "geography_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Geography Unit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FacilityContribution"
+                  },
+                  "title": "Response District Facilities Api V1 Surveillance Districts  Geography Unit Id  Facilities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "District Facilities",
+        "tags": [
+          "surveillance"
+        ]
+      }
+    },
     "/api/v1/surveillance/districts/{geography_unit_id}/summary": {
       "get": {
         "description": "The same measures for one district.",
@@ -6589,6 +6770,79 @@
           }
         ],
         "summary": "District Summary",
+        "tags": [
+          "surveillance"
+        ]
+      }
+    },
+    "/api/v1/surveillance/facilities/{facility_id}/summary": {
+      "get": {
+        "description": "The same measures for one facility, from that facility's own results.\n\nNever the district it sits in. A facility workspace that summed its\ndistrict would be the scope inheritance the surveillance API has been\ncorrected twice to remove.",
+        "operationId": "facility_summary_api_v1_surveillance_facilities__facility_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "facility_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Facility Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SurveillanceMeasure"
+                  },
+                  "title": "Response Facility Summary Api V1 Surveillance Facilities  Facility Id  Summary Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Facility Summary",
         "tags": [
           "surveillance"
         ]

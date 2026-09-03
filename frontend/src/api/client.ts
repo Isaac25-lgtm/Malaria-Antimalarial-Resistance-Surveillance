@@ -266,6 +266,27 @@ export const api = {
       { query },
     ),
 
+  facilitySummary: (facilityId: string, query: { period_start: string; period_end: string }) =>
+    request<Schemas["SurveillanceMeasure"][]>(
+      `/surveillance/facilities/${encodeURIComponent(facilityId)}/summary`,
+      { query },
+    ),
+
+  districtFacilities: (
+    unitId: string,
+    query: { period_start: string; period_end: string; limit?: number },
+  ) =>
+    request<Schemas["FacilityContribution"][]>(
+      `/surveillance/districts/${encodeURIComponent(unitId)}/facilities`,
+      { query },
+    ),
+
+  geographyUnit: (unitId: string) =>
+    request<Schemas["GeographyUnitSummary"]>(`/geography/units/${encodeURIComponent(unitId)}`),
+
+  facility: (facilityId: string) =>
+    request<Schemas["FacilityDetail"]>(`/facilities/${encodeURIComponent(facilityId)}`),
+
   priorityDistricts: (query: {
     period_start: string;
     period_end: string;

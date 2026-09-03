@@ -167,3 +167,44 @@ class TestDistrictScopedSummary:
         for record in records:
             assert record["geography_grain"] == "district"
             assert record["geography_unit_id"] == unit_id
+
+
+class TestAFacilityWorkspaceNeverInheritsItsDistrict:
+    """The rule 64e3e21 established, now at the workspace boundary.
+
+    A facility figure and a district figure are different quantities. A
+    workspace that showed one under the other's heading would hand a facility
+    account the district-wide picture by the back door.
+    """
+
+    def test_a_facility_summary_reports_the_facility_grain(self, national_principal: Any) -> None:
+        facility_id = uuid.UUID(int=7)
+        records = _service().kpis(national_principal, facility_id=facility_id, **PERIOD)
+        for record in records:
+            assert record["geography_grain"] == "facility"
+            assert record["facility_id"] == facility_id
+
+    def test_a_facility_summary_carries_no_geography_unit(self, national_principal: Any) -> None:
+        records = _service().kpis(national_principal, facility_id=uuid.UUID(int=7), **PERIOD)
+        for record in records:
+            assert record["geography_unit_id"] is None
+
+    def test_a_facility_user_reading_another_facility_gets_nothing(
+        self, gulu_facility_principal: Any
+    ) -> None:
+        """Their own facility is in scope; a neighbour's is not, and the answer
+        is an absent figure rather than a filtered-down one."""
+        stranger = uuid.UUID(int=999)
+        records = _service().kpis(gulu_facility_principal, facility_id=stranger, **PERIOD)
+        for record in records:
+            assert record["value"] is None or record["code"] == ACTIVE_SIGNALS_CODE
+
+    def test_a_facility_user_gets_no_roster_of_its_neighbours(
+        self, gulu_facility_principal: Any
+    ) -> None:
+        assert (
+            _service().facility_contributions(
+                gulu_facility_principal, geography_unit_id=uuid.UUID(int=3), **PERIOD
+            )
+            == []
+        )

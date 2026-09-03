@@ -26,10 +26,14 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from mars.core.errors import FieldError, ValidationFailedError
+from mars.core.errors import (
+    FieldError,
+    GeographyScopeDeniedError,
+    ValidationFailedError,
+)
 from mars.domain.enums import (
     GeographyGrain,
     IndicatorValueStatus,
@@ -42,6 +46,7 @@ from mars.domain.indicator import (
     IndicatorDefinitionVersion,
     IndicatorResult,
 )
+from mars.domain.organisation import Facility
 from mars.domain.signal import SurveillanceSignal
 from mars.domain.surveillance import CommodityOperationalAlert
 from mars.security.principal import AuthenticatedPrincipal
@@ -63,6 +68,11 @@ KPI_INDICATORS: tuple[tuple[str, str], ...] = (
 #: Not an indicator: a count of governed signal records. Kept separate so it is
 #: never mistaken for a measured quantity with a numerator and denominator.
 ACTIVE_SIGNALS_CODE = "ACTIVE_SIGNALS"
+
+#: The measure a facility ranking is read against. Attendances, because it is
+#: the denominator every other facility figure is read against and the one
+#: whose absence most clearly marks a non-reporting facility.
+CONTRIBUTION_INDICATOR = "ENC_ATTENDANCE_TOTAL"
 
 #: What a KPI record says about itself when it has no value.
 STATUS_AVAILABLE = "available"
@@ -135,13 +145,24 @@ class SurveillanceSummaryService:
         period_start: date,
         period_end: date,
         geography_unit_id: uuid.UUID | None = None,
+        facility_id: uuid.UUID | None = None,
     ) -> list[dict[str, Any]]:
-        """One record per KPI, each able to say it has no value and why."""
+        """One record per KPI, each able to say it has no value and why.
+
+        ``facility_id`` narrows every measure to one facility's own results.
+        It is not combined with ``geography_unit_id``: a facility figure and a
+        district figure are different quantities, and a workspace that showed
+        one under the other's heading would be the inheritance this codebase
+        has spent several commits removing.
+        """
         period = _validate(period_start, period_end)
         definitions = self._definitions()
-        grain = (
-            GeographyGrain.DISTRICT if geography_unit_id is not None else GeographyGrain.NATIONAL
-        )
+        if facility_id is not None:
+            grain = GeographyGrain.FACILITY
+        elif geography_unit_id is not None:
+            grain = GeographyGrain.DISTRICT
+        else:
+            grain = GeographyGrain.NATIONAL
         records = [
             self._indicator_kpi(
                 principal,
@@ -151,11 +172,17 @@ class SurveillanceSummaryService:
                 period=period,
                 grain=grain,
                 geography_unit_id=geography_unit_id,
+                facility_id=facility_id,
             )
             for code, label in KPI_INDICATORS
         ]
         records.append(
-            self._active_signal_kpi(principal, period=period, geography_unit_id=geography_unit_id)
+            self._active_signal_kpi(
+                principal,
+                period=period,
+                geography_unit_id=geography_unit_id,
+                facility_id=facility_id,
+            )
         )
         return records
 
@@ -169,6 +196,7 @@ class SurveillanceSummaryService:
         period: Period,
         grain: GeographyGrain,
         geography_unit_id: uuid.UUID | None,
+        facility_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
         base: dict[str, Any] = {
             "code": code,
@@ -180,6 +208,7 @@ class SurveillanceSummaryService:
             "period": period.as_dict(),
             "geography_grain": grain.value,
             "geography_unit_id": geography_unit_id,
+            "facility_id": facility_id,
             "source": f"indicator:{code}",
             "method_version_id": None,
             "source_freshness": None,
@@ -215,6 +244,7 @@ class SurveillanceSummaryService:
             period=period,
             grain=grain,
             geography_unit_id=geography_unit_id,
+            facility_id=facility_id,
         )
         if not rows:
             base["status"] = STATUS_UNAVAILABLE
@@ -252,6 +282,7 @@ class SurveillanceSummaryService:
             period=period,
             grain=grain,
             geography_unit_id=geography_unit_id,
+            facility_id=facility_id,
             current_numerator=numerator,
             current_denominator=denominator,
         )
@@ -266,6 +297,7 @@ class SurveillanceSummaryService:
         period: Period,
         grain: GeographyGrain,
         geography_unit_id: uuid.UUID | None,
+        facility_id: uuid.UUID | None = None,
     ) -> list[IndicatorResult]:
         statement = select(IndicatorResult).where(
             IndicatorResult.indicator_code == code,
@@ -274,14 +306,28 @@ class SurveillanceSummaryService:
             IndicatorResult.period_end <= period.end,
             IndicatorResult.value_status == IndicatorValueStatus.AVAILABLE,
         )
+
+        if facility_id is not None:
+            # One facility's own rows. A facility workspace never sums the
+            # district it happens to sit in.
+            facilities = self._scope.facility_ids(principal)
+            if facilities is not None and facility_id not in facilities:
+                return []
+            statement = statement.where(
+                IndicatorResult.facility_id == facility_id,
+                IndicatorResult.geography_grain == GeographyGrain.FACILITY,
+            )
+            return list(self._session.execute(statement).scalars().all())
+
+        if principal.is_facility_restricted:
+            # The rule established in 64e3e21: a facility user's district scope
+            # proves only that the facility sits inside that district. Neither
+            # the national nor the district KPI strip is theirs to read.
+            return []
+
         if geography_unit_id is not None:
             statement = statement.where(IndicatorResult.geography_unit_id == geography_unit_id)
         geographies = self._scope.geography_ids(principal)
-        if principal.is_facility_restricted:
-            # The rule established in 64e3e21: a facility user's district scope
-            # proves only that the facility sits inside that district. The
-            # national KPI strip is not theirs to read.
-            return []
         if geographies is not None:
             statement = statement.where(IndicatorResult.geography_unit_id.in_(geographies))
         return list(self._session.execute(statement).scalars().all())
@@ -321,6 +367,7 @@ class SurveillanceSummaryService:
         geography_unit_id: uuid.UUID | None,
         current_numerator: int | None,
         current_denominator: int | None,
+        facility_id: uuid.UUID | None = None,
     ) -> dict[str, Any] | None:
         """The same measure over the preceding window of equal length.
 
@@ -339,6 +386,7 @@ class SurveillanceSummaryService:
             period=previous,
             grain=grain,
             geography_unit_id=geography_unit_id,
+            facility_id=facility_id,
         )
         if not rows:
             return {
@@ -389,20 +437,29 @@ class SurveillanceSummaryService:
         *,
         period: Period,
         geography_unit_id: uuid.UUID | None,
+        facility_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
         statement = select(func.count(SurveillanceSignal.id)).where(
             SurveillanceSignal.signal_status == SignalStatus.ACTIVE,
             SurveillanceSignal.period_start >= period.start,
             SurveillanceSignal.period_end <= period.end,
         )
-        if geography_unit_id is not None:
-            statement = statement.where(SurveillanceSignal.geography_unit_id == geography_unit_id)
-        geographies = self._scope.geography_ids(principal)
         facilities = self._scope.facility_ids(principal)
-        if principal.is_facility_restricted:
-            statement = statement.where(SurveillanceSignal.facility_id.in_(facilities or set()))
-        elif geographies is not None:
-            statement = statement.where(SurveillanceSignal.geography_unit_id.in_(geographies))
+        if facility_id is not None:
+            if facilities is not None and facility_id not in facilities:
+                statement = statement.where(SurveillanceSignal.facility_id.in_([]))
+            else:
+                statement = statement.where(SurveillanceSignal.facility_id == facility_id)
+        else:
+            if geography_unit_id is not None:
+                statement = statement.where(
+                    SurveillanceSignal.geography_unit_id == geography_unit_id
+                )
+            geographies = self._scope.geography_ids(principal)
+            if principal.is_facility_restricted:
+                statement = statement.where(SurveillanceSignal.facility_id.in_(facilities or set()))
+            elif geographies is not None:
+                statement = statement.where(SurveillanceSignal.geography_unit_id.in_(geographies))
         count = int(self._session.execute(statement).scalar_one())
         return {
             "code": ACTIVE_SIGNALS_CODE,
@@ -413,11 +470,14 @@ class SurveillanceSummaryService:
             "denominator": None,
             "period": period.as_dict(),
             "geography_grain": (
-                GeographyGrain.DISTRICT.value
+                GeographyGrain.FACILITY.value
+                if facility_id
+                else GeographyGrain.DISTRICT.value
                 if geography_unit_id
                 else GeographyGrain.NATIONAL.value
             ),
             "geography_unit_id": geography_unit_id,
+            "facility_id": facility_id,
             "source": "table:surveillance_signal",
             "method_version_id": None,
             "source_freshness": self._session.execute(
@@ -521,6 +581,96 @@ class SurveillanceSummaryService:
             if unit_id is not None
         }
 
+    # -- Facility contribution ----------------------------------------------
+    def facility_contributions(
+        self,
+        principal: AuthenticatedPrincipal,
+        *,
+        geography_unit_id: uuid.UUID,
+        period_start: date,
+        period_end: date,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Which facilities in a district reported, and how much they carried.
+
+        A district figure is only as good as the facilities behind it, and the
+        commonest way a district total misleads is that a large facility
+        stopped reporting. This lists the contributors so that reading is
+        available rather than inferred.
+
+        Facilities that reported nothing are included with a null count. Their
+        absence is the finding; dropping them from the list would hide it.
+        """
+        period = _validate(period_start, period_end)
+        if principal.is_facility_restricted:
+            # A facility account gets its own workspace, not the roster of its
+            # neighbours.
+            return []
+        geographies = self._scope.geography_ids(principal)
+        if geographies is not None and geography_unit_id not in geographies:
+            raise GeographyScopeDeniedError("That district is outside your authorised scope.")
+
+        facilities = list(
+            self._session.execute(
+                select(Facility.id, Facility.code, Facility.raw_name)
+                .where(
+                    Facility.is_active.is_(True),
+                    or_(
+                        Facility.district_geography_unit_id == geography_unit_id,
+                        Facility.subcounty_geography_unit_id == geography_unit_id,
+                    ),
+                )
+                .order_by(Facility.raw_name)
+                .limit(limit)
+            ).all()
+        )
+        if not facilities:
+            return []
+
+        identifiers = [row[0] for row in facilities]
+        counts = {
+            facility_id: (int(total), computed)
+            for facility_id, total, computed in self._session.execute(
+                select(
+                    IndicatorResult.facility_id,
+                    func.sum(IndicatorResult.numerator),
+                    func.max(IndicatorResult.computed_at),
+                )
+                .where(
+                    IndicatorResult.facility_id.in_(identifiers),
+                    IndicatorResult.indicator_code == CONTRIBUTION_INDICATOR,
+                    IndicatorResult.period_start >= period.start,
+                    IndicatorResult.period_end <= period.end,
+                    IndicatorResult.value_status == IndicatorValueStatus.AVAILABLE,
+                )
+                .group_by(IndicatorResult.facility_id)
+            ).all()
+            if total is not None
+        }
+
+        return [
+            {
+                "facility_id": facility_id,
+                "code": code,
+                "name": name,
+                "period": period.as_dict(),
+                "indicator_code": CONTRIBUTION_INDICATOR,
+                "value": counts.get(facility_id, (None, None))[0],
+                "source_freshness": counts.get(facility_id, (None, None))[1],
+                "status": (STATUS_AVAILABLE if facility_id in counts else STATUS_UNAVAILABLE),
+                "status_detail": (
+                    None
+                    if facility_id in counts
+                    else (
+                        "No governed result for this facility in this period. A "
+                        "facility that reported nothing is a reporting fact, not "
+                        "a count of zero."
+                    )
+                ),
+            }
+            for facility_id, code, name in facilities
+        ]
+
     # -- Provenance ---------------------------------------------------------
     def provenance(
         self, principal: AuthenticatedPrincipal, *, period_start: date, period_end: date
@@ -563,6 +713,7 @@ class SurveillanceSummaryService:
 
 __all__ = [
     "ACTIVE_SIGNALS_CODE",
+    "CONTRIBUTION_INDICATOR",
     "INTERPRETATION_BOUNDARY",
     "KPI_INDICATORS",
     "STATUS_AVAILABLE",

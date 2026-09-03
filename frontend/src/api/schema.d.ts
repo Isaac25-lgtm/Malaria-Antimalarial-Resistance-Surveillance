@@ -933,6 +933,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/surveillance/districts/{geography_unit_id}/facilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Facilities
+         * @description Which facilities contributed to a district figure, and which did not.
+         */
+        get: operations["district_facilities_api_v1_surveillance_districts__geography_unit_id__facilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/surveillance/districts/{geography_unit_id}/summary": {
         parameters: {
             query?: never;
@@ -945,6 +965,30 @@ export interface paths {
          * @description The same measures for one district.
          */
         get: operations["district_summary_api_v1_surveillance_districts__geography_unit_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/surveillance/facilities/{facility_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Facility Summary
+         * @description The same measures for one facility, from that facility's own results.
+         *
+         *     Never the district it sits in. A facility workspace that summed its
+         *     district would be the scope inheritance the surveillance API has been
+         *     corrected twice to remove.
+         */
+        get: operations["facility_summary_api_v1_surveillance_facilities__facility_id__summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1236,6 +1280,36 @@ export interface components {
             scope_description: string;
             /** Username */
             username: string;
+        };
+        /**
+         * FacilityContribution
+         * @description One facility's share of a district figure, or its absence.
+         *
+         *     A facility that reported nothing is listed with a null value and a status
+         *     saying so. Dropping it would hide the commonest reason a district total
+         *     falls: a large facility stopped reporting.
+         */
+        FacilityContribution: {
+            /** Code */
+            code: string | null;
+            /**
+             * Facility Id
+             * Format: uuid
+             */
+            facility_id: string;
+            /** Indicator Code */
+            indicator_code: string;
+            /** Name */
+            name: string;
+            period: components["schemas"]["PeriodWindow"];
+            /** Source Freshness */
+            source_freshness: string | null;
+            /** Status */
+            status: string;
+            /** Status Detail */
+            status_detail: string | null;
+            /** Value */
+            value: number | null;
         };
         /** FacilityDetail */
         FacilityDetail: {
@@ -2440,6 +2514,8 @@ export interface components {
             comparison: components["schemas"]["MeasureComparison"] | null;
             /** Denominator */
             denominator: number | null;
+            /** Facility Id */
+            facility_id: string | null;
             /** Geography Grain */
             geography_grain: string;
             /** Geography Unit Id */
@@ -3943,6 +4019,41 @@ export interface operations {
             };
         };
     };
+    district_facilities_api_v1_surveillance_districts__geography_unit_id__facilities_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                geography_unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacilityContribution"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     district_summary_api_v1_surveillance_districts__geography_unit_id__summary_get: {
         parameters: {
             query: {
@@ -3952,6 +4063,40 @@ export interface operations {
             header?: never;
             path: {
                 geography_unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveillanceMeasure"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facility_summary_api_v1_surveillance_facilities__facility_id__summary_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+            };
+            header?: never;
+            path: {
+                facility_id: string;
             };
             cookie?: never;
         };

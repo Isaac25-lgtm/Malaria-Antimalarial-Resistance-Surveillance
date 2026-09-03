@@ -15,6 +15,8 @@ import { AuthProvider } from "../auth/AuthProvider";
 import { useAuth } from "../auth/context";
 import { RedirectIfAuthenticated, RequireAuth } from "../auth/RouteGuard";
 import { CommandCentreView } from "../features/command-centre/CommandCentreView";
+import { DistrictWorkspaceView } from "../features/workspaces/DistrictWorkspaceView";
+import { FacilityWorkspaceView } from "../features/workspaces/FacilityWorkspaceView";
 import { AppShell } from "./AppShell";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotFoundView } from "./NotFoundView";
@@ -139,6 +141,22 @@ function AppRoutes() {
           element={
             <RequireAuth permissions={["geography:view"]}>
               <NationalMapView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="workspaces/districts/:unitId"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <DistrictWorkspaceView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="workspaces/facilities/:facilityId"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <FacilityWorkspaceView />
             </RequireAuth>
           }
         />

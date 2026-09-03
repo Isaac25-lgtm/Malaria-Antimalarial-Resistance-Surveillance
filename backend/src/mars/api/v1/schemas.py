@@ -670,6 +670,7 @@ class SurveillanceMeasure(MarsModel):
     period: PeriodWindow
     geography_grain: str
     geography_unit_id: uuid.UUID | None
+    facility_id: uuid.UUID | None
     source: str
     method_version_id: uuid.UUID | None
     source_freshness: datetime | None
@@ -703,6 +704,25 @@ class SurveillanceProvenance(MarsModel):
     interpretation_boundary: str
     analytically_configured: bool
     configuration_detail: str | None
+
+
+class FacilityContribution(MarsModel):
+    """One facility's share of a district figure, or its absence.
+
+    A facility that reported nothing is listed with a null value and a status
+    saying so. Dropping it would hide the commonest reason a district total
+    falls: a large facility stopped reporting.
+    """
+
+    facility_id: uuid.UUID
+    code: str | None
+    name: str
+    period: PeriodWindow
+    indicator_code: str
+    value: int | None
+    source_freshness: datetime | None
+    status: str
+    status_detail: str | None
 
 
 # Forward references resolved after all models are declared.

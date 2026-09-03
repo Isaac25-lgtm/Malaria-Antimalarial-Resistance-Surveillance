@@ -1,0 +1,59 @@
+/* District and facility workspaces. */
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.workspace__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.workspace__lede {
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+/*
+ * Breadcrumbs.
+ *
+ * The trail stays visible through every drill-down (blueprint 048) so a reader
+ * always knows which geography a figure belongs to. Separators are decorative
+ * and hidden from assistive technology; the list structure carries the meaning.
+ */
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--ink-tertiary);
+}
+
+.breadcrumbs li + li::before {
+  content: "/";
+  margin-right: var(--space-2);
+  color: var(--line-strong);
+}
+
+.breadcrumbs a {
+  color: var(--ink-secondary);
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--ink-primary);
+  font-weight: var(--weight-medium);
+}
+
+@media (max-width: 48rem) {
+  .workspace__header {
+    flex-direction: column;
+  }
+}
