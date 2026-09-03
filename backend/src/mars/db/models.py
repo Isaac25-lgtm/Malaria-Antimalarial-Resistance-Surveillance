@@ -15,6 +15,7 @@ from mars.domain.aggregate import (
     LaboratoryTestObservation,
     ReconciliationFinding,
 )
+from mars.domain.anomaly import AnomalyBuild, AnomalyPersistence, TemporalAnomalyResult
 from mars.domain.audit import AuditEvent
 from mars.domain.baseline import BaselineBuild, BaselineResult
 from mars.domain.encounter import (
@@ -77,6 +78,8 @@ from mars.domain.surveillance import (
 __all__ = [
     "AggregateObservation",
     "AggregateSubmission",
+    "AnomalyBuild",
+    "AnomalyPersistence",
     "AuditEvent",
     "Base",
     "BaselineBuild",
@@ -122,6 +125,7 @@ __all__ = [
     "ReidentificationEvent",
     "Role",
     "RolePermission",
+    "TemporalAnomalyResult",
     "TestingSurveillanceResult",
     "TreatmentSurveillanceResult",
     "UserAccount",

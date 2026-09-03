@@ -1042,3 +1042,78 @@ class BaselineBuildStatus(str, enum.Enum):
     #: statement that the programme has not decided what normal means.
     NOT_CONFIGURED = "not_configured"
     FAILED = "failed"
+
+
+# ---------------------------------------------------------------------------
+# Temporal anomaly and persistence — Prompt 18
+# ---------------------------------------------------------------------------
+class AnomalyDetectionMethod(str, enum.Enum):
+    """How a deviation from a baseline is judged large.
+
+    Implemented here; **chosen** by governance. Each answers a different
+    question and each is wrong in a different way, which is why MARS does not
+    pick one on a programme's behalf.
+    """
+
+    #: Deviation in robust units of the baseline's own spread. Needs a
+    #: dispersion, so it cannot be applied to a single-period baseline.
+    ROBUST_Z_SCORE = "robust_z_score"
+    #: Deviation as a proportion of the expected level. Works without a
+    #: dispersion, and treats a rise from 2 to 4 as it treats 200 to 400.
+    RELATIVE_DEVIATION = "relative_deviation"
+    #: Observed outside the baseline's approved uncertainty band.
+    EXCEEDS_UNCERTAINTY_BAND = "exceeds_uncertainty_band"
+
+
+class AnomalyDirection(str, enum.Enum):
+    """Which way an observation departed from what was expected.
+
+    Recorded because the two directions mean opposite things. A rise in
+    positivity may be transmission; a fall may be a testing collapse, and
+    reporting only the magnitude loses the distinction.
+    """
+
+    INCREASE = "increase"
+    DECREASE = "decrease"
+    UNCHANGED = "unchanged"
+
+
+class AnomalyOutcome(str, enum.Enum):
+    """What the engine could conclude about one observation.
+
+    The ``not_evaluated`` values exist so that "MARS could not judge this" is
+    never stored as "MARS judged this normal". A district reading a quiet map
+    is entitled to know which quiet is an absence of signal and which is an
+    absence of evidence.
+    """
+
+    FLAGGED = "flagged"
+    NOT_FLAGGED = "not_flagged"
+    #: The source reported no usable value for the period. There is nothing to
+    #: judge, which is not a statement that the period was normal.
+    NOT_EVALUATED_NO_OBSERVATION = "not_evaluated_no_observation"
+    #: No baseline with sufficient history. Nothing to compare against.
+    NOT_EVALUATED_NO_BASELINE = "not_evaluated_no_baseline"
+    #: Fewer cases than the approved minimum. A doubling of two cases is
+    #: arithmetic, not epidemiology.
+    NOT_EVALUATED_BELOW_MINIMUM_COUNT = "not_evaluated_below_minimum_count"
+    #: The measure carries no case count, so the minimum cannot be checked.
+    #: Different from being below it.
+    NOT_EVALUATED_COUNT_UNKNOWN = "not_evaluated_count_unknown"
+    #: The approved method cannot be applied to this baseline - a robust
+    #: z-score against a baseline with no spread, a relative deviation from an
+    #: expected zero, a band test with no band. Recorded rather than silently
+    #: falling back to another method, which would apply a rule nobody
+    #: approved.
+    NOT_EVALUATED_METHOD_INAPPLICABLE = "not_evaluated_method_inapplicable"
+
+
+class AnomalyBuildStatus(str, enum.Enum):
+    """Where an anomaly detection run got to."""
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    #: No approved detection rule. Not a failure - a statement that the
+    #: programme has not decided how large a departure has to be.
+    NOT_CONFIGURED = "not_configured"
+    FAILED = "failed"
