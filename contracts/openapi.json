@@ -868,6 +868,17 @@
         "title": "GeographyBreadcrumbsResponse",
         "type": "object"
       },
+      "GeographyGrain": {
+        "description": "The level an indicator is computed at.\n\n``FACILITY`` is not a geography level - it is the reporting unit - but it\nis the grain most source data arrives at, so it belongs in the same axis.\nRollups go facility -> subcounty -> district -> national.",
+        "enum": [
+          "facility",
+          "subcounty",
+          "district",
+          "national"
+        ],
+        "title": "GeographyGrain",
+        "type": "string"
+      },
       "GeographyLevel": {
         "description": "Administrative hierarchy levels.\n\nAll seven levels exist in the schema from the outset. Parish and village are\ndefined but will remain empty: no parish or village boundary data has been\nsupplied, and MARS does not fabricate geography.",
         "enum": [
@@ -1205,6 +1216,420 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IndicatorDefinitionSummary": {
+        "description": "What a metric is, and which version is in force.\n\n``active_version`` is null when the programme has not approved one. That is\nan ordinary state, not an error: the indicator is registered and inert.",
+        "properties": {
+          "active_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndicatorVersionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "base_geography_grain": {
+            "title": "Base Geography Grain",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "definition_source": {
+            "title": "Definition Source",
+            "type": "string"
+          },
+          "evidence_lane": {
+            "title": "Evidence Lane",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "period_grain": {
+            "title": "Period Grain",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "source_domain": {
+            "title": "Source Domain",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "version_count": {
+            "title": "Version Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "label",
+          "purpose",
+          "interpretation",
+          "unit",
+          "source_domain",
+          "period_grain",
+          "base_geography_grain",
+          "evidence_lane",
+          "definition_source",
+          "active_version",
+          "version_count"
+        ],
+        "title": "IndicatorDefinitionSummary",
+        "type": "object"
+      },
+      "IndicatorResultSummary": {
+        "description": "One materialised figure, with the context needed to read it.\n\n``value`` is null whenever ``value_status`` is not ``available``. A missing\nvalue is never rendered as zero: an undefined denominator and a genuine\nzero are opposite statements about a facility.",
+        "properties": {
+          "age_band": {
+            "title": "Age Band",
+            "type": "string"
+          },
+          "boundary_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Version Id"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "contributing_units": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contributing Units"
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "expected_units": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Units"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
+          "geography_grain": {
+            "title": "Geography Grain",
+            "type": "string"
+          },
+          "geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography Unit Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "indicator_code": {
+            "title": "Indicator Code",
+            "type": "string"
+          },
+          "missing_inputs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Inputs"
+          },
+          "numerator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numerator"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_grain": {
+            "title": "Period Grain",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "quality_context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Context"
+          },
+          "sex": {
+            "title": "Sex",
+            "type": "string"
+          },
+          "source_cutoff": {
+            "format": "date-time",
+            "title": "Source Cutoff",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "value_status": {
+            "title": "Value Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "indicator_code",
+          "geography_grain",
+          "geography_unit_id",
+          "facility_id",
+          "period_start",
+          "period_end",
+          "period_grain",
+          "age_band",
+          "sex",
+          "numerator",
+          "denominator",
+          "value",
+          "value_status",
+          "contributing_units",
+          "expected_units",
+          "missing_inputs",
+          "quality_context",
+          "source_cutoff",
+          "boundary_version_id",
+          "engine_version",
+          "computed_at"
+        ],
+        "title": "IndicatorResultSummary",
+        "type": "object"
+      },
+      "IndicatorVersionSummary": {
+        "description": "One version of an indicator definition.\n\nThe specification is exposed so a reader can check what a figure means.\nNo threshold appears because none exists here: what counts as too high is\na programme decision held in the configuration registry.",
+        "properties": {
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "blank_handling": {
+            "title": "Blank Handling",
+            "type": "string"
+          },
+          "denominator_specification": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator Specification"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "exclusion_rules": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Rules"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "numerator_specification": {
+            "additionalProperties": true,
+            "title": "Numerator Specification",
+            "type": "object"
+          },
+          "permitted_dimensions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permitted Dimensions"
+          },
+          "semantic_version": {
+            "title": "Semantic Version",
+            "type": "string"
+          },
+          "specification_checksum": {
+            "title": "Specification Checksum",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version_number": {
+            "title": "Version Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version_number",
+          "semantic_version",
+          "status",
+          "blank_handling",
+          "specification_checksum",
+          "numerator_specification",
+          "denominator_specification",
+          "permitted_dimensions",
+          "exclusion_rules",
+          "effective_from",
+          "effective_to",
+          "approved_by",
+          "notes"
+        ],
+        "title": "IndicatorVersionSummary",
         "type": "object"
       },
       "IntegrationRunSummary": {
@@ -3946,6 +4371,250 @@
         "summary": "Report which MARS schemas exist",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/indicators/definitions": {
+      "get": {
+        "description": "The registry.\n\nA definition with no active version is returned with ``active_version:\nnull`` rather than omitted. An indicator awaiting programme approval is a\nfact the programme needs to see, not an absence.",
+        "operationId": "list_definitions_api_v1_indicators_definitions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IndicatorDefinitionSummary"
+                  },
+                  "title": "Response List Definitions Api V1 Indicators Definitions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Every registered indicator definition",
+        "tags": [
+          "indicators"
+        ]
+      }
+    },
+    "/api/v1/indicators/definitions/{code}": {
+      "get": {
+        "operationId": "get_definition_api_v1_indicators_definitions__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorDefinitionSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "One indicator definition",
+        "tags": [
+          "indicators"
+        ]
+      }
+    },
+    "/api/v1/indicators/summary": {
+      "get": {
+        "description": "Figures the caller is entitled to see.\n\nA requested geography unit outside the caller's scope is **refused**, by\nthe same scope check the geography endpoints use. It is not silently\ndropped: a caller who can tell \"no data\" from \"not yours\" by watching a\nlist length has been told something the scope exists to withhold.\n\nThe refusal is a 404 rather than a 403, deliberately - a 403 confirms that\nthe unit exists.",
+        "operationId": "get_summary_api_v1_indicators_summary_get",
+        "parameters": [
+          {
+            "description": "Indicator codes",
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Indicator codes",
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "grain",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GeographyGrain"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Grain"
+            }
+          },
+          {
+            "in": "query",
+            "name": "geography_unit_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Geography Unit Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "facility_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Facility Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 2000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IndicatorResultSummary"
+                  },
+                  "title": "Response Get Summary Api V1 Indicators Summary Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Materialised indicator values within the caller's scope",
+        "tags": [
+          "indicators"
         ]
       }
     },

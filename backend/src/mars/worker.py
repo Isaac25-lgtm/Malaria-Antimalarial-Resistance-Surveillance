@@ -3,10 +3,11 @@
 Runs as a separate process from the API so that heavy analytical work never
 occupies a request-serving thread (blueprint section 061).
 
-Only geography import is registered here today. Encounter and aggregate imports
-have explicit, synchronous CLI entry points; analytical refresh and signal jobs
-arrive in later prompts. The process starts cleanly, reports its configuration
-and holds when it has no queued work.
+Geography import and indicator materialisation are registered here today.
+Encounter and aggregate imports have explicit, synchronous CLI entry points;
+the remaining analytical refresh and signal jobs arrive in later prompts. The
+process starts cleanly, reports its configuration and holds when it has no
+queued work.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ from mars.core.settings import Settings, get_settings
 #: Prompt 19 - geographic aggregation
 #: Prompt 20 - spatial clustering
 #: Prompt 21 - signal generation
-REGISTERED_JOBS: tuple[str, ...] = ("geography.import",)
+REGISTERED_JOBS: tuple[str, ...] = ("geography.import", "indicator.materialise")
 
 
 class Worker:

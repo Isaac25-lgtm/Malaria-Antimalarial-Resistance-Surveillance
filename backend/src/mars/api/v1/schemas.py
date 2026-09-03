@@ -480,6 +480,84 @@ class MappingProposalSummary(MarsModel):
     last_seen_at: datetime
 
 
+class IndicatorVersionSummary(MarsModel):
+    """One version of an indicator definition.
+
+    The specification is exposed so a reader can check what a figure means.
+    No threshold appears because none exists here: what counts as too high is
+    a programme decision held in the configuration registry.
+    """
+
+    id: uuid.UUID
+    version_number: int
+    semantic_version: str
+    status: str
+    blank_handling: str
+    specification_checksum: str
+    numerator_specification: dict[str, Any]
+    denominator_specification: dict[str, Any] | None
+    permitted_dimensions: dict[str, Any] | None
+    exclusion_rules: dict[str, Any] | None
+    effective_from: date | None
+    effective_to: date | None
+    approved_by: str | None
+    notes: str | None
+
+
+class IndicatorDefinitionSummary(MarsModel):
+    """What a metric is, and which version is in force.
+
+    ``active_version`` is null when the programme has not approved one. That is
+    an ordinary state, not an error: the indicator is registered and inert.
+    """
+
+    id: uuid.UUID
+    code: str
+    label: str
+    purpose: str
+    interpretation: str
+    unit: str
+    source_domain: str
+    period_grain: str
+    base_geography_grain: str
+    evidence_lane: str
+    definition_source: str
+    active_version: IndicatorVersionSummary | None
+    version_count: int
+
+
+class IndicatorResultSummary(MarsModel):
+    """One materialised figure, with the context needed to read it.
+
+    ``value`` is null whenever ``value_status`` is not ``available``. A missing
+    value is never rendered as zero: an undefined denominator and a genuine
+    zero are opposite statements about a facility.
+    """
+
+    id: uuid.UUID
+    indicator_code: str
+    geography_grain: str
+    geography_unit_id: uuid.UUID | None
+    facility_id: uuid.UUID | None
+    period_start: date
+    period_end: date
+    period_grain: str
+    age_band: str
+    sex: str
+    numerator: int | None
+    denominator: int | None
+    value: float | None
+    value_status: str
+    contributing_units: int | None
+    expected_units: int | None
+    missing_inputs: int | None
+    quality_context: dict[str, Any] | None
+    source_cutoff: datetime
+    boundary_version_id: uuid.UUID | None
+    engine_version: str
+    computed_at: datetime
+
+
 # Forward references resolved after all models are declared.
 GeographyOverviewResponse.model_rebuild()
 FacilityDetail.model_rebuild()

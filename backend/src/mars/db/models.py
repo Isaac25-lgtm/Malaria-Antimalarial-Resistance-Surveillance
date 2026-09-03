@@ -42,6 +42,11 @@ from mars.domain.identity import (
     IdentityRecord,
     ReidentificationEvent,
 )
+from mars.domain.indicator import (
+    IndicatorDefinition,
+    IndicatorDefinitionVersion,
+    IndicatorResult,
+)
 from mars.domain.ingestion import (
     ImportBatch,
     ImportSourceRow,
@@ -81,6 +86,9 @@ __all__ = [
     "ImportSourceRow",
     "ImportStageExecution",
     "ImportValidationIssue",
+    "IndicatorDefinition",
+    "IndicatorDefinitionVersion",
+    "IndicatorResult",
     "IntegrationMappingProposal",
     "IntegrationRun",
     "LaboratoryTestObservation",

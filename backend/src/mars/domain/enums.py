@@ -693,3 +693,147 @@ class MappingProposalStatus(str, enum.Enum):
     ACCEPTED = "accepted"
     REJECTED = "rejected"
     SUPERSEDED = "superseded"
+
+
+# ---------------------------------------------------------------------------
+# Indicators and analytics — Prompt 13
+# ---------------------------------------------------------------------------
+class EvidenceLane(str, enum.Enum):
+    """Which evidence lane a derived figure belongs to.
+
+    The two-lane model is the scientific boundary of the whole product, so it
+    is a column on every indicator definition rather than a convention. A
+    routine-derived figure may support a signal; it can never become a
+    confirmed finding, and the lane is what makes an attempt to promote one
+    a schema error rather than an editorial slip.
+    """
+
+    #: Derived from routine e-register and HMIS reporting.
+    ROUTINE_SURVEILLANCE = "routine_surveillance"
+    #: Established externally - therapeutic efficacy studies, molecular
+    #: results - under separate governance. No MARS calculation produces this.
+    CONFIRMED_EVIDENCE = "confirmed_evidence"
+
+
+class PeriodGrain(str, enum.Enum):
+    """The reporting period an indicator is defined over.
+
+    An indicator has exactly one grain. A weekly figure and a monthly figure
+    are different quantities, and letting one definition serve both is how a
+    week's cases get compared with a month's.
+    """
+
+    DAY = "day"
+    EPIDEMIOLOGICAL_WEEK = "epidemiological_week"
+    MONTH = "month"
+
+
+class GeographyGrain(str, enum.Enum):
+    """The level an indicator is computed at.
+
+    ``FACILITY`` is not a geography level - it is the reporting unit - but it
+    is the grain most source data arrives at, so it belongs in the same axis.
+    Rollups go facility -> subcounty -> district -> national.
+    """
+
+    FACILITY = "facility"
+    SUBCOUNTY = "subcounty"
+    DISTRICT = "district"
+    NATIONAL = "national"
+
+
+class IndicatorUnit(str, enum.Enum):
+    """What an indicator's value is.
+
+    ``PROPORTION`` is stored as a fraction between 0 and 1, never as a
+    pre-multiplied percentage: multiplying at the presentation layer is
+    reversible, and a value stored as 43.7 with no unit is not.
+    """
+
+    COUNT = "count"
+    PROPORTION = "proportion"
+    RATE_PER_PERIOD = "rate_per_period"
+    DAYS = "days"
+
+
+class IndicatorSourceDomain(str, enum.Enum):
+    """Which source an indicator is computed from.
+
+    Recorded because the same clinical quantity computed from an e-register and
+    from a paper return is two different measurements, and a summary that mixed
+    them would double-count. An indicator names one domain.
+    """
+
+    ENCOUNTER = "encounter"
+    AGGREGATE_WEEKLY = "aggregate_weekly"
+    AGGREGATE_MONTHLY = "aggregate_monthly"
+    COMMODITY = "commodity"
+    LABORATORY = "laboratory"
+    REPORTING_METADATA = "reporting_metadata"
+
+
+class IndicatorValueStatus(str, enum.Enum):
+    """Whether a materialised value is a number, and if not, why not.
+
+    ``UNAVAILABLE`` exists because an undefined denominator must never become
+    zero. A positivity of "0.0" and a positivity of "we could not compute this"
+    look identical in a chart and are opposite statements about a facility.
+    """
+
+    #: A computed value the definition's rules permit.
+    AVAILABLE = "available"
+    #: The denominator was zero, null, or not reported. No value exists.
+    UNAVAILABLE_NO_DENOMINATOR = "unavailable_no_denominator"
+    #: Inputs were present but the definition's completeness rules excluded
+    #: the period. The exclusion is the finding.
+    UNAVAILABLE_INSUFFICIENT_DATA = "unavailable_insufficient_data"
+    #: Suppressed by a governed privacy rule. Distinct from missing: something
+    #: is there, and the rule is why it is not shown.
+    SUPPRESSED = "suppressed"
+
+
+# ---------------------------------------------------------------------------
+# Episodes and recurrence — Prompt 14
+# ---------------------------------------------------------------------------
+class EpisodeStatus(str, enum.Enum):
+    """What an episode candidate is, in terms routine data can support.
+
+    Every value is deliberately provisional. Routine data cannot establish that
+    two positive results are one illness or two, so MARS records what it can
+    see - visits, intervals, treatment records - and calls the grouping a
+    *candidate*. Naming it anything firmer would be a clinical claim the data
+    cannot carry.
+    """
+
+    #: One or more encounters grouped by the active rule. The ordinary case.
+    CANDIDATE = "candidate"
+    #: The rule's window extends past the data MARS holds, so the episode may
+    #: continue beyond what is recorded. Reported rather than closed silently.
+    OPEN_AT_PERIOD_END = "open_at_period_end"
+    #: Grouped, but with evidence a reviewer needs to see before using it -
+    #: a missing treatment record, an unresolved facility.
+    QUALIFIED = "qualified"
+
+
+class EpisodeEncounterRole(str, enum.Enum):
+    """Why an encounter is in an episode.
+
+    Kept explicit so an explanation can say "this visit started it, this one
+    was a repeat positive" rather than presenting an undifferentiated list.
+    """
+
+    INDEX = "index"
+    FOLLOW_UP = "follow_up"
+    REPEAT_POSITIVE = "repeat_positive"
+
+
+class EpisodeBuildStatus(str, enum.Enum):
+    """Where an episode build run got to."""
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    #: The active rule version is absent. Not a failure of the run - a
+    #: statement that the programme has not approved an episode window, which
+    #: is a governance fact rather than a bug.
+    NOT_CONFIGURED = "not_configured"
+    FAILED = "failed"

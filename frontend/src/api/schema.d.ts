@@ -544,6 +544,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/indicators/definitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every registered indicator definition
+         * @description The registry.
+         *
+         *     A definition with no active version is returned with ``active_version:
+         *     null`` rather than omitted. An indicator awaiting programme approval is a
+         *     fact the programme needs to see, not an absence.
+         */
+        get: operations["list_definitions_api_v1_indicators_definitions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/indicators/definitions/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One indicator definition */
+        get: operations["get_definition_api_v1_indicators_definitions__code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/indicators/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Materialised indicator values within the caller's scope
+         * @description Figures the caller is entitled to see.
+         *
+         *     A requested geography unit outside the caller's scope is **refused**, by
+         *     the same scope check the geography endpoints use. It is not silently
+         *     dropped: a caller who can tell "no data" from "not yours" by watching a
+         *     list length has been told something the scope exists to withhold.
+         *
+         *     The refusal is a 404 rather than a 403, deliberately - a 403 confirms that
+         *     the unit exists.
+         */
+        get: operations["get_summary_api_v1_indicators_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/{system}/mapping-proposals": {
         parameters: {
             query?: never;
@@ -1061,6 +1130,16 @@ export interface components {
             breadcrumbs: components["schemas"]["GeographyBreadcrumb"][];
         };
         /**
+         * GeographyGrain
+         * @description The level an indicator is computed at.
+         *
+         *     ``FACILITY`` is not a geography level - it is the reporting unit - but it
+         *     is the grain most source data arrives at, so it belongs in the same axis.
+         *     Rollups go facility -> subcounty -> district -> national.
+         * @enum {string}
+         */
+        GeographyGrain: "facility" | "subcounty" | "district" | "national";
+        /**
          * GeographyLevel
          * @description Administrative hierarchy levels.
          *
@@ -1194,6 +1273,163 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * IndicatorDefinitionSummary
+         * @description What a metric is, and which version is in force.
+         *
+         *     ``active_version`` is null when the programme has not approved one. That is
+         *     an ordinary state, not an error: the indicator is registered and inert.
+         */
+        IndicatorDefinitionSummary: {
+            active_version: components["schemas"]["IndicatorVersionSummary"] | null;
+            /** Base Geography Grain */
+            base_geography_grain: string;
+            /** Code */
+            code: string;
+            /** Definition Source */
+            definition_source: string;
+            /** Evidence Lane */
+            evidence_lane: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interpretation */
+            interpretation: string;
+            /** Label */
+            label: string;
+            /** Period Grain */
+            period_grain: string;
+            /** Purpose */
+            purpose: string;
+            /** Source Domain */
+            source_domain: string;
+            /** Unit */
+            unit: string;
+            /** Version Count */
+            version_count: number;
+        };
+        /**
+         * IndicatorResultSummary
+         * @description One materialised figure, with the context needed to read it.
+         *
+         *     ``value`` is null whenever ``value_status`` is not ``available``. A missing
+         *     value is never rendered as zero: an undefined denominator and a genuine
+         *     zero are opposite statements about a facility.
+         */
+        IndicatorResultSummary: {
+            /** Age Band */
+            age_band: string;
+            /** Boundary Version Id */
+            boundary_version_id: string | null;
+            /**
+             * Computed At
+             * Format: date-time
+             */
+            computed_at: string;
+            /** Contributing Units */
+            contributing_units: number | null;
+            /** Denominator */
+            denominator: number | null;
+            /** Engine Version */
+            engine_version: string;
+            /** Expected Units */
+            expected_units: number | null;
+            /** Facility Id */
+            facility_id: string | null;
+            /** Geography Grain */
+            geography_grain: string;
+            /** Geography Unit Id */
+            geography_unit_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Indicator Code */
+            indicator_code: string;
+            /** Missing Inputs */
+            missing_inputs: number | null;
+            /** Numerator */
+            numerator: number | null;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /** Period Grain */
+            period_grain: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Quality Context */
+            quality_context: {
+                [key: string]: unknown;
+            } | null;
+            /** Sex */
+            sex: string;
+            /**
+             * Source Cutoff
+             * Format: date-time
+             */
+            source_cutoff: string;
+            /** Value */
+            value: number | null;
+            /** Value Status */
+            value_status: string;
+        };
+        /**
+         * IndicatorVersionSummary
+         * @description One version of an indicator definition.
+         *
+         *     The specification is exposed so a reader can check what a figure means.
+         *     No threshold appears because none exists here: what counts as too high is
+         *     a programme decision held in the configuration registry.
+         */
+        IndicatorVersionSummary: {
+            /** Approved By */
+            approved_by: string | null;
+            /** Blank Handling */
+            blank_handling: string;
+            /** Denominator Specification */
+            denominator_specification: {
+                [key: string]: unknown;
+            } | null;
+            /** Effective From */
+            effective_from: string | null;
+            /** Effective To */
+            effective_to: string | null;
+            /** Exclusion Rules */
+            exclusion_rules: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Notes */
+            notes: string | null;
+            /** Numerator Specification */
+            numerator_specification: {
+                [key: string]: unknown;
+            };
+            /** Permitted Dimensions */
+            permitted_dimensions: {
+                [key: string]: unknown;
+            } | null;
+            /** Semantic Version */
+            semantic_version: string;
+            /** Specification Checksum */
+            specification_checksum: string;
+            /** Status */
+            status: string;
+            /** Version Number */
+            version_number: number;
         };
         /** IntegrationRunSummary */
         IntegrationRunSummary: {
@@ -2578,6 +2814,95 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_definitions_api_v1_indicators_definitions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorDefinitionSummary"][];
+                };
+            };
+        };
+    };
+    get_definition_api_v1_indicators_definitions__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorDefinitionSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_summary_api_v1_indicators_summary_get: {
+        parameters: {
+            query?: {
+                /** @description Indicator codes */
+                code?: string[] | null;
+                grain?: components["schemas"]["GeographyGrain"] | null;
+                geography_unit_id?: string[] | null;
+                facility_id?: string[] | null;
+                period_from?: string | null;
+                period_to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorResultSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

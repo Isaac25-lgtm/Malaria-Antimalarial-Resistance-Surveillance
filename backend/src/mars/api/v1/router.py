@@ -9,6 +9,7 @@ from mars.api.v1 import (
     geography,
     governance,
     health,
+    indicators,
     integrations,
     meta,
     organisation,
@@ -31,6 +32,7 @@ def build_v1_router(settings: Settings) -> APIRouter:
     router.include_router(geography.router)
     router.include_router(organisation.router)
     router.include_router(governance.router)
+    router.include_router(indicators.router)
     router.include_router(integrations.router)
 
     if settings.is_development_auth_active:

@@ -188,9 +188,10 @@ class TestTheDhis2AdapterIsALeaf:
 #: is worse than an absent module, because a reader cannot tell the difference
 #: without opening it.
 #:
-#: ``ingestion`` left this list at Prompt 5, which implements the geography
-#: importer. Each entry is removed only by the prompt that genuinely fills it.
-UNIMPLEMENTED_PACKAGES = ["analytics", "signals", "explainability", "investigations"]
+#: ``ingestion`` left this list at Prompt 5 (geography importer) and
+#: ``analytics`` at Prompt 13 (indicator registry and aggregation). Each
+#: entry is removed only by the prompt that genuinely fills it.
+UNIMPLEMENTED_PACKAGES = ["signals", "explainability", "investigations"]
 
 
 class TestPlaceholderPackagesAreEmpty:

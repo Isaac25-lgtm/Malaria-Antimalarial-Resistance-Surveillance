@@ -30,6 +30,7 @@ from mars.services.auth_service import AuthService
 from mars.services.geography_map_service import GeographyMapService
 from mars.services.geography_service import GeographyService
 from mars.services.governance_service import ConfigurationService, MethodRegistryService
+from mars.services.indicator_query import IndicatorQueryService
 from mars.services.integration_status import IntegrationStatusService
 from mars.services.organisation_service import FacilityService, OrganisationService
 
@@ -85,6 +86,10 @@ def get_facility_service(session: SessionDep) -> FacilityService:
     return FacilityService(session)
 
 
+def get_indicator_query_service(session: SessionDep) -> IndicatorQueryService:
+    return IndicatorQueryService(session)
+
+
 def get_integration_status_service(
     session: SessionDep, settings: SettingsDep
 ) -> IntegrationStatusService:
@@ -106,6 +111,7 @@ OrganisationServiceDep = Annotated[OrganisationService, Depends(get_organisation
 FacilityServiceDep = Annotated[FacilityService, Depends(get_facility_service)]
 ConfigurationServiceDep = Annotated[ConfigurationService, Depends(get_configuration_service)]
 MethodRegistryDep = Annotated[MethodRegistryService, Depends(get_method_registry_service)]
+IndicatorQueryDep = Annotated[IndicatorQueryService, Depends(get_indicator_query_service)]
 IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integration_status_service)]
 
 
