@@ -5,12 +5,12 @@ convention. The separation exists from the first migration because retrofitting
 it means rewriting every foreign key that crosses it.
 
     mars_core       Canonical surveillance data. Geography, organisation units,
-                    facilities, and later encounters and aggregates. Contains no
-                    direct patient identifier.
+                    facilities, encounters and aggregates. Contains no direct
+                    patient identifier.
 
-    mars_identity   Direct patient identifiers. Owned by a separate database
-                    role; the application role holds no grant on it. Empty in
-                    phases 1-2 - the boundary is created before the data exists.
+    mars_identity   Direct patient identifiers and deterministic linkage tokens.
+                    Owned by a separate database role; the application role
+                    holds no grant on it.
 
     mars_audit      Append-only audit events. Insert-only from the application's
                     perspective; no update or delete path is exposed.
@@ -56,7 +56,7 @@ RESTRICTED_SCHEMAS: Final[frozenset[str]] = frozenset({IDENTITY})
 #: Human-readable purpose, surfaced in documentation and admin tooling.
 SCHEMA_PURPOSE: Final[dict[str, str]] = {
     CORE: "Canonical surveillance data. No direct patient identifiers.",
-    IDENTITY: "Direct patient identifiers. Separate role; restricted; empty until Prompt 8.",
+    IDENTITY: "Direct patient identifiers and linkage tokens. Separate restricted role.",
     AUDIT: "Append-only audit events. No update or delete path.",
     SECURITY: "Users, roles, permissions, geography and sensitivity scopes.",
     GOVERNANCE: "Configuration versions and the method/model registry.",

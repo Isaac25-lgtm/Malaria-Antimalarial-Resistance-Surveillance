@@ -26,11 +26,12 @@ molecular markers. Externally confirmed findings - therapeutic efficacy studies
 and molecular results - are handled in a separate, separately governed lane. See
 `/api/v1/meta/evidence-lanes`.
 
-**Phase status.** This build covers phases 1 and 2: repository and runtime
-foundation, database and governance foundation, authentication and
-authorisation, and the organisation, facility and geography domain model. No
-encounter ingestion, episode construction, indicator, anomaly-detection, signal
-or investigation capability exists yet.
+**Implementation status.** This build covers the foundation through Prompt 11:
+governed geography, scoped map services, privacy-separated OPD encounters,
+repeatable e-register and HMIS 033b/105 ingestion, synthetic demonstration data,
+and immutable reported-versus-derived reconciliation. DHIS2 exchange, governed
+analytics, episode construction, anomaly detection, signals and investigations
+are not implemented yet.
 """
 
 

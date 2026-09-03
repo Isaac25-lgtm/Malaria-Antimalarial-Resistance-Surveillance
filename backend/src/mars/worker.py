@@ -3,10 +3,10 @@
 Runs as a separate process from the API so that heavy analytical work never
 occupies a request-serving thread (blueprint section 061).
 
-Idle in phases 1-2. No job is registered because no ingestion, analytics or
-signal work exists yet. The process starts cleanly, reports its configuration
-and holds, so the container topology is real from the first deployment rather
-than being introduced later.
+Only geography import is registered here today. Encounter and aggregate imports
+have explicit, synchronous CLI entry points; analytical refresh and signal jobs
+arrive in later prompts. The process starts cleanly, reports its configuration
+and holds when it has no queued work.
 """
 
 from __future__ import annotations
@@ -22,10 +22,14 @@ from mars.core.settings import Settings, get_settings
 #: Jobs the worker can run, added by the phases that own them.
 #:
 #: Prompt 9  - e-register encounter ingestion
-#: Prompt 12 - aggregate reconciliation
+#: Prompt 11 - aggregate ingestion and reconciliation
+#: Prompt 12 - DHIS2 exchange
 #: Prompt 13 - indicator materialisation
-#: Prompt 18 - temporal baseline refresh
-#: Prompt 20 - spatial metric refresh
+#: Prompt 14 - episode construction
+#: Prompt 17 - historical baseline refresh
+#: Prompt 18 - temporal anomaly and persistence
+#: Prompt 19 - geographic aggregation
+#: Prompt 20 - spatial clustering
 #: Prompt 21 - signal generation
 REGISTERED_JOBS: tuple[str, ...] = ("geography.import",)
 

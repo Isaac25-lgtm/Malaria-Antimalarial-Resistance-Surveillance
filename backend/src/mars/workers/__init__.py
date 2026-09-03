@@ -1,1 +1,1 @@
-"""Worker job definitions. Empty until Prompt 9. See mars.worker for the entry point."""
+"""Worker job definitions; see :mod:`mars.worker` for the process entry point."""

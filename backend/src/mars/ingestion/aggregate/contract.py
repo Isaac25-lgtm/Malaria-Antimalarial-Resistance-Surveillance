@@ -67,6 +67,49 @@ FORBIDDEN_SUBMISSION_FIELDS: frozenset[str] = frozenset(
     }
 )
 
+#: Every field this contract defines, at any depth. Used only to decide whether
+#: a key is safe to name in an error message: these are MARS's own vocabulary,
+#: so echoing one cannot disclose anything a producer sent.
+KNOWN_SUBMISSION_FIELDS: frozenset[str] = frozenset(
+    {
+        # Envelope
+        "record_type",
+        "schema_version",
+        "source_system",
+        "extracted_at",
+        "submission_count",
+        # Submission
+        "form",
+        "facility_code",
+        "period_start",
+        "period_end",
+        "period_label",
+        "reported_on",
+        "revision",
+        "source_reference",
+        "remarks",
+        "observations",
+        "stock",
+        "laboratory",
+        # Observation
+        "element",
+        "value",
+        "age_band",
+        "sex",
+        "raw_value",
+        # Stock
+        "commodity",
+        "metric",
+        "unit",
+        # Laboratory
+        "test",
+        "done",
+        "positive",
+        "raw_done",
+        "raw_positive",
+    }
+)
+
 
 class AggregateContractError(ValueError):
     """The artefact is not readable as this contract."""
@@ -238,10 +281,11 @@ def _submission(payload: dict[str, Any], number: int) -> InboundSubmission:
         if not payload.get(name):
             raise AggregateContractError(f"line {number} has no {name}")
 
-    present = FORBIDDEN_SUBMISSION_FIELDS & set(payload)
+    present = _forbidden_field_paths(payload)
     if present:
         raise AggregateContractError(
-            f"line {number} carries {sorted(present)}. An aggregate return is "
+            f"line {number} carries identity-shaped field(s) at {present}. "
+            "An aggregate return is "
             "counts, never people, and the whole submission is stored where "
             "identity must already be absent. Refused rather than stripped, so "
             "the producer does not believe MARS kept it."
@@ -271,6 +315,60 @@ def _submission(payload: dict[str, Any], number: int) -> InboundSubmission:
             for index, entry in enumerate(payload.get("laboratory") or [])
         ],
     )
+
+
+def _normalise_key(key: str) -> str:
+    """Fold a JSON key to its comparison form.
+
+    Case and the common separators, so a producer cannot bypass the guard
+    accidentally with a spelling such as ``Patient-Name`` or ``NATIONAL ID``.
+    """
+    return re.sub(r"[^a-z0-9]+", "_", key.casefold()).strip("_")
+
+
+def _path_segment(key: str) -> str:
+    """A key, but only if it is one this contract recognises.
+
+    **A key can itself be an identity value.** ``{"patients": {"Nakato Sarah":
+    {...}}}`` is a plausible export shape, and the path this function builds
+    ends up in the error message, which the pipeline stores on
+    ``import_batch.failure_reason`` - a persisted column operators read. Echoing
+    an arbitrary key would move a name out of the payload and into the failure
+    reason, which is the same leak wearing a different hat.
+
+    So the path is built from a whitelist: a key is named only when it is a
+    field this contract defines or one it explicitly forbids, both of which are
+    MARS's own vocabulary. Anything else is reported by shape alone. An
+    operator still learns exactly where in the structure the field sits.
+    """
+    normalised = _normalise_key(key)
+    if normalised in KNOWN_SUBMISSION_FIELDS or normalised in FORBIDDEN_SUBMISSION_FIELDS:
+        return normalised
+    return "<unrecognised-key>"
+
+
+def _forbidden_field_paths(value: Any, path: str = "$") -> list[str]:
+    """Find identity-shaped keys anywhere in the JSON object.
+
+    The original payload is persisted recursively, so checking only its top
+    level is not a privacy boundary: a line-list field attached to an
+    observation or a metadata object would otherwise pass through unchanged.
+
+    Reports structural paths only. See ``_path_segment`` for why the path can
+    never carry a value.
+    """
+    found: list[str] = []
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            key_text = str(key)
+            nested_path = f"{path}.{_path_segment(key_text)}"
+            if _normalise_key(key_text) in FORBIDDEN_SUBMISSION_FIELDS:
+                found.append(nested_path)
+            found.extend(_forbidden_field_paths(nested, nested_path))
+    elif isinstance(value, list):
+        for index, nested in enumerate(value):
+            found.extend(_forbidden_field_paths(nested, f"{path}[{index}]"))
+    return found
 
 
 def _observation(entry: Any, number: int, index: int) -> InboundObservation:
@@ -430,6 +528,7 @@ def parse_form(value: str) -> AggregateForm | None:
 __all__ = [
     "FORBIDDEN_SUBMISSION_FIELDS",
     "INGEST_METHOD_VERSION",
+    "KNOWN_SUBMISSION_FIELDS",
     "SUPPORTED_SCHEMA_VERSIONS",
     "AggregateAdapter",
     "AggregateContractError",

@@ -591,6 +591,53 @@ class TestAnAggregateReturnIsCountsNeverPeople:
         inbound = next(iter(JsonLinesAggregateAdapter().submissions(artefact)))
         assert not FORBIDDEN_SUBMISSION_FIELDS & set(inbound.raw)
 
+    @pytest.mark.parametrize(
+        "extra",
+        [
+            {"observations": [{"element": "EP01a", "value": 1, "patient_name": "Sarah"}]},
+            {"metadata": {"line_list": [{"nin": "CM00000000AAAA"}]}},
+            {"Patient-Name": "Sarah"},
+            {"NATIONAL ID": "CM00000000AAAA"},
+        ],
+    )
+    def test_identity_fields_are_refused_at_any_depth_and_casing(
+        self, tmp_path: Path, extra: dict[str, object]
+    ) -> None:
+        """The persisted raw object includes nested objects and arrays too."""
+        artefact = write(tmp_path, submission(**extra))
+        with pytest.raises(AggregateContractError, match="identity-shaped"):
+            list(JsonLinesAggregateAdapter().submissions(artefact))
+
+    def test_the_refusal_message_cannot_carry_an_identity_value(self, tmp_path: Path) -> None:
+        """A key can itself be a name.
+
+        ``{"patients": {"Nakato Sarah": {...}}}`` is a plausible export shape,
+        and the pipeline stores this message on ``import_batch.failure_reason``
+        - a persisted column operators read. Echoing the key would move the
+        name out of the payload and into the failure reason, which is the same
+        leak wearing a different hat. The path is therefore built from MARS's
+        own vocabulary; anything else is reported by shape alone.
+        """
+        artefact = write(tmp_path, submission(patients={"Nakato Sarah": {"nin": "CM90210077"}}))
+        with pytest.raises(AggregateContractError) as raised:
+            list(JsonLinesAggregateAdapter().submissions(artefact))
+
+        message = str(raised.value)
+        for secret in ("Nakato", "Sarah", "CM90210077"):
+            assert secret not in message, f"the refusal message disclosed {secret!r}"
+        # It still says where the field is, which is what an operator needs.
+        assert "patients" in message
+        assert "<unrecognised-key>" in message
+
+    def test_an_unrecognised_container_is_reported_by_shape(self, tmp_path: Path) -> None:
+        artefact = write(tmp_path, submission(metadata={"weird": {"NATIONAL ID": "CM1"}}))
+        with pytest.raises(AggregateContractError) as raised:
+            list(JsonLinesAggregateAdapter().submissions(artefact))
+
+        message = str(raised.value)
+        assert "CM1" not in message
+        assert "national_id" in message
+
     def test_an_ordinary_submission_still_parses(self, tmp_path: Path) -> None:
         """The guard must not refuse the legitimate fields the form carries."""
         artefact = write(tmp_path, submission(remarks="RDT stock ran out on the 14th"))

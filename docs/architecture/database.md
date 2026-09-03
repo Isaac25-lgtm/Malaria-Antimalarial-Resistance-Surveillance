@@ -10,16 +10,16 @@ separation is by sensitivity and by ownership, not by convention.
 
 | Schema | Holds | Notes |
 | --- | --- | --- |
-| `mars_core` | Canonical surveillance data: geography, organisation units, facilities; later encounters and aggregates | Contains no direct patient identifier |
-| `mars_identity` | Direct patient identifiers | Separate database role. Application role holds no grant. **Empty until Prompt 8** |
+| `mars_core` | Canonical surveillance data: geography, organisation units, facilities, encounters and aggregates | Contains no direct patient identifier |
+| `mars_identity` | Direct patient identifiers and deterministic linkage tokens | Separate database role. Application role holds no grant. Populated only through the Prompt 8 vault boundary |
 | `mars_audit` | Append-only audit events | No update or delete path exists |
 | `mars_security` | Users, roles, permissions, geography and sensitivity scopes | Separated so operator access to data does not imply access to the access model |
 | `mars_governance` | Configuration versions and the method registry | The record of which rules produced a result |
 | `mars_analytics` | Derived and materialised output | Placeholder; rebuildable without touching canonical data |
 
-`mars_identity` is created empty, deliberately. The boundary must exist before
-the data does, because retrofitting it means rewriting every foreign key that
-crosses it (ADR 0006).
+`mars_identity` was created empty before the vault was implemented, deliberately.
+The boundary had to exist before the data because retrofitting it would mean
+rewriting every foreign key that crosses it (ADR 0006).
 
 ## Conventions
 
