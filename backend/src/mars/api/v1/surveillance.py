@@ -16,9 +16,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from mars.api.dependencies import SurveillanceSummaryDep, require_permissions
+from mars.api.dependencies import OverviewServiceDep, SurveillanceSummaryDep, require_permissions
 from mars.api.v1.schemas import (
     FacilityContribution,
+    OverviewSnapshot,
     PriorityDistrict,
     SurveillanceMeasure,
     SurveillanceProvenance,
@@ -32,6 +33,23 @@ AggregateReader = Annotated[
     AuthenticatedPrincipal,
     Depends(require_permissions(Permission.SURVEILLANCE_VIEW_AGGREGATE)),
 ]
+
+
+@router.get("/overview", response_model=OverviewSnapshot)
+def overview(
+    principal: AggregateReader,
+    service: OverviewServiceDep,
+    period_start: date,
+    period_end: date,
+) -> OverviewSnapshot:
+    """One dashboard snapshot. Every section carries its own provenance.
+
+    The browser must not compute a competing indicator. Pader-scoped callers
+    receive a Pader title; national labelling is refused for a district scope.
+    """
+    return OverviewSnapshot.model_validate(
+        service.snapshot(principal, period_start=period_start, period_end=period_end)
+    )
 
 
 @router.get("/national/summary", response_model=list[SurveillanceMeasure])

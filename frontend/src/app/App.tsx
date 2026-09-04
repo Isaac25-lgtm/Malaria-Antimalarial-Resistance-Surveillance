@@ -19,6 +19,14 @@ import { DistrictWorkspaceView } from "../features/workspaces/DistrictWorkspaceV
 import { FacilityWorkspaceView } from "../features/workspaces/FacilityWorkspaceView";
 import { SignalEvidenceView } from "../features/signals/SignalEvidenceView";
 import { ActionCentreView } from "../features/investigations/ActionCentreView";
+import {
+  AdministrationView,
+  AnalyticsView,
+  CommoditiesView,
+  DataQualityView,
+  ReportsView,
+  SignalsListView,
+} from "../features/operations/OperationalViews";
 import { AppShell } from "./AppShell";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { NotFoundView } from "./NotFoundView";
@@ -132,11 +140,8 @@ function AppRoutes() {
         />
 
         {/*
-          The national map draws the boundaries MARS has actually imported. The
-          remaining surveillance workspaces - district and facility views, the
-          signal register, the action centre - still resolve to the reference
-          views they can populate, and arrive with the phases that give them
-          something to show.
+          Overview, map, investigations and operational lists read the same
+          governed APIs. None of these routes invent a competing indicator.
         */}
         <Route
           path="national"
@@ -171,9 +176,57 @@ function AppRoutes() {
           }
         />
         <Route
+          path="signals"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <SignalsListView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="analytics"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <AnalyticsView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="commodities"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <CommoditiesView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="data-quality"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <DataQualityView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <RequireAuth permissions={["report:generate"]}>
+              <ReportsView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="administration"
+          element={
+            <RequireAuth permissions={["configuration:view"]}>
+              <AdministrationView />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="signals/:signalId"
           element={
-            <RequireAuth permissions={["signal:view"]}>
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
               <SignalEvidenceView />
             </RequireAuth>
           }

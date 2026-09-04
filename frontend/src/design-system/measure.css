@@ -95,8 +95,33 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 40rem) {
-  .measure-grid {
-    grid-template-columns: 1fr;
-  }
+.measure-grid--compact {
+  gap: 0.65rem;
+}
+
+.measure--compact {
+  min-height: 4.4rem;
+  padding: 0.55rem 0.7rem;
+  gap: 0.25rem;
+}
+
+.measure--compact[data-status="not_configured"],
+.measure--compact[data-status="unavailable"],
+.measure--compact[data-status="outside_scope"] {
+  background: var(--surface-raised);
+  border-style: solid;
+  box-shadow: var(--shadow-raised);
+}
+
+.measure--compact .measure__label {
+  font-size: 0.65rem;
+}
+
+.measure--compact .measure__value {
+  font-size: 1.35rem;
+}
+
+.measure--compact .measure__comparison,
+.measure--compact .measure__note {
+  font-size: 0.65rem;
 }

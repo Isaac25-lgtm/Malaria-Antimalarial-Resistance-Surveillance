@@ -273,6 +273,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/geography/map/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public administrative geometry for map context, with in-scope flags
+         * @description Return Uganda's public administrative outlines at one national grain.
+         *
+         *     Every published unit at that level is included so a Pader-scoped map can
+         *     still draw the rest of the country. ``in_scope`` says whether the caller
+         *     may open the unit. No indicator, signal, investigation or commodity value
+         *     is attached.
+         *
+         *     Subcounty and finer requests are refused: those are not a context view.
+         */
+        get: operations["map_context_api_v1_geography_map_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/geography/map/features": {
         parameters: {
             query?: never;
@@ -1330,6 +1357,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/surveillance/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Overview
+         * @description One dashboard snapshot. Every section carries its own provenance.
+         *
+         *     The browser must not compute a competing indicator. Pader-scoped callers
+         *     receive a Pader title; national labelling is refused for a district scope.
+         */
+        get: operations["overview_api_v1_surveillance_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/surveillance/priority-districts": {
         parameters: {
             query?: never;
@@ -1473,6 +1523,71 @@ export interface components {
             /** Min Lon */
             min_lon: number;
         };
+        /** BucketSection */
+        BucketSection: {
+            /** Availability */
+            availability: string;
+            /** Freshness */
+            freshness: string | null;
+            /** Items */
+            items: components["schemas"]["CountBucket"][];
+            /** Last Successful Synchronization */
+            last_successful_synchronization: string | null;
+            /** Method Version Id */
+            method_version_id?: string | null;
+            /** Refusal Reason */
+            refusal_reason?: string | null;
+            reporting_period: components["schemas"]["PeriodWindow"];
+            /** Requested Scope */
+            requested_scope: string;
+            /** Source */
+            source: string;
+            source_period: components["schemas"]["PeriodWindow"] | null;
+        };
+        /** ChartSection */
+        ChartSection: {
+            /** Availability */
+            availability: string;
+            /** Freshness */
+            freshness: string | null;
+            /** Items */
+            items?: {
+                [key: string]: unknown;
+            }[];
+            /** Last Successful Synchronization */
+            last_successful_synchronization: string | null;
+            /** Method Version Id */
+            method_version_id?: string | null;
+            /** Refusal Reason */
+            refusal_reason?: string | null;
+            reporting_period: components["schemas"]["PeriodWindow"];
+            /** Requested Scope */
+            requested_scope: string;
+            /** Source */
+            source: string;
+            source_period: components["schemas"]["PeriodWindow"] | null;
+        };
+        /** CommoditySection */
+        CommoditySection: {
+            /** Availability */
+            availability: string;
+            /** Freshness */
+            freshness: string | null;
+            /** Items */
+            items: components["schemas"]["AnalyticalRecordSummary"][];
+            /** Last Successful Synchronization */
+            last_successful_synchronization: string | null;
+            /** Method Version Id */
+            method_version_id?: string | null;
+            /** Refusal Reason */
+            refusal_reason?: string | null;
+            reporting_period: components["schemas"]["PeriodWindow"];
+            /** Requested Scope */
+            requested_scope: string;
+            /** Source */
+            source: string;
+            source_period: components["schemas"]["PeriodWindow"] | null;
+        };
         /** ConfigurationKeySummary */
         ConfigurationKeySummary: {
             /** Active Effective From */
@@ -1496,6 +1611,19 @@ export interface components {
             label: string;
             /** Requires Programme Approval */
             requires_programme_approval: boolean;
+        };
+        /** CountBucket */
+        CountBucket: {
+            /** Code */
+            code: string;
+            /** Count */
+            count: number | null;
+            /** Detail */
+            detail?: string | null;
+            /** Label */
+            label: string;
+            /** Status */
+            status: string;
         };
         /**
          * CurrentUserResponse
@@ -1590,6 +1718,27 @@ export interface components {
             scope_description: string;
             /** Username */
             username: string;
+        };
+        /** DistrictSection */
+        DistrictSection: {
+            /** Availability */
+            availability: string;
+            /** Freshness */
+            freshness: string | null;
+            /** Items */
+            items: components["schemas"]["PriorityDistrict"][];
+            /** Last Successful Synchronization */
+            last_successful_synchronization: string | null;
+            /** Method Version Id */
+            method_version_id?: string | null;
+            /** Refusal Reason */
+            refusal_reason?: string | null;
+            reporting_period: components["schemas"]["PeriodWindow"];
+            /** Requested Scope */
+            requested_scope: string;
+            /** Source */
+            source: string;
+            source_period: components["schemas"]["PeriodWindow"] | null;
         };
         /**
          * EvidenceRequestSummary
@@ -2429,6 +2578,11 @@ export interface components {
             area_sq_km: number | null;
             /** Code */
             code: string;
+            /**
+             * In Scope
+             * @description Present on the public context layer: whether the caller may open this unit. Absent on the scoped features layer, where every returned row is already in scope.
+             */
+            in_scope?: boolean | null;
             /** Is Active */
             is_active: boolean;
             /** Level */
@@ -2570,6 +2724,27 @@ export interface components {
             /** Value */
             value: string | null;
         };
+        /** MeasureSection */
+        MeasureSection: {
+            /** Availability */
+            availability: string;
+            /** Freshness */
+            freshness: string | null;
+            /** Items */
+            items: components["schemas"]["SurveillanceMeasure"][];
+            /** Last Successful Synchronization */
+            last_successful_synchronization: string | null;
+            /** Method Version Id */
+            method_version_id?: string | null;
+            /** Refusal Reason */
+            refusal_reason?: string | null;
+            reporting_period: components["schemas"]["PeriodWindow"];
+            /** Requested Scope */
+            requested_scope: string;
+            /** Source */
+            source: string;
+            source_period: components["schemas"]["PeriodWindow"] | null;
+        };
         /** MethodDefinitionSummary */
         MethodDefinitionSummary: {
             /** Code */
@@ -2706,6 +2881,41 @@ export interface components {
          * @enum {string}
          */
         OrganisationUnitType: "national" | "regional_referral" | "district_health_office" | "health_sub_district" | "facility";
+        /**
+         * OverviewSnapshot
+         * @description One coherent dashboard payload. The browser does not compute figures.
+         */
+        OverviewSnapshot: {
+            commodity_alerts: components["schemas"]["CommoditySection"];
+            confirmed_malaria_trend: components["schemas"]["ChartSection"];
+            /** Data Mode */
+            data_mode: string;
+            /** Data Mode Detail */
+            data_mode_detail: string;
+            /** Demo Mode Enabled */
+            demo_mode_enabled: boolean;
+            districts_requiring_review: components["schemas"]["DistrictSection"];
+            /** Has National Scope */
+            has_national_scope: boolean;
+            /** Interpretation Boundary */
+            interpretation_boundary: string;
+            investigations_by_status: components["schemas"]["BucketSection"];
+            kpis: components["schemas"]["MeasureSection"];
+            /** Last Successful Synchronization */
+            last_successful_synchronization: string | null;
+            needs_attention: components["schemas"]["BucketSection"];
+            provenance: components["schemas"]["SurveillanceProvenance"];
+            recent_signals: components["schemas"]["SignalListSection"];
+            reporting_period: components["schemas"]["PeriodWindow"];
+            /** Requested Scope */
+            requested_scope: string;
+            signals_by_priority: components["schemas"]["BucketSection"];
+            /** Subtitle */
+            subtitle: string;
+            testing_positivity: components["schemas"]["ChartSection"];
+            /** Title */
+            title: string;
+        };
         /** Page[FacilitySummary] */
         Page_FacilitySummary_: {
             /** Items */
@@ -2999,6 +3209,27 @@ export interface components {
             uncertainty: string[];
             /** Why Flagged */
             why_flagged: string;
+        };
+        /** SignalListSection */
+        SignalListSection: {
+            /** Availability */
+            availability: string;
+            /** Freshness */
+            freshness: string | null;
+            /** Items */
+            items: components["schemas"]["SignalSummary"][];
+            /** Last Successful Synchronization */
+            last_successful_synchronization: string | null;
+            /** Method Version Id */
+            method_version_id?: string | null;
+            /** Refusal Reason */
+            refusal_reason?: string | null;
+            reporting_period: components["schemas"]["PeriodWindow"];
+            /** Requested Scope */
+            requested_scope: string;
+            /** Source */
+            source: string;
+            source_period: components["schemas"]["PeriodWindow"] | null;
         };
         /** SignalSummary */
         SignalSummary: {
@@ -3607,6 +3838,66 @@ export interface operations {
             };
             /** @description No such unit, or the unit is outside the caller's geography scope. These are the same response by design. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    map_context_api_v1_geography_map_context_get: {
+        parameters: {
+            query: {
+                /** @description Country, region or district. Finer grains are refused. */
+                level: components["schemas"]["GeographyLevel"];
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapFeatureCollection"];
+                };
+            };
+            /** @description The caller does not hold `geography:view`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No such unit, or the unit is outside the caller's geography scope. These are the same response by design. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description More features match than the payload ceiling allows. The request is refused rather than truncated; narrow it with `parent_id` or `within_id`. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5236,6 +5527,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SurveillanceMeasure"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    overview_api_v1_surveillance_overview_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverviewSnapshot"];
                 };
             };
             /** @description Validation Error */

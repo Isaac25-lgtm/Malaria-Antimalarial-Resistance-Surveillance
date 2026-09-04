@@ -35,11 +35,11 @@ describe("landing path", () => {
     expect(resolveLandingPath(null)).toBe("/sign-in");
   });
 
-  it("sends a national user to the national workspace", () => {
-    expect(resolveLandingPath(user({ has_national_scope: true }))).toBe("/national");
+  it("sends a national user to the overview", () => {
+    expect(resolveLandingPath(user({ has_national_scope: true }))).toBe("/command-centre");
   });
 
-  it("sends a district user to their own district", () => {
+  it("sends a district user to the scoped overview, never a national map they cannot populate", () => {
     const path = resolveLandingPath(
       user({
         geography_scopes: [
@@ -52,7 +52,7 @@ describe("landing path", () => {
         ],
       }),
     );
-    expect(path).toBe("/districts/304");
+    expect(path).toBe("/command-centre");
   });
 
   it("sends a facility user to their own facility", () => {

@@ -217,6 +217,22 @@ class InvestigationService:
             return None, [f"configuration:{SLA_CONFIGURATION_KEY}"]
         return version.value, []
 
+    def status_counts(self, principal: AuthenticatedPrincipal) -> dict[str, int]:
+        """How many investigations sit in each state, inside the caller's scope."""
+        statement = select(Investigation.investigation_status, func.count())
+        geographies = self._scope.geography_ids(principal)
+        facilities = self._scope.facility_ids(principal)
+        if principal.is_facility_restricted:
+            statement = statement.where(Investigation.facility_id.in_(facilities or set()))
+        elif geographies is not None:
+            statement = statement.where(Investigation.geography_unit_id.in_(geographies))
+        statement = statement.group_by(Investigation.investigation_status)
+        counts = {status.value: 0 for status in InvestigationStatus}
+        for status, count in self._session.execute(statement).all():
+            key = status.value if hasattr(status, "value") else str(status)
+            counts[key] = int(count)
+        return counts
+
     # -- Commands ------------------------------------------------------------
     def open(
         self,

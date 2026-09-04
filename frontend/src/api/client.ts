@@ -220,6 +220,9 @@ export const api = {
     limit?: number;
   }) => request<Schemas["MapFeatureCollection"]>("/geography/map/features", { query }),
 
+  mapContext: (query: { level: string; limit?: number }) =>
+    request<Schemas["MapFeatureCollection"]>("/geography/map/context", { query }),
+
   nationalGeography: () =>
     request<Schemas["NationalGeographyResponse"]>("/geography/national"),
 
@@ -295,6 +298,9 @@ export const api = {
 
   surveillanceProvenance: (query: { period_start: string; period_end: string }) =>
     request<Schemas["SurveillanceProvenance"]>("/surveillance/provenance", { query }),
+
+  overview: (query: { period_start: string; period_end: string }) =>
+    request<Schemas["OverviewSnapshot"]>("/surveillance/overview", { query }),
 
   analyticalResults: (
     kind:

@@ -275,6 +275,291 @@
         "title": "BoundingBoxModel",
         "type": "object"
       },
+      "BucketSection": {
+        "properties": {
+          "availability": {
+            "title": "Availability",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CountBucket"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_successful_synchronization": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Synchronization"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "refusal_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Reason"
+          },
+          "reporting_period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "requested_scope": {
+            "title": "Requested Scope",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "availability",
+          "requested_scope",
+          "reporting_period",
+          "source",
+          "source_period",
+          "freshness",
+          "last_successful_synchronization",
+          "items"
+        ],
+        "title": "BucketSection",
+        "type": "object"
+      },
+      "ChartSection": {
+        "properties": {
+          "availability": {
+            "title": "Availability",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_successful_synchronization": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Synchronization"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "refusal_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Reason"
+          },
+          "reporting_period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "requested_scope": {
+            "title": "Requested Scope",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "availability",
+          "requested_scope",
+          "reporting_period",
+          "source",
+          "source_period",
+          "freshness",
+          "last_successful_synchronization"
+        ],
+        "title": "ChartSection",
+        "type": "object"
+      },
+      "CommoditySection": {
+        "properties": {
+          "availability": {
+            "title": "Availability",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticalRecordSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_successful_synchronization": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Synchronization"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "refusal_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Reason"
+          },
+          "reporting_period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "requested_scope": {
+            "title": "Requested Scope",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "availability",
+          "requested_scope",
+          "reporting_period",
+          "source",
+          "source_period",
+          "freshness",
+          "last_successful_synchronization",
+          "items"
+        ],
+        "title": "CommoditySection",
+        "type": "object"
+      },
       "ConfigurationKeySummary": {
         "properties": {
           "active_effective_from": {
@@ -349,6 +634,52 @@
           "active_effective_from"
         ],
         "title": "ConfigurationKeySummary",
+        "type": "object"
+      },
+      "CountBucket": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "count",
+          "status"
+        ],
+        "title": "CountBucket",
         "type": "object"
       },
       "CurrentUserResponse": {
@@ -567,6 +898,101 @@
           "scope_description"
         ],
         "title": "DevelopmentUserSummary",
+        "type": "object"
+      },
+      "DistrictSection": {
+        "properties": {
+          "availability": {
+            "title": "Availability",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PriorityDistrict"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_successful_synchronization": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Synchronization"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "refusal_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Reason"
+          },
+          "reporting_period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "requested_scope": {
+            "title": "Requested Scope",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "availability",
+          "requested_scope",
+          "reporting_period",
+          "source",
+          "source_period",
+          "freshness",
+          "last_successful_synchronization",
+          "items"
+        ],
+        "title": "DistrictSection",
         "type": "object"
       },
       "EvidenceRequestSummary": {
@@ -2702,6 +3128,18 @@
             "title": "Code",
             "type": "string"
           },
+          "in_scope": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present on the public context layer: whether the caller may open this unit. Absent on the scoped features layer, where every returned row is already in scope.",
+            "title": "In Scope"
+          },
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
@@ -3083,6 +3521,101 @@
         "title": "MeasureComparison",
         "type": "object"
       },
+      "MeasureSection": {
+        "properties": {
+          "availability": {
+            "title": "Availability",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SurveillanceMeasure"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_successful_synchronization": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Synchronization"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "refusal_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Reason"
+          },
+          "reporting_period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "requested_scope": {
+            "title": "Requested Scope",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "availability",
+          "requested_scope",
+          "reporting_period",
+          "source",
+          "source_period",
+          "freshness",
+          "last_successful_synchronization",
+          "items"
+        ],
+        "title": "MeasureSection",
+        "type": "object"
+      },
       "MethodDefinitionSummary": {
         "properties": {
           "code": {
@@ -3446,6 +3979,112 @@
         ],
         "title": "OrganisationUnitType",
         "type": "string"
+      },
+      "OverviewSnapshot": {
+        "description": "One coherent dashboard payload. The browser does not compute figures.",
+        "properties": {
+          "commodity_alerts": {
+            "$ref": "#/components/schemas/CommoditySection"
+          },
+          "confirmed_malaria_trend": {
+            "$ref": "#/components/schemas/ChartSection"
+          },
+          "data_mode": {
+            "title": "Data Mode",
+            "type": "string"
+          },
+          "data_mode_detail": {
+            "title": "Data Mode Detail",
+            "type": "string"
+          },
+          "demo_mode_enabled": {
+            "title": "Demo Mode Enabled",
+            "type": "boolean"
+          },
+          "districts_requiring_review": {
+            "$ref": "#/components/schemas/DistrictSection"
+          },
+          "has_national_scope": {
+            "title": "Has National Scope",
+            "type": "boolean"
+          },
+          "interpretation_boundary": {
+            "title": "Interpretation Boundary",
+            "type": "string"
+          },
+          "investigations_by_status": {
+            "$ref": "#/components/schemas/BucketSection"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/MeasureSection"
+          },
+          "last_successful_synchronization": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Synchronization"
+          },
+          "needs_attention": {
+            "$ref": "#/components/schemas/BucketSection"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/SurveillanceProvenance"
+          },
+          "recent_signals": {
+            "$ref": "#/components/schemas/SignalListSection"
+          },
+          "reporting_period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "requested_scope": {
+            "title": "Requested Scope",
+            "type": "string"
+          },
+          "signals_by_priority": {
+            "$ref": "#/components/schemas/BucketSection"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "testing_positivity": {
+            "$ref": "#/components/schemas/ChartSection"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "subtitle",
+          "interpretation_boundary",
+          "data_mode",
+          "data_mode_detail",
+          "demo_mode_enabled",
+          "requested_scope",
+          "has_national_scope",
+          "reporting_period",
+          "provenance",
+          "last_successful_synchronization",
+          "kpis",
+          "signals_by_priority",
+          "investigations_by_status",
+          "districts_requiring_review",
+          "commodity_alerts",
+          "needs_attention",
+          "recent_signals",
+          "confirmed_malaria_trend",
+          "testing_positivity"
+        ],
+        "title": "OverviewSnapshot",
+        "type": "object"
       },
       "Page_FacilitySummary_": {
         "properties": {
@@ -4100,6 +4739,101 @@
           "generated_at"
         ],
         "title": "SignalExplanationSummary",
+        "type": "object"
+      },
+      "SignalListSection": {
+        "properties": {
+          "availability": {
+            "title": "Availability",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SignalSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_successful_synchronization": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Successful Synchronization"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "refusal_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Reason"
+          },
+          "reporting_period": {
+            "$ref": "#/components/schemas/PeriodWindow"
+          },
+          "requested_scope": {
+            "title": "Requested Scope",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "availability",
+          "requested_scope",
+          "reporting_period",
+          "source",
+          "source_period",
+          "freshness",
+          "last_successful_synchronization",
+          "items"
+        ],
+        "title": "SignalListSection",
         "type": "object"
       },
       "SignalSummary": {
@@ -5594,6 +6328,97 @@
           }
         ],
         "summary": "Look up a district by its code",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/map/context": {
+      "get": {
+        "description": "Return Uganda's public administrative outlines at one national grain.\n\nEvery published unit at that level is included so a Pader-scoped map can\nstill draw the rest of the country. ``in_scope`` says whether the caller\nmay open the unit. No indicator, signal, investigation or commodity value\nis attached.\n\nSubcounty and finer requests are refused: those are not a context view.",
+        "operationId": "map_context_api_v1_geography_map_context_get",
+        "parameters": [
+          {
+            "description": "Country, region or district. Finer grains are refused.",
+            "in": "query",
+            "name": "level",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/GeographyLevel",
+              "description": "Country, region or district. Finer grains are refused."
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 400,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapFeatureCollection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "The caller does not hold `geography:view`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "No such unit, or the unit is outside the caller's geography scope. These are the same response by design."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "More features match than the payload ceiling allows. The request is refused rather than truncated; narrow it with `parent_id` or `within_id`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Public administrative geometry for map context, with in-scope flags",
         "tags": [
           "geography"
         ]
@@ -8500,6 +9325,65 @@
           }
         ],
         "summary": "National Summary",
+        "tags": [
+          "surveillance"
+        ]
+      }
+    },
+    "/api/v1/surveillance/overview": {
+      "get": {
+        "description": "One dashboard snapshot. Every section carries its own provenance.\n\nThe browser must not compute a competing indicator. Pader-scoped callers\nreceive a Pader title; national labelling is refused for a district scope.",
+        "operationId": "overview_api_v1_surveillance_overview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Overview",
         "tags": [
           "surveillance"
         ]

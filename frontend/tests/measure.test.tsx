@@ -164,3 +164,23 @@ describe("MeasureGrid", () => {
     expect(screen.getByText("Tested")).toBeInTheDocument();
   });
 });
+
+describe("compact executive cards", () => {
+  it("hides implementation strings from the overview strip", () => {
+    render(
+      <MeasureCard
+        compact
+        measure={measure({
+          status: "not_configured",
+          value: null,
+          source: "indicator:ENC_CONFIRMED_MALARIA",
+          missing_configuration: ["approved_indicator_version"],
+          status_detail: "No approved version.",
+        })}
+      />,
+    );
+    expect(screen.getByText("Not configured")).toBeInTheDocument();
+    expect(screen.queryByText("indicator:ENC_CONFIRMED_MALARIA")).not.toBeInTheDocument();
+    expect(screen.queryByText(/approved_indicator_version/)).not.toBeInTheDocument();
+  });
+});

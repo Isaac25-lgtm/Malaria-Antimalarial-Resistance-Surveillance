@@ -23,15 +23,8 @@ export function resolveLandingPath(user: CurrentUser | null): string {
   if (user.facility_scope_ids.length === 1 && !user.has_national_scope) {
     return `/facilities/${user.facility_scope_ids[0]}`;
   }
-  if (user.has_national_scope) {
-    return "/national";
-  }
-  const district = user.geography_scopes.find((scope) => scope.level === "district");
-  if (district) {
-    return `/districts/${district.preferred_code}`;
-  }
-  if (user.geography_scopes.length > 0) {
-    return "/geography";
+  if (user.has_national_scope || user.geography_scopes.length > 0) {
+    return "/command-centre";
   }
   return "/profile";
 }

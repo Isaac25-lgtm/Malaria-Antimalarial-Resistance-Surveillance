@@ -1,75 +1,308 @@
 /*
- * National command centre layout.
- *
- * Blueprint 046: one dominant region, not a wall of equal cards. The KPI strip
- * orients, the two-column body carries the operational lists, and the panels
- * below are secondary. Neutral surfaces throughout - only chips carry status
- * colour.
+ * Dense operational overview targeted at 1536×1024.
  */
 
-.command-centre {
+.overview {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: 0.7rem;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-.command-centre__header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.command-centre__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  align-items: flex-end;
-}
-
-.section-heading {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  color: var(--ink-primary);
-}
-
-.command-centre__columns {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
-  align-items: start;
-}
-
-.panel__lede,
-.panel__footnote {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
+.overview .page__lede {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
   color: var(--ink-secondary);
 }
 
-.panel__footnote {
-  margin: var(--space-3) var(--space-4) 0;
-  padding-bottom: var(--space-3);
-  font-size: var(--text-xs);
+.overview__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.overview__header h1 {
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.overview__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.overview__mode {
+  margin: 0;
+  max-width: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  background: var(--status-attention-soft);
+  color: var(--status-attention);
+}
+
+.overview__mode--live {
+  background: var(--status-ok-soft);
+  color: var(--status-ok);
+}
+
+.overview__mode--unavailable {
+  background: var(--status-unavailable-soft);
+  color: var(--ink-secondary);
+}
+
+.overview .measure-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.overview .panel {
+  min-width: 0;
+}
+
+.overview .panel__header {
+  padding: 0.55rem 0.8rem;
+}
+
+.overview .panel__header h2 {
+  font-size: 0.85rem;
+}
+
+.overview .panel__lede {
+  margin: 0.15rem 0 0;
+  font-size: 0.7rem;
+  color: var(--ink-secondary);
+}
+
+.overview .panel__body {
+  padding: 0.65rem 0.8rem 0.8rem;
+}
+
+.overview__panel-link {
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.overview__primary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(15rem, 0.7fr) minmax(16rem, 0.75fr);
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.overview__map-canvas {
+  height: 22.5rem;
+  min-height: 18rem;
+  background: var(--surface-sunken);
+}
+
+.overview__map .geography-canvas,
+.overview__map .boundary-map,
+.overview__map .boundary-map--svg {
+  width: 100%;
+  height: 22.5rem;
+  display: block;
+}
+
+.overview__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.85rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0.8rem 0.55rem;
+  font-size: 0.65rem;
+  color: var(--ink-secondary);
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.3rem;
+  border: 1px solid var(--line-default);
+  vertical-align: -1px;
+}
+
+.swatch--urgent { background: #96242a; }
+.swatch--high { background: #c05621; }
+.swatch--attention { background: #c9a227; }
+.swatch--info { background: #7eb6d9; }
+.swatch--none { background: #ffffff; }
+.swatch--insufficient { background: #c5cdd0; }
+.swatch--outside { background: #d7dde0; }
+
+.overview__side {
+  display: grid;
+  gap: 0.7rem;
+  align-content: stretch;
+}
+
+.overview__charts,
+.overview__ops {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.panel--chart {
+  min-height: 11rem;
+}
+
+.chart-frame {
+  height: 7.5rem;
+  border: 1px dashed var(--line-default);
+  border-radius: var(--radius-sm);
+  background:
+    repeating-linear-gradient(
+      to top,
+      transparent 0,
+      transparent calc(20% - 1px),
+      var(--line-subtle) calc(20% - 1px),
+      var(--line-subtle) 20%
+    );
+}
+
+.overview__compact-note,
+.overview__compact-state {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-secondary);
+}
+
+.overview__compact-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.bucket-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.bucket-list__row {
+  display: grid;
+  grid-template-columns: 7.2rem minmax(0, 1fr) 1.6rem;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.72rem;
+}
+
+.bucket-list__track {
+  height: 0.45rem;
+  background: var(--surface-sunken);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bucket-list__fill {
+  display: block;
+  height: 100%;
+  background: var(--status-info);
+}
+
+.bucket-list__fill--urgent,
+.bucket-list__fill--high,
+.bucket-list__fill--high_priority_signals {
+  background: var(--status-priority);
+}
+
+.bucket-list__fill--attention,
+.bucket-list__fill--commodity_alerts {
+  background: var(--status-attention);
+}
+
+.bucket-list__fill--closed,
+.bucket-list__fill--informational {
+  background: var(--status-ok);
+}
+
+.bucket-list__count {
+  text-align: right;
+}
+
+.alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+}
+
+.alert-list strong {
+  display: block;
+}
+
+.overview__freshness {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: flex-end;
+  font-size: 0.72rem;
   color: var(--ink-tertiary);
 }
 
-.table__meta {
-  font-size: var(--text-2xs);
-  color: var(--ink-tertiary);
+.freshness--live { color: var(--status-ok); }
+.freshness--synthetic { color: var(--status-attention); }
+
+.overview .table {
+  font-size: 0.75rem;
 }
 
-@media (max-width: 60rem) {
-  .command-centre__columns {
+@media (max-width: 90rem) {
+  .overview .measure-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .overview__primary {
+    grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.9fr);
+  }
+
+  .overview__primary > .panel:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 64rem) {
+  .overview__primary,
+  .overview__charts,
+  .overview__ops,
+  .overview .measure-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview__primary > .panel:last-child {
+    grid-column: auto;
+  }
+
+  .overview__map-canvas,
+  .overview__map .geography-canvas,
+  .overview__map .boundary-map,
+  .overview__map .boundary-map--svg {
+    height: 18rem;
+  }
+}
+
+@media (max-width: 40rem) {
+  .overview .measure-grid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 48rem) {
-  .command-centre__header {
-    flex-direction: column;
+@media (min-width: 90rem) {
+  .overview .measure-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }

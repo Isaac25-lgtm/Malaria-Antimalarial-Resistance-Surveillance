@@ -35,6 +35,7 @@ from mars.services.governance_service import ConfigurationService, MethodRegistr
 from mars.services.indicator_query import IndicatorQueryService
 from mars.services.integration_status import IntegrationStatusService
 from mars.services.organisation_service import FacilityService, OrganisationService
+from mars.services.overview import OverviewService
 from mars.services.report_service import ReportService
 from mars.services.signal_query import SignalQueryService
 from mars.services.surveillance_summary import SurveillanceSummaryService
@@ -107,6 +108,10 @@ def get_surveillance_summary_service(session: SessionDep) -> SurveillanceSummary
     return SurveillanceSummaryService(session)
 
 
+def get_overview_service(session: SessionDep, settings: SettingsDep) -> OverviewService:
+    return OverviewService(session, settings)
+
+
 def get_report_service(session: SessionDep, audit: AuditDep) -> ReportService:
     return ReportService(session, audit)
 
@@ -142,6 +147,7 @@ SignalQueryDep = Annotated[SignalQueryService, Depends(get_signal_query_service)
 SurveillanceSummaryDep = Annotated[
     SurveillanceSummaryService, Depends(get_surveillance_summary_service)
 ]
+OverviewServiceDep = Annotated[OverviewService, Depends(get_overview_service)]
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
 InvestigationServiceDep = Annotated[InvestigationService, Depends(get_investigation_service)]
 IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integration_status_service)]

@@ -29,6 +29,7 @@ function denominatorNote(measure: Measure): string | null {
 
 interface DirectionProps {
   comparison: Measure["comparison"];
+  compact?: boolean;
 }
 
 /**
@@ -38,7 +39,7 @@ interface DirectionProps {
  * claim nobody can check, and a rise against an unnamed baseline is the kind
  * of figure that ends up in a briefing without its caveat.
  */
-function Direction({ comparison }: DirectionProps) {
+function Direction({ comparison, compact = false }: DirectionProps) {
   if (!comparison || comparison.status !== "available" || !comparison.direction) {
     return null;
   }
@@ -48,8 +49,9 @@ function Direction({ comparison }: DirectionProps) {
     <p className="measure__comparison">
       <span aria-hidden="true">{symbol}</span>{" "}
       <span>
-        {comparison.direction} from {comparison.value ?? "—"} in the preceding period (
-        {comparison.period.start} to {comparison.period.end})
+        {compact
+          ? `${comparison.value ?? comparison.direction} vs previous period`
+          : `${comparison.direction} from ${comparison.value ?? "—"} in the preceding period (${comparison.period.start} to ${comparison.period.end})`}
       </span>
     </p>
   );
@@ -59,6 +61,8 @@ interface MeasureCardProps {
   measure: Measure;
   /** Rendered under the value when the measure has one. */
   children?: ReactNode;
+  /** Executive strip: short state, no implementation strings. */
+  compact?: boolean;
 }
 
 /**
@@ -68,15 +72,24 @@ interface MeasureCardProps {
  * a card stays grey-on-white however bad its number is. That restraint is what
  * keeps a genuinely urgent chip legible.
  */
-export function MeasureCard({ measure, children }: MeasureCardProps) {
+export function MeasureCard({ measure, children, compact = false }: MeasureCardProps) {
   const unavailable = measure.status !== "available";
   const note = denominatorNote(measure);
+  const statusWord = compact
+    ? compactStatus(measure.status)
+    : measure.status === "not_configured"
+      ? "Not configured"
+      : "No figure";
+  const detail = [measure.status_detail, measure.missing_configuration.join(", ")]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <article
-      className="measure"
+      className={compact ? "measure measure--compact" : "measure"}
       data-status={measure.status}
       aria-labelledby={`measure-${measure.code}`}
+      title={unavailable ? detail || undefined : undefined}
     >
       <h3 className="measure__label" id={`measure-${measure.code}`}>
         {measure.label}
@@ -84,16 +97,15 @@ export function MeasureCard({ measure, children }: MeasureCardProps) {
 
       {unavailable ? (
         <>
-          {/* Not a zero, and not a blank: the words the server used. */}
           <p className="measure__absent">
             <span className={`chip chip--${unavailable ? "unavailable" : "neutral"}`}>
-              {measure.status === "not_configured" ? "Not configured" : "No figure"}
+              {statusWord}
             </span>
           </p>
-          {measure.status_detail ? (
+          {!compact && measure.status_detail ? (
             <p className="measure__detail">{measure.status_detail}</p>
           ) : null}
-          {measure.missing_configuration.length > 0 ? (
+          {!compact && measure.missing_configuration.length > 0 ? (
             <p className="measure__missing">
               Awaiting: {measure.missing_configuration.join(", ")}
             </p>
@@ -103,35 +115,51 @@ export function MeasureCard({ measure, children }: MeasureCardProps) {
         <>
           <p className="measure__value">{formatMeasureValue(measure)}</p>
           {note ? <p className="measure__note">{note}</p> : null}
-          <Direction comparison={measure.comparison} />
+          <Direction comparison={measure.comparison} compact={compact} />
           {children}
         </>
       )}
 
-      <p className="measure__source">
-        <span className="visually-hidden">Source: </span>
-        <span className="mono">{measure.source}</span>
-        {measure.source_freshness ? (
-          <>
-            {" · "}
-            <span>as at {new Date(measure.source_freshness).toLocaleDateString("en-GB")}</span>
-          </>
-        ) : null}
-      </p>
+      {!compact ? (
+        <p className="measure__source">
+          <span className="visually-hidden">Source: </span>
+          <span className="mono">{measure.source}</span>
+          {measure.source_freshness ? (
+            <>
+              {" · "}
+              <span>as at {new Date(measure.source_freshness).toLocaleDateString("en-GB")}</span>
+            </>
+          ) : null}
+        </p>
+      ) : null}
     </article>
   );
 }
 
+function compactStatus(status: string): string {
+  switch (status) {
+    case "not_configured":
+      return "Not configured";
+    case "unavailable":
+      return "Unavailable";
+    case "outside_scope":
+      return "No accessible data";
+    default:
+      return "No figure";
+  }
+}
+
 interface MeasureGridProps {
   measures: Measure[];
+  compact?: boolean;
 }
 
 /** The KPI strip. */
-export function MeasureGrid({ measures }: MeasureGridProps) {
+export function MeasureGrid({ measures, compact = false }: MeasureGridProps) {
   return (
-    <div className="measure-grid">
+    <div className={compact ? "measure-grid measure-grid--compact" : "measure-grid"}>
       {measures.map((measure) => (
-        <MeasureCard key={measure.code} measure={measure} />
+        <MeasureCard key={measure.code} measure={measure} compact={compact} />
       ))}
     </div>
   );

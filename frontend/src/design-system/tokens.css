@@ -19,10 +19,12 @@
   color-scheme: light;
 
   /* -- Surfaces ------------------------------------------------------- */
-  --surface-page: #f6f8f7;
+  --surface-page: #f4f6f9;
   --surface-raised: #ffffff;
-  --surface-sunken: #eef1f0;
-  --surface-inset: #fbfcfb;
+  --surface-sunken: #eef1f4;
+  --surface-inset: #fbfcfd;
+  --surface-sidebar: #0b1f33;
+  --surface-sidebar-active: #16344f;
 
   /* -- Ink ------------------------------------------------------------ */
   --ink-primary: #12212b;
@@ -104,13 +106,13 @@
 
   /* Almost no shadow. Depth comes from a 1px border, not from a blur -
      blueprint section 070 asks for subtle borders and minimal shadows. */
-  --shadow-raised: 0 1px 2px rgb(18 33 43 / 6%);
-  --shadow-overlay: 0 4px 16px rgb(18 33 43 / 10%);
+  --shadow-raised: 0 1px 2px rgb(11 31 51 / 6%);
+  --shadow-overlay: 0 8px 24px rgb(11 31 51 / 8%);
 
   /* -- Layout ---------------------------------------------------------- */
   --app-bar-height: 3.5rem;
-  --sidebar-width: 15rem;
-  --content-max-width: 90rem;
+  --sidebar-width: 14.75rem;
+  --content-max-width: 92rem;
 
   --duration-fast: 120ms;
   --duration-normal: 200ms;
