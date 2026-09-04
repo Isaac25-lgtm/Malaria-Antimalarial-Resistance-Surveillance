@@ -93,6 +93,18 @@ class SurveillanceSignal(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
         Index("ix_surveillance_signal_scope", "geography_unit_id", "facility_id"),
         Index("ix_surveillance_signal_type_period", "signal_type", "period_start"),
+        # The command centre's hottest query: active signals for a period,
+        # narrowed to a scope. Partial on the status because an active signal
+        # is a small and shrinking fraction of the table - every superseded
+        # revision of every signal stays, and the index should not grow with
+        # them.
+        Index(
+            "ix_surveillance_signal_active_period",
+            "period_start",
+            "period_end",
+            "geography_unit_id",
+            postgresql_where=text("signal_status = 'active'"),
+        ),
         Index(
             "uq_surveillance_signal_active_group",
             "group_key",

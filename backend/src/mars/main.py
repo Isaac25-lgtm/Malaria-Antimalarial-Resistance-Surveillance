@@ -30,13 +30,17 @@ molecular markers. Externally confirmed findings - therapeutic efficacy studies
 and molecular results - are handled in a separate, separately governed lane. See
 `/api/v1/meta/evidence-lanes`.
 
-**Implementation status.** This build covers the foundation through Prompt 22:
-DHIS2 exchange, governed indicators, patient episode and recurrence analysis,
-testing/treatment/commodity surveillance, historical baselines, temporal and
-spatial detection, governed signals, and deterministic explanations. Fresh
-deployments remain analytically unconfigured until programme-approved method
-and configuration versions are activated. Investigation workflows and the
-complete dashboard experience belong to later prompts.
+**Implementation status.** DHIS2 exchange, governed indicators, patient episode
+and recurrence analysis, testing/treatment/commodity surveillance, historical
+baselines, temporal and spatial detection, governed signals, deterministic
+explanations, the national command centre with district and facility
+workspaces, governed reports, and the investigation workflow and action centre.
+The optional Ask MARS assistant is present but switched off, with no model
+provider registered.
+
+Fresh deployments remain analytically unconfigured until programme-approved
+method and configuration versions are activated: every measure reports as not
+configured and names what is missing, rather than reporting zero.
 """
 
 

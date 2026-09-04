@@ -73,7 +73,10 @@ function renderView() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[`/signals/${SIGNAL.id}`]}>
+      <MemoryRouter
+        initialEntries={[`/signals/${SIGNAL.id}`]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route path="/signals/:signalId" element={<SignalEvidenceView />} />
         </Routes>

@@ -18,18 +18,24 @@ surveillance signals that a named person is accountable for investigating.
 
 ## What exists today
 
-This build covers the repository foundation through **Prompt 22: deterministic
-signal explainability**.
+This build covers the repository foundation through **Prompt 29: performance,
+accessibility, testing and visual polish**.
 
 | Delivered | Detail |
 | --- | --- |
 | Repository and runtime foundation | Monorepo, Docker Compose, CI, quality gates |
-| Database foundation | Six schemas, 67 mapped tables, migrations through `0021`, audit trail, governance registries |
+| Database foundation | Six schemas, 71 mapped tables, migrations through `0023`, audit trail, governance registries |
 | Authentication and authorisation | OIDC-ready, three authorisation axes, permission matrix |
 | Geography and maps | Versioned Uganda boundaries, PostGIS import, scoped map API and national map workspace |
 | OPD/e-register | HMIS OPD 002 canonical encounters, strict JSONL ingestion, quarantine and lineage |
 | Protected identity | Pseudonymous analytical records; encrypted identity vault behind a separate database role |
 | Demonstration data | Deterministic synthetic data loaded through the real ingestion path |
+| Governed analytics | Indicator registry, episodes, recurrence, testing/treatment/commodity surveillance, baselines, temporal anomalies, spatial aggregation, hotspots and clustering |
+| Signals and explanations | Governed composite signals with typed evidence, and deterministic structured explanations |
+| Surveillance interface | National command centre, district and facility workspaces, signal evidence workspace |
+| Reports | Governed national and district briefs with audited CSV export |
+| Investigations | Validated state machine, append-only timeline, evidence requests, action centre queues |
+| Optional assistant | Ask MARS, switched off and with no model provider registered |
 | Routine HMIS | HMIS 033b/105 aggregate submissions, immutable revisions and reported-versus-derived reconciliation |
 | Interoperability | Disabled-by-default DHIS2 adapter, resumable exchange runs and governed mapping proposals |
 | Governed analytics | Indicator registry, materialisation, episode and recurrence engines, testing/treatment/commodity surveillance |

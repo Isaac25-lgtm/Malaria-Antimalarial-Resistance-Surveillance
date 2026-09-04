@@ -15,7 +15,7 @@ import { Breadcrumbs } from "../src/design-system/Breadcrumbs";
 
 function renderTrail(trail: { to?: string; label: string }[]) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Breadcrumbs trail={trail} />
     </MemoryRouter>,
   );

@@ -24,9 +24,16 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
+        // MapLibre is the largest dependency by a wide margin and is only
+        // needed once a map renders. `BoundaryMap` is already dynamically
+        // imported, so the library never reaches a user who opens the command
+        // centre and drills into a district table; splitting the library from
+        // the component that uses it also lets the library stay cached across
+        // releases that only change our own map code.
         manualChunks: {
           react: ["react", "react-dom", "react-router-dom"],
           query: ["@tanstack/react-query"],
+          maplibre: ["maplibre-gl"],
         },
       },
     },
