@@ -1690,6 +1690,7 @@ export interface components {
         CurrentUserResponse: {
             /** Auth Method */
             auth_method: string;
+            data_readiness?: components["schemas"]["DataReadinessSummary"] | null;
             /** Display Name */
             display_name: string;
             /** Email */
@@ -1707,6 +1708,7 @@ export interface components {
             is_synthetic: boolean;
             /** Landing Path */
             landing_path?: string | null;
+            mapping?: components["schemas"]["LocalMappingSummary"] | null;
             /**
              * Mapping Status
              * @default mapped
@@ -1732,6 +1734,18 @@ export interface components {
             user_id: string;
             /** Username */
             username: string;
+            workspace?: components["schemas"]["RemoteWorkspaceSummary"] | null;
+        };
+        /** DataReadinessSummary */
+        DataReadinessSummary: {
+            /** Aggregate Sync */
+            aggregate_sync: string;
+            /** Geography */
+            geography: string;
+            /** Malaria Metadata */
+            malaria_metadata: string;
+            /** Tracker Sync */
+            tracker_sync: string;
         };
         /** DependencyStatus */
         DependencyStatus: {
@@ -2579,6 +2593,17 @@ export interface components {
              */
             status: string;
         };
+        /** LocalMappingSummary */
+        LocalMappingSummary: {
+            /** Evidence */
+            evidence?: string[];
+            /** Facility Id */
+            facility_id?: string | null;
+            /** Geography Unit Id */
+            geography_unit_id?: string | null;
+            /** Status */
+            status: string;
+        };
         /**
          * MapCollectionMeta
          * @description MARS metadata carried inside the FeatureCollection as a foreign member.
@@ -3158,6 +3183,50 @@ export interface components {
             result_reference: string;
         };
         /**
+         * RemoteWorkspaceSummary
+         * @description Effective remote workspace. A local MARS UUID is not required.
+         */
+        RemoteWorkspaceSummary: {
+            /** Authorization Status */
+            authorization_status: string;
+            /**
+             * Capture Count
+             * @default 0
+             */
+            capture_count: number;
+            /** Code */
+            code?: string | null;
+            /**
+             * Data View Count
+             * @default 0
+             */
+            data_view_count: number;
+            /** External Uid */
+            external_uid?: string | null;
+            /**
+             * Fallback Used
+             * @default false
+             */
+            fallback_used: boolean;
+            /** Level */
+            level?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Parent Uid */
+            parent_uid?: string | null;
+            /** Path */
+            path?: string | null;
+            /** Scope Type */
+            scope_type: string;
+            /** Source */
+            source: string;
+            /**
+             * Tracker Search Count
+             * @default 0
+             */
+            tracker_search_count: number;
+        };
+        /**
          * ReportRow
          * @description One measure as it appears in a report.
          *
@@ -3234,12 +3303,15 @@ export interface components {
             authenticated: boolean;
             /** Csrf Token */
             csrf_token?: string | null;
+            data_readiness?: components["schemas"]["DataReadinessSummary"] | null;
+            mapping?: components["schemas"]["LocalMappingSummary"] | null;
             /** Permissions */
             permissions?: string[] | null;
             profile?: components["schemas"]["CurrentUserResponse"] | null;
             scope?: components["schemas"]["SessionScopeSummary"] | null;
             source_status?: components["schemas"]["SourceStatusSummary"] | null;
             user?: components["schemas"]["SessionUserSummary"] | null;
+            workspace?: components["schemas"]["RemoteWorkspaceSummary"] | null;
         };
         /** SessionUserSummary */
         SessionUserSummary: {

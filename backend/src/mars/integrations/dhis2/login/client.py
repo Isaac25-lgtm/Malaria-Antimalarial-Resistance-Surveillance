@@ -39,6 +39,7 @@ from mars.integrations.dhis2.login.models import (
     RemoteOrgUnitGroup,
     RemoteOrgUnitLevel,
 )
+from mars.security.remote_authorization import parent_uid_from_path
 
 logger = get_logger(__name__)
 
@@ -201,6 +202,9 @@ class LoginClient:
             system_name=_optional_str(system_info.get("systemName")),
             system_version=_optional_str(system_info.get("version")),
             requested_paths=self.requested_paths,
+            data_view_field_present="dataViewOrganisationUnits" in me,
+            organisation_units_field_present="organisationUnits" in me,
+            tei_search_field_present="teiSearchOrganisationUnits" in me,
         )
         return snapshot
 
@@ -428,14 +432,22 @@ def _org_units(raw: Any) -> tuple[RemoteOrgUnit, ...]:
             for group in groups:
                 if isinstance(group, dict) and group.get("id"):
                     group_ids.append(str(group["id"]))
+        path = _optional_str(item.get("path"))
+        parent = item.get("parent")
+        parent_uid = None
+        if isinstance(parent, dict):
+            parent_uid = str(parent.get("id") or "").strip() or None
+        if parent_uid is None:
+            parent_uid = parent_uid_from_path(uid, path)
         units.append(
             RemoteOrgUnit(
                 uid=uid,
                 name=_optional_str(item.get("name")),
                 code=_optional_str(item.get("code")),
                 level=level,
-                path=_optional_str(item.get("path")),
+                path=path,
                 group_ids=tuple(group_ids),
+                parent_uid=parent_uid,
             )
         )
     return tuple(units)

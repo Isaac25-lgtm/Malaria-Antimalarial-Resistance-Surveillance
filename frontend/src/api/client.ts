@@ -40,6 +40,33 @@ export interface SessionStatus {
     last_sync: string | null;
   } | null;
   profile?: Schemas["CurrentUserResponse"] | null;
+  workspace?: {
+    authorization_status: string;
+    scope_type: string;
+    source: string;
+    external_uid?: string | null;
+    name?: string | null;
+    code?: string | null;
+    level?: number | null;
+    path?: string | null;
+    parent_uid?: string | null;
+    capture_count: number;
+    data_view_count: number;
+    tracker_search_count: number;
+    fallback_used: boolean;
+  } | null;
+  mapping?: {
+    status: string;
+    geography_unit_id?: string | null;
+    facility_id?: string | null;
+    evidence?: string[];
+  } | null;
+  data_readiness?: {
+    geography: string;
+    malaria_metadata: string;
+    aggregate_sync: string;
+    tracker_sync: string;
+  } | null;
 }
 
 /** RFC 7807 problem document, as returned by every MARS error path. */

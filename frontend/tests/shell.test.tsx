@@ -164,6 +164,24 @@ describe("live source status", () => {
     },
     scope_type: "district",
     mapping_status: "pending",
+    workspace: {
+      authorization_status: "resolved",
+      scope_type: "district",
+      source: "dhis2",
+      external_uid: "PaderDist01",
+      name: "Pader",
+      capture_count: 0,
+      data_view_count: 1,
+      tracker_search_count: 0,
+      fallback_used: false,
+    },
+    mapping: { status: "pending", geography_unit_id: null, facility_id: null, evidence: [] },
+    data_readiness: {
+      geography: "pending",
+      malaria_metadata: "pending",
+      aggregate_sync: "pending",
+      tracker_sync: "not_started",
+    },
   };
 
   it("shows mapping-pending status and never a development session chip", () => {
@@ -171,27 +189,39 @@ describe("live source status", () => {
       signals_by_priority: { availability: "not_configured", items: [] },
     } as never);
     renderLiveShell(liveUser);
-    expect(
-      screen.getByText("LIVE — authentication succeeded; malaria mapping pending"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("AUTHORIZED — MAPPING PENDING")).toBeInTheDocument();
     expect(screen.queryByText("Development session")).not.toBeInTheDocument();
     expect(screen.queryByText(/synthetic/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("No authorised scope")).not.toBeInTheDocument();
   });
 
-  it("shows connected status when mapping is complete", () => {
+  it("shows data-sync pending when geography is mapped but no live ingest exists", () => {
     vi.spyOn(api, "overview").mockResolvedValue({
       signals_by_priority: { availability: "not_configured", items: [] },
     } as never);
     renderLiveShell({
       ...liveUser,
+      mapping_status: "resolved",
+      mapping: {
+        status: "resolved",
+        geography_unit_id: "00000000-0000-4000-8000-000000000312",
+        facility_id: null,
+        evidence: [],
+      },
+      data_readiness: {
+        geography: "resolved",
+        malaria_metadata: "pending",
+        aggregate_sync: "pending",
+        tracker_sync: "not_started",
+      },
       source_status: {
         mode: "live",
         source: "eRegisters",
         authentication: "connected",
-        mapping: "mapped",
+        mapping: "resolved",
         last_sync: null,
       },
     });
-    expect(screen.getByText("LIVE — eRegisters connected")).toBeInTheDocument();
+    expect(screen.getByText("AUTHORIZED — DATA SYNC PENDING")).toBeInTheDocument();
   });
 });

@@ -27,6 +27,7 @@ class RemoteOrgUnit:
     level: int | None
     path: str | None
     group_ids: tuple[str, ...] = ()
+    parent_uid: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,9 +67,17 @@ class LoginSnapshot:
     system_version: str | None
     requested_paths: tuple[str, ...]
     extra: dict[str, Any] = field(default_factory=dict)
+    data_view_field_present: bool = True
+    organisation_units_field_present: bool = True
+    tei_search_field_present: bool = True
 
     def all_assigned_units(self) -> tuple[RemoteOrgUnit, ...]:
-        """Unique organisation units attached to the account, in first-seen order."""
+        """Union of capture, data-view and Tracker-search units.
+
+        Diagnostic helper only. Dashboard authorization must not call this.
+        Use ``data_view_organisation_units`` (and the documented fallback
+        policy) instead.
+        """
         seen: set[str] = set()
         ordered: list[RemoteOrgUnit] = []
         for unit in (

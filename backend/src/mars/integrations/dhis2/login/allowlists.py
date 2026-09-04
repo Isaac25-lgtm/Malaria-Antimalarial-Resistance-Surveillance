@@ -20,9 +20,9 @@ LOGIN_USER_FIELDS: Final[str] = ",".join(
         "username",
         "displayName",
         "authorities",
-        "organisationUnits[id,name,code,level,path,organisationUnitGroups[id]]",
-        "dataViewOrganisationUnits[id,name,code,level,path,organisationUnitGroups[id]]",
-        "teiSearchOrganisationUnits[id,name,code,level,path,organisationUnitGroups[id]]",
+        "organisationUnits[id,name,code,level,path,parent[id],organisationUnitGroups[id]]",
+        "dataViewOrganisationUnits[id,name,code,level,path,parent[id],organisationUnitGroups[id]]",
+        "teiSearchOrganisationUnits[id,name,code,level,path,parent[id],organisationUnitGroups[id]]",
     )
 )
 

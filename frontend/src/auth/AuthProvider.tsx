@@ -23,10 +23,14 @@ function profileFromSession(
   session: Awaited<ReturnType<typeof api.session>>,
 ): CurrentUser | null {
   if (!session.authenticated || !session.profile) return null;
-  return {
-    ...session.profile,
-    source_status: session.source_status ?? null,
-  };
+    const profile = session.profile as CurrentUser;
+    return {
+      ...profile,
+      source_status: session.source_status ?? null,
+      workspace: profile.workspace ?? session.workspace ?? null,
+      mapping: profile.mapping ?? session.mapping ?? null,
+      data_readiness: profile.data_readiness ?? session.data_readiness ?? null,
+    };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

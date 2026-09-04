@@ -12,6 +12,11 @@ Pilot limitation, stated plainly:
   logout and expiry so the values become unreachable; it does not claim to
   wipe the bytes from memory.
 
+The session retains a sanitized remote-authorization context so MARS can
+distinguish capture, data-view and Tracker-search scopes after login. That
+context contains no credentials. Sessions created before this schema are
+invalid and require a fresh login.
+
 Replace ``InMemoryCredentialHolder`` with an approved encrypted store, and
 ``InMemorySessionStore`` with a shared store, when the Ministry identity
 path is ready. Callers depend on the interfaces below, not the dicts.
@@ -26,6 +31,10 @@ from datetime import UTC, datetime, timedelta
 from threading import Lock
 
 from mars.security.principal import AuthenticatedPrincipal
+from mars.security.remote_authorization import (
+    AUTHORIZATION_SCHEMA_VERSION,
+    LiveAuthorizationState,
+)
 
 SESSION_ID_BYTES = 32  # 256 bits of entropy
 CSRF_TOKEN_BYTES = 32
@@ -58,9 +67,20 @@ class LiveSession:
     expires_at: datetime
     idle_expires_at: datetime
     principal: AuthenticatedPrincipal
-    mapping_status: str
+    authorization: LiveAuthorizationState
     source_status: str
-    scope_type: str
+
+    @property
+    def mapping_status(self) -> str:
+        return self.authorization.mapping.status
+
+    @property
+    def scope_type(self) -> str:
+        return self.authorization.workspace.scope_type
+
+    @property
+    def is_current_schema(self) -> bool:
+        return self.authorization.schema_version == AUTHORIZATION_SCHEMA_VERSION
 
 
 class InMemoryCredentialHolder:
@@ -112,10 +132,9 @@ class InMemorySessionStore:
     def create(
         self,
         principal: AuthenticatedPrincipal,
+        authorization: LiveAuthorizationState,
         *,
-        mapping_status: str,
-        source_status: str,
-        scope_type: str,
+        source_status: str = "connected",
         now: datetime | None = None,
     ) -> tuple[str, LiveSession]:
         """Return the raw session id (for the cookie) and the stored record."""
@@ -129,9 +148,8 @@ class InMemorySessionStore:
             expires_at=moment + self._absolute,
             idle_expires_at=moment + self._idle,
             principal=principal,
-            mapping_status=mapping_status,
+            authorization=authorization,
             source_status=source_status,
-            scope_type=scope_type,
         )
         with self._lock:
             self._sessions[record.id_hash] = record
@@ -144,6 +162,9 @@ class InMemorySessionStore:
             record = self._sessions.get(digest)
             if record is None:
                 return None
+            if not record.is_current_schema:
+                self._sessions.pop(digest, None)
+                return None
             if moment >= record.expires_at or moment >= record.idle_expires_at:
                 self._sessions.pop(digest, None)
                 return None
@@ -155,9 +176,8 @@ class InMemorySessionStore:
                 expires_at=record.expires_at,
                 idle_expires_at=moment + self._idle,
                 principal=record.principal,
-                mapping_status=record.mapping_status,
+                authorization=record.authorization,
                 source_status=record.source_status,
-                scope_type=record.scope_type,
             )
             self._sessions[digest] = refreshed
             return refreshed
@@ -175,9 +195,8 @@ class InMemorySessionStore:
         self.invalidate(raw_session_id)
         return self.create(
             current.principal,
-            mapping_status=current.mapping_status,
+            current.authorization,
             source_status=current.source_status,
-            scope_type=current.scope_type,
             now=now,
         )
 
@@ -192,7 +211,9 @@ class InMemorySessionStore:
             stale = [
                 digest
                 for digest, record in self._sessions.items()
-                if moment >= record.expires_at or moment >= record.idle_expires_at
+                if moment >= record.expires_at
+                or moment >= record.idle_expires_at
+                or not record.is_current_schema
             ]
             for digest in stale:
                 self._sessions.pop(digest, None)

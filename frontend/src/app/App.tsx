@@ -33,6 +33,7 @@ import { NotFoundView } from "./NotFoundView";
 import { SignInView } from "../features/auth/SignInView";
 import { AccessProfileView } from "../features/profile/AccessProfileView";
 import { NoAuthorisedScopeView } from "../features/profile/NoAuthorisedScopeView";
+import { LiveRemoteWorkspaceView } from "../features/profile/LiveRemoteWorkspaceView";
 import {
   FacilitiesView,
   GeographyView,
@@ -114,8 +115,32 @@ function AppRoutes() {
         <Route
           path="authorised-scope"
           element={
-            <RequireAuth permissions={["surveillance:view_aggregate"]}>
-              <CommandCentreView />
+            <RequireAuth>
+              <ScopedCommandCentre />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="live/dhis2/district/:dhis2Uid"
+          element={
+            <RequireAuth>
+              <LiveRemoteWorkspaceView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="live/dhis2/facility/:dhis2Uid"
+          element={
+            <RequireAuth>
+              <LiveRemoteWorkspaceView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="live/dhis2/national"
+          element={
+            <RequireAuth>
+              <LiveRemoteWorkspaceView />
             </RequireAuth>
           }
         />
@@ -274,4 +299,12 @@ function AppRoutes() {
 function LandingRedirect() {
   const { landingPath } = useAuth();
   return <Navigate to={landingPath} replace />;
+}
+
+function ScopedCommandCentre() {
+  const { user } = useAuth();
+  if (user?.workspace?.authorization_status === "resolved" && user.mapping?.status !== "resolved") {
+    return <LiveRemoteWorkspaceView />;
+  }
+  return <CommandCentreView />;
 }

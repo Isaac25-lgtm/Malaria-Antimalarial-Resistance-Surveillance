@@ -48,9 +48,21 @@ export function AppShell() {
     retry: false,
   });
 
-  const visibleItems = PRIMARY_NAVIGATION.filter(
-    (item) => !item.permission || (user?.permissions.includes(item.permission) ?? false),
-  );
+  const pendingLiveWorkspace =
+    user?.workspace?.authorization_status === "resolved" && user.mapping?.status !== "resolved";
+  const visibleItems = (
+    pendingLiveWorkspace
+      ? [
+          {
+            to: user?.landing_path || "/",
+            label: "Overview",
+            icon: "overview",
+            end: true,
+          } satisfies NavigationItem,
+          ...PRIMARY_NAVIGATION.filter((item) => item.to !== "/command-centre"),
+        ]
+      : PRIMARY_NAVIGATION
+  ).filter((item) => !item.permission || (user?.permissions.includes(item.permission) ?? false));
   const signalCount = highPrioritySignalCount(overview.data?.signals_by_priority);
 
   return (
@@ -152,16 +164,17 @@ function SourceStatusChip({
     return <span className="shell__toolbar-spacer" />;
   }
   if (source.authentication !== "connected") {
-    return <span className="chip chip--priority">CONNECTION ISSUE — eRegisters unavailable</span>;
+    return <span className="chip chip--priority">CONNECTION ERROR</span>;
   }
-  if (source.mapping === "pending") {
-    return (
-      <span className="chip chip--attention">
-        LIVE — authentication succeeded; malaria mapping pending
-      </span>
-    );
+  const readiness = user?.data_readiness;
+  const mapping = user?.mapping?.status ?? source.mapping;
+  if (mapping === "pending" || mapping === "ambiguous") {
+    return <span className="chip chip--attention">AUTHORIZED — MAPPING PENDING</span>;
   }
-  return <span className="chip">LIVE — eRegisters connected</span>;
+  if (readiness?.aggregate_sync !== "ready") {
+    return <span className="chip chip--attention">AUTHORIZED — DATA SYNC PENDING</span>;
+  }
+  return <span className="chip">AUTHORIZED — LIVE DATA AVAILABLE</span>;
 }
 
 function highPrioritySignalCount(
@@ -180,7 +193,19 @@ function formatScope(user: {
   has_national_scope: boolean;
   geography_scopes: { level: string; name: string }[];
   facility_scope_ids: string[];
+  workspace?: { name?: string | null; scope_type?: string; authorization_status?: string } | null;
 }): string {
+  if (user.workspace?.authorization_status === "resolved" && user.workspace.name) {
+    const kind =
+      user.workspace.scope_type === "district"
+        ? "District"
+        : user.workspace.scope_type === "facility"
+          ? "Facility"
+          : user.workspace.scope_type === "national"
+            ? "National"
+            : "";
+    return kind ? `${user.workspace.name} ${kind}` : user.workspace.name;
+  }
   if (user.facility_scope_ids.length > 0) {
     const count = user.facility_scope_ids.length;
     return count === 1 ? "1 facility" : `${count} facilities`;

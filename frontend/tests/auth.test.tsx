@@ -70,6 +70,33 @@ describe("landing path", () => {
     expect(resolveLandingPath(user())).toBe("/no-authorised-scope");
   });
 
+  it("sends a remotely authorized unmapped district to the live DHIS2 workspace", () => {
+    const path = resolveLandingPath(
+      user({
+        is_synthetic: false,
+        auth_method: "dhis2_pilot",
+        display_name: "ISAAC OMODING",
+        username: "someone.else",
+        mapping_status: "pending",
+        workspace: {
+          authorization_status: "resolved",
+          scope_type: "district",
+          source: "dhis2",
+          external_uid: "PaderDist01",
+          name: "Pader",
+          capture_count: 0,
+          data_view_count: 1,
+          tracker_search_count: 0,
+          fallback_used: false,
+        },
+        mapping: { status: "pending", geography_unit_id: null, facility_id: null },
+        landing_path: "/live/dhis2/district/PaderDist01",
+      }),
+    );
+    expect(path).toBe("/live/dhis2/district/PaderDist01");
+    expect(path).not.toBe("/no-authorised-scope");
+  });
+
   it("does not use the username to choose a route", () => {
     const scopes = [
       {

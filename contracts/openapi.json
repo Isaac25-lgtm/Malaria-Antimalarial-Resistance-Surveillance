@@ -713,6 +713,16 @@
             "title": "Auth Method",
             "type": "string"
           },
+          "data_readiness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataReadinessSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "display_name": {
             "title": "Display Name",
             "type": "string"
@@ -763,6 +773,16 @@
             ],
             "title": "Landing Path"
           },
+          "mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocalMappingSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "mapping_status": {
             "default": "mapped",
             "title": "Mapping Status",
@@ -810,6 +830,16 @@
           "username": {
             "title": "Username",
             "type": "string"
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoteWorkspaceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -828,6 +858,34 @@
           "is_synthetic"
         ],
         "title": "CurrentUserResponse",
+        "type": "object"
+      },
+      "DataReadinessSummary": {
+        "properties": {
+          "aggregate_sync": {
+            "title": "Aggregate Sync",
+            "type": "string"
+          },
+          "geography": {
+            "title": "Geography",
+            "type": "string"
+          },
+          "malaria_metadata": {
+            "title": "Malaria Metadata",
+            "type": "string"
+          },
+          "tracker_sync": {
+            "title": "Tracker Sync",
+            "type": "string"
+          }
+        },
+        "required": [
+          "geography",
+          "malaria_metadata",
+          "aggregate_sync",
+          "tracker_sync"
+        ],
+        "title": "DataReadinessSummary",
         "type": "object"
       },
       "DependencyStatus": {
@@ -3015,6 +3073,50 @@
         "title": "LivenessResponse",
         "type": "object"
       },
+      "LocalMappingSummary": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "facility_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Id"
+          },
+          "geography_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography Unit Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "LocalMappingSummary",
+        "type": "object"
+      },
       "MapCollectionMeta": {
         "description": "MARS metadata carried inside the FeatureCollection as a foreign member.",
         "properties": {
@@ -4491,6 +4593,116 @@
         "title": "RecordExternalResultRequest",
         "type": "object"
       },
+      "RemoteWorkspaceSummary": {
+        "description": "Effective remote workspace. A local MARS UUID is not required.",
+        "properties": {
+          "authorization_status": {
+            "title": "Authorization Status",
+            "type": "string"
+          },
+          "capture_count": {
+            "default": 0,
+            "title": "Capture Count",
+            "type": "integer"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "data_view_count": {
+            "default": 0,
+            "title": "Data View Count",
+            "type": "integer"
+          },
+          "external_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Uid"
+          },
+          "fallback_used": {
+            "default": false,
+            "title": "Fallback Used",
+            "type": "boolean"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "parent_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Uid"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "scope_type": {
+            "title": "Scope Type",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "tracker_search_count": {
+            "default": 0,
+            "title": "Tracker Search Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "authorization_status",
+          "scope_type",
+          "source"
+        ],
+        "title": "RemoteWorkspaceSummary",
+        "type": "object"
+      },
       "ReportRow": {
         "description": "One measure as it appears in a report.\n\n``value`` stays null when the measure had none. A report that wrote zero\nhere would put a figure into a briefing that MARS never computed, and a\nspreadsheet cell has nowhere to carry the caveat.",
         "properties": {
@@ -4697,6 +4909,26 @@
             ],
             "title": "Csrf Token"
           },
+          "data_readiness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataReadinessSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocalMappingSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "permissions": {
             "anyOf": [
               {
@@ -4745,6 +4977,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/SessionUserSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoteWorkspaceSummary"
               },
               {
                 "type": "null"

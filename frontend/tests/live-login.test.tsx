@@ -93,3 +93,75 @@ describe("live sign-in form", () => {
     ).toBe(true);
   });
 });
+
+describe("pending live workspace", () => {
+  it("renders the remote Pader workspace without synthetic figures", async () => {
+    const { LiveRemoteWorkspaceView } = await import("../src/features/profile/LiveRemoteWorkspaceView");
+    const { AuthContext } = await import("../src/auth/context");
+    const user = {
+      user_id: "00000000-0000-4000-8000-000000000001",
+      username: "officer",
+      display_name: "ISAAC OMODING",
+      email: null,
+      organisation_label: null,
+      roles: [],
+      permissions: [],
+      max_sensitivity: "aggregate",
+      geography_scopes: [],
+      facility_scope_ids: [],
+      has_national_scope: false,
+      auth_method: "dhis2_pilot",
+      is_synthetic: false,
+      scope_type: "district",
+      mapping_status: "pending",
+      landing_path: "/live/dhis2/district/PaderDist01",
+      workspace: {
+        authorization_status: "resolved",
+        scope_type: "district",
+        source: "dhis2",
+        external_uid: "PaderDist01",
+        name: "Pader",
+        capture_count: 0,
+        data_view_count: 1,
+        tracker_search_count: 0,
+        fallback_used: false,
+      },
+      mapping: { status: "pending", geography_unit_id: null, facility_id: null },
+      data_readiness: {
+        geography: "pending",
+        malaria_metadata: "pending",
+        aggregate_sync: "pending",
+        tracker_sync: "not_started",
+      },
+    };
+    render(
+      <MemoryRouter
+        initialEntries={["/live/dhis2/district/PaderDist01"]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <AuthContext.Provider
+          value={{
+            status: "authenticated",
+            user,
+            error: null,
+            signInAsDevelopmentUser: () => Promise.resolve(),
+            signInWithEregisters: () => Promise.resolve(),
+            signOut: () => Promise.resolve(),
+            can: () => false,
+            canAccessSensitivity: () => false,
+            landingPath: "/live/dhis2/district/PaderDist01",
+          }}
+        >
+          <LiveRemoteWorkspaceView />
+        </AuthContext.Provider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("heading", { name: "Pader Live Pilot" })).toBeInTheDocument();
+    expect(screen.getByText("ISAAC OMODING · Pader District")).toBeInTheDocument();
+    expect(screen.getByText("Pader authorization confirmed")).toBeInTheDocument();
+    expect(screen.getByText("Geography mapping pending")).toBeInTheDocument();
+    expect(screen.getByText("Pader boundary mapping pending")).toBeInTheDocument();
+    expect(screen.queryByText("No authorised scope")).not.toBeInTheDocument();
+    expect(screen.queryByText(/synthetic/i)).not.toBeInTheDocument();
+  });
+});

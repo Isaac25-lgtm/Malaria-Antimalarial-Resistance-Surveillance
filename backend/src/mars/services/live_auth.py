@@ -34,6 +34,7 @@ from mars.services.live_scope import (
     GeographyLookup,
     ResolvedLiveScope,
     build_live_principal,
+    record_pending_mapping,
     resolve_live_scope,
 )
 
@@ -92,6 +93,7 @@ class LiveAuthService:
 
         self._throttle.clear(client_key=client_key, username_key=username_key)
         scope = resolve_live_scope(snapshot, self._lookup)
+        record_pending_mapping(scope, self._lookup)
         session_reference = snapshot.remote_user_id
         principal = build_live_principal(snapshot, scope, session_reference=session_reference)
         previous = request.cookies.get(self._settings.session_cookie_name)
@@ -100,15 +102,15 @@ class LiveAuthService:
             self._credentials.drop(previous)
         raw_id, session = self._sessions.create(
             principal,
-            mapping_status=scope.mapping_status,
+            scope.authorization_state(),
             source_status="connected",
-            scope_type=scope.scope_type,
         )
         self._credentials.store(raw_id, username, password)
         logger.info(
             "live_login_succeeded",
             scope_type=scope.scope_type,
             mapping_status=scope.mapping_status,
+            authorization_status=scope.workspace.status,
         )
         return LiveLoginResult(raw_session_id=raw_id, session=session, scope=scope)
 

@@ -13,8 +13,10 @@ OIDC and it is not production.
 - A non-secret CSRF value is issued separately (`mars_csrf` cookie and
   `X-CSRF-Token` header). Unsafe methods require both an approved Origin and
   a matching CSRF header.
-- DHIS2 username/password for the active session live only in
-  `InMemoryCredentialHolder`, keyed by the raw session id.
+The session retains a sanitized remote-authorization context (capture,
+data-view and Tracker-search scopes, the effective workspace, local mapping
+and data readiness). That context contains no credentials. Sessions created
+before this schema are invalid and require a fresh login.
 
 ## What is never stored
 

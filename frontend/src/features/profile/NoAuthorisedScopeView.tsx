@@ -1,12 +1,15 @@
 /**
- * Shown when authentication succeeded but MARS geography could not be mapped.
+ * Shown only when DHIS2 supplied no usable data-view authorization.
+ *
+ * A signed-in user with a resolved remote workspace and pending local
+ * mapping must not land here.
  */
 
 import { useAuth } from "../../auth/context";
 
 export function NoAuthorisedScopeView() {
   const { user } = useAuth();
-  const pending = user?.mapping_status === "pending";
+  const remote = user?.workspace;
 
   return (
     <div className="page">
@@ -14,9 +17,9 @@ export function NoAuthorisedScopeView() {
         <div>
           <h1>No authorised scope</h1>
           <p className="page__lede">
-            {pending
-              ? "Your eRegisters account is signed in, but MARS does not yet have an approved geography mapping for it. Surveillance figures are withheld until that mapping is confirmed."
-              : "This account has no usable geography scope in MARS. Access is not broadened, and national data is not shown."}
+            {remote && remote.authorization_status === "resolved"
+              ? "This page is for accounts with no usable remote authorization. Your workspace is elsewhere."
+              : "This eRegisters account has no usable data-view organisation unit. Access is not broadened, and national data is not shown."}
           </p>
         </div>
       </header>

@@ -1,0 +1,52 @@
+.live-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.live-workspace__env {
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--ink-primary);
+  color: var(--ink-primary);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.live-workspace__status {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.live-workspace__row {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.live-workspace__row h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink-primary);
+}
+
+.live-workspace__row p {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-secondary);
+}
+
+.live-workspace__map-pending {
+  min-height: 16rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.5rem 0.85rem 0.85rem;
+  background: var(--canvas);
+  color: var(--ink-secondary);
+  font-size: 0.95rem;
+  border: 1px dashed var(--line);
+}

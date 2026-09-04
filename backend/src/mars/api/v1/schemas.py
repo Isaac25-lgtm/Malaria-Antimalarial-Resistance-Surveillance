@@ -112,6 +112,9 @@ class CurrentUserResponse(MarsModel):
     scope_type: str = "none"
     mapping_status: str = "mapped"
     landing_path: str | None = None
+    workspace: RemoteWorkspaceSummary | None = None
+    mapping: LocalMappingSummary | None = None
+    data_readiness: DataReadinessSummary | None = None
 
 
 class SourceStatusSummary(MarsModel):
@@ -120,6 +123,38 @@ class SourceStatusSummary(MarsModel):
     authentication: str
     mapping: str
     last_sync: datetime | None = None
+
+
+class RemoteWorkspaceSummary(MarsModel):
+    """Effective remote workspace. A local MARS UUID is not required."""
+
+    authorization_status: str
+    scope_type: str
+    source: str
+    external_uid: str | None = None
+    name: str | None = None
+    code: str | None = None
+    level: int | None = None
+    path: str | None = None
+    parent_uid: str | None = None
+    capture_count: int = 0
+    data_view_count: int = 0
+    tracker_search_count: int = 0
+    fallback_used: bool = False
+
+
+class LocalMappingSummary(MarsModel):
+    status: str
+    geography_unit_id: uuid.UUID | None = None
+    facility_id: uuid.UUID | None = None
+    evidence: list[str] = Field(default_factory=list)
+
+
+class DataReadinessSummary(MarsModel):
+    geography: str
+    malaria_metadata: str
+    aggregate_sync: str
+    tracker_sync: str
 
 
 class AuthorisedDistrictSummary(MarsModel):
@@ -152,6 +187,9 @@ class SessionStatusResponse(MarsModel):
     permissions: list[str] | None = None
     source_status: SourceStatusSummary | None = None
     profile: CurrentUserResponse | None = None
+    workspace: RemoteWorkspaceSummary | None = None
+    mapping: LocalMappingSummary | None = None
+    data_readiness: DataReadinessSummary | None = None
 
 
 class LiveLoginRequest(MarsModel):

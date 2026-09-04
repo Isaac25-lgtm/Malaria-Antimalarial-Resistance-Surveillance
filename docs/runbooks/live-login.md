@@ -31,5 +31,12 @@ secret):
 ```
 
 After a successful login, **stop**. Do not start Tracker or event
-synchronisation. Remaining work before Pader malaria indicators can appear is
-listed in `docs/runbooks/pre-patient-approval.md`.
+synchronisation.
+
+Remote DHIS2 authorization and local MARS geography mapping are different
+facts. A Pader data-view unit without a confirmed `geography_unit_alias`
+lands on `/live/dhis2/district/{uid}` with mapping pending. It must not land
+on `/no-authorised-scope`. See `docs/security/remote-authorization.md`.
+
+Remaining work before Pader malaria indicators can appear is listed in
+`docs/runbooks/pre-patient-approval.md`.

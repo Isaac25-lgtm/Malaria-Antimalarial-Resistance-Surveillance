@@ -234,6 +234,7 @@ class FakeMethodRegistryService:
 def api_settings() -> Settings:
     return Settings(
         environment=Environment.LOCAL,
+        auth_mode="demo",
         database_url="postgresql+psycopg://mars:test@localhost:5432/mars_test",
         dev_auth_enabled=True,
         dev_auth_secret="test-only-secret",

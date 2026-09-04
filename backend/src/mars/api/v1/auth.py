@@ -29,11 +29,14 @@ from mars.api.dependencies import (
 from mars.api.v1.schemas import (
     AuthorisedDistrictSummary,
     CurrentUserResponse,
+    DataReadinessSummary,
     DevelopmentLoginRequest,
     DevelopmentLoginResponse,
     DevelopmentUserSummary,
     GeographyScopeSummary,
     LiveLoginRequest,
+    LocalMappingSummary,
+    RemoteWorkspaceSummary,
     SessionScopeSummary,
     SessionStatusResponse,
     SessionUserSummary,
@@ -51,8 +54,8 @@ from mars.domain.enums import AuditAction, AuditOutcome
 from mars.security.origin import assert_approved_origin
 from mars.security.principal import AuthenticatedPrincipal
 from mars.security.providers import DevelopmentTokenVerifier
+from mars.security.remote_authorization import LiveAuthorizationState
 from mars.services.live_auth import attach_session_cookies, clear_session_cookies
-from mars.services.live_scope import landing_path_for_scope
 
 router = APIRouter(tags=["auth"])
 logger = get_logger(__name__)
@@ -81,21 +84,21 @@ def session_status(
     live = None
     if settings.is_live_auth_active:
         live = getattr(request.state, "live_session", None)
-    profile = _current_user_from_principal(
-        principal,
-        scope_type=getattr(live, "scope_type", None),
-        mapping_status=getattr(live, "mapping_status", None),
-    )
+    authorization = getattr(live, "authorization", None)
+    profile = _current_user_from_principal(principal, authorization=authorization)
     source = _source_status(settings, mapping=profile.mapping_status)
     return SessionStatusResponse(
         authenticated=True,
         auth_mode=settings.auth_mode,
         csrf_token=getattr(live, "csrf_token", None),
         user=SessionUserSummary(display_name=principal.display_name, username=principal.username),
-        scope=_scope_summary(principal, profile.scope_type),
+        scope=_scope_summary(principal, profile.scope_type, authorization),
         permissions=sorted(p.value for p in principal.permissions),
         source_status=source,
         profile=profile,
+        workspace=profile.workspace,
+        mapping=profile.mapping,
+        data_readiness=profile.data_readiness,
     )
 
 
@@ -114,8 +117,7 @@ def current_user(request: Request, principal: PrincipalDep) -> CurrentUserRespon
     live = getattr(request.state, "live_session", None)
     return _current_user_from_principal(
         principal,
-        scope_type=getattr(live, "scope_type", None),
-        mapping_status=getattr(live, "mapping_status", None),
+        authorization=getattr(live, "authorization", None),
     )
 
 
@@ -155,14 +157,13 @@ def live_login(
             "auth_method": "dhis2_pilot",
             "scope_type": result.scope.scope_type,
             "mapping_status": result.scope.mapping_status,
+            "authorization_status": result.scope.workspace.status,
         },
     )
 
     profile = _current_user_from_principal(
         result.session.principal,
-        scope_type=result.scope.scope_type,
-        mapping_status=result.scope.mapping_status,
-        landing_path=landing_path_for_scope(result.scope),
+        authorization=result.session.authorization,
     )
     body = SessionStatusResponse(
         authenticated=True,
@@ -172,10 +173,15 @@ def live_login(
             display_name=result.session.principal.display_name,
             username=result.session.principal.username,
         ),
-        scope=_scope_summary(result.session.principal, result.scope.scope_type),
+        scope=_scope_summary(
+            result.session.principal, result.scope.scope_type, result.session.authorization
+        ),
         permissions=sorted(p.value for p in result.session.principal.permissions),
         source_status=_source_status(settings, mapping=result.scope.mapping_status),
         profile=profile,
+        workspace=profile.workspace,
+        mapping=profile.mapping,
+        data_readiness=profile.data_readiness,
     )
     response = JSONResponse(
         content=body.model_dump(mode="json"),
@@ -342,11 +348,34 @@ def register_development_auth_routes(app_router: APIRouter, settings: SettingsDe
 def _current_user_from_principal(
     principal: AuthenticatedPrincipal,
     *,
-    scope_type: str | None = None,
-    mapping_status: str | None = None,
-    landing_path: str | None = None,
+    authorization: LiveAuthorizationState | None = None,
 ) -> CurrentUserResponse:
-    resolved_type = scope_type or _infer_scope_type(principal)
+    resolved_type: str
+    mapping_status: str
+    if authorization is not None:
+        resolved_type = authorization.workspace.scope_type
+        mapping_status = authorization.mapping.status
+        landing_path = authorization.landing_path
+        workspace = _workspace_summary(authorization)
+        mapping = LocalMappingSummary(
+            status=authorization.mapping.status,
+            geography_unit_id=authorization.mapping.geography_unit_id,
+            facility_id=authorization.mapping.facility_id,
+            evidence=list(authorization.mapping.evidence),
+        )
+        readiness = DataReadinessSummary(
+            geography=authorization.readiness.geography,
+            malaria_metadata=authorization.readiness.malaria_metadata,
+            aggregate_sync=authorization.readiness.aggregate_sync,
+            tracker_sync=authorization.readiness.tracker_sync,
+        )
+    else:
+        resolved_type = _infer_scope_type(principal)
+        mapping_status = "mapped" if resolved_type != "unresolved" else "pending"
+        landing_path = _landing_from_type(principal, resolved_type)
+        workspace = None
+        mapping = None
+        readiness = None
     return CurrentUserResponse(
         user_id=principal.user_id,
         username=principal.username,
@@ -370,8 +399,31 @@ def _current_user_from_principal(
         auth_method=principal.auth_method,
         is_synthetic=principal.is_synthetic,
         scope_type=resolved_type,
-        mapping_status=mapping_status or ("mapped" if resolved_type != "unresolved" else "pending"),
-        landing_path=landing_path or _landing_from_type(principal, resolved_type),
+        mapping_status=mapping_status,
+        landing_path=landing_path,
+        workspace=workspace,
+        mapping=mapping,
+        data_readiness=readiness,
+    )
+
+
+def _workspace_summary(authorization: LiveAuthorizationState) -> RemoteWorkspaceSummary:
+    workspace = authorization.workspace
+    remote = authorization.remote_authorization
+    return RemoteWorkspaceSummary(
+        authorization_status=workspace.status,
+        scope_type=workspace.scope_type,
+        source=workspace.source,
+        external_uid=workspace.external_uid,
+        name=workspace.name,
+        code=workspace.code,
+        level=workspace.level,
+        path=workspace.path,
+        parent_uid=workspace.parent_uid,
+        capture_count=len(remote.capture_scope),
+        data_view_count=len(remote.data_view_scope),
+        tracker_search_count=len(remote.tracker_search_scope),
+        fallback_used=remote.fallback_used,
     )
 
 
@@ -404,14 +456,23 @@ def _landing_from_type(principal: AuthenticatedPrincipal, scope_type: str) -> st
     return "/no-authorised-scope"
 
 
-def _scope_summary(principal: AuthenticatedPrincipal, scope_type: str) -> SessionScopeSummary:
+def _scope_summary(
+    principal: AuthenticatedPrincipal,
+    scope_type: str,
+    authorization: LiveAuthorizationState | None = None,
+) -> SessionScopeSummary:
     districts = [scope for scope in principal.geography_scopes if scope.level == "district"]
     primary = districts[0] if len(districts) == 1 else None
     org_unit_id = primary.geography_unit_id if primary else None
     org_unit_name = primary.name if primary else None
-    if scope_type == "facility" and principal.facility_scopes:
+    if authorization is not None:
+        org_unit_name = authorization.workspace.name or org_unit_name
+        if authorization.mapping.geography_unit_id is not None:
+            org_unit_id = authorization.mapping.geography_unit_id
+        if authorization.mapping.facility_id is not None and scope_type == "facility":
+            org_unit_id = authorization.mapping.facility_id
+    if scope_type == "facility" and principal.facility_scopes and org_unit_id is None:
         org_unit_id = next(iter(sorted(principal.facility_scopes)))
-        org_unit_name = None
     if scope_type == "national":
         country = next(
             (scope for scope in principal.geography_scopes if scope.level == "country"),

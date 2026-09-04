@@ -51,6 +51,12 @@ GULU_ID = uuid.UUID("00000000-0000-4000-8000-000000000304")
 COUNTRY_ID = uuid.UUID("00000000-0000-4000-8000-000000000001")
 FACILITY_ID = uuid.UUID("00000000-0000-4000-8000-00000000f001")
 SIBLING_FACILITY_ID = uuid.UUID("00000000-0000-4000-8000-00000000f002")
+PADER_UID = "PaderDist01"
+GULU_UID = "GuluDistr01"
+ROOT_UID = "UgandanRoot"
+FAC_UID = "Facility001"
+UNKNOWN_UID = "UnknownUid0"
+TRACKER_UID = "PaderFac001"
 
 PADER = GeographyScope(
     geography_unit_id=PADER_ID,
@@ -149,7 +155,7 @@ class ScriptedProvider(AuthenticationProvider):
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
         self.error: LoginAdapterError | None = None
-        self.snapshot = _snapshot("PaderUid", username="officer")
+        self.snapshot = _snapshot(PADER_UID, username="officer", name="Pader")
 
     def authenticate(self, username: str, password: str) -> LoginSnapshot:
         self.calls.append((username, password))
@@ -164,9 +170,20 @@ def _snapshot(
     username: str = "officer",
     level: int = 3,
     extra_units: tuple[RemoteOrgUnit, ...] = (),
+    capture: tuple[RemoteOrgUnit, ...] = (),
+    tracker: tuple[RemoteOrgUnit, ...] = (),
+    name: str = "Unit",
+    data_view_field_present: bool = True,
 ) -> LoginSnapshot:
     units: tuple[RemoteOrgUnit, ...] = (
-        RemoteOrgUnit(uid=uid, name="Unit", code=None, level=level, path=f"/x/{uid}"),
+        RemoteOrgUnit(
+            uid=uid,
+            name=name,
+            code=None,
+            level=level,
+            path=f"/UgandanRoot/{uid}",
+            parent_uid="UgandanRoot",
+        ),
         *extra_units,
     )
     return LoginSnapshot(
@@ -174,9 +191,9 @@ def _snapshot(
         username=username,
         display_name="Officer",
         authorities=(),
-        organisation_units=units,
-        data_view_organisation_units=(),
-        tei_search_organisation_units=(),
+        organisation_units=capture,
+        data_view_organisation_units=units if data_view_field_present else (),
+        tei_search_organisation_units=tracker,
         organisation_unit_levels=(
             RemoteOrgUnitLevel(1, "Country"),
             RemoteOrgUnitLevel(3, "District"),
@@ -193,6 +210,7 @@ def _snapshot(
             "/api/organisationUnitGroups",
             "/api/organisationUnitGroupSets",
         ),
+        data_view_field_present=data_view_field_present,
     )
 
 
@@ -220,8 +238,8 @@ def live_app() -> Iterator[tuple[FastAPI, ScriptedProvider, RecordingSession, Fa
     audit = FakeAuditService()
     application.state.dhis2_login_provider = provider
     application.state.live_geography_lookup = StaticGeographyLookup(
-        uids={"PaderUid": PADER, "GuluUid": GULU, "UgRootUid": COUNTRY},
-        facilities={"FacUid": FACILITY_ID},
+        uids={PADER_UID: PADER, GULU_UID: GULU, ROOT_UID: COUNTRY},
+        facilities={FAC_UID: FACILITY_ID},
     )
     application.dependency_overrides[get_db_session] = lambda: db
     application.dependency_overrides[get_audit_service] = lambda: audit
@@ -280,6 +298,8 @@ class TestLiveLoginApi:
         assert session.json()["authenticated"] is True
         assert session.json()["scope"]["scope_type"] == "district"
         assert session.json()["profile"]["landing_path"] == f"/district/{PADER_ID}"
+        assert session.json()["workspace"]["authorization_status"] == "resolved"
+        assert session.json()["mapping"]["status"] == "resolved"
         holder = live_app[0].state.live_credential_holder
         raw = live_client.cookies.get("mars_session")
         assert raw and holder.has(raw)
@@ -358,15 +378,32 @@ class TestLiveLoginApi:
         )
         assert response.status_code == 401
 
-    def test_unresolved_mapping_does_not_route_national(
+    def test_remote_district_without_mapping_opens_live_workspace(
         self, live_client: TestClient, live_app
     ) -> None:
-        live_app[1].snapshot = _snapshot("UnknownUid", username="district.pader")
-        body = _login(live_client).json()
-        assert body["scope"]["scope_type"] == "unresolved"
+        live_app[1].snapshot = _snapshot(UNKNOWN_UID, username="district.pader", name="Pader")
+        response = _login(live_client)
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["authenticated"] is True
+        assert body["workspace"]["authorization_status"] == "resolved"
+        assert body["workspace"]["scope_type"] == "district"
+        assert body["workspace"]["name"] == "Pader"
+        assert body["workspace"]["external_uid"] == UNKNOWN_UID
+        assert body["mapping"]["status"] == "pending"
+        assert body["mapping"]["geography_unit_id"] is None
+        assert body["profile"]["landing_path"] == f"/live/dhis2/district/{UNKNOWN_UID}"
+        assert body["profile"]["landing_path"] != "/no-authorised-scope"
         assert body["scope"]["national_access"] is False
-        assert body["profile"]["landing_path"] == "/no-authorised-scope"
-        assert body["profile"]["username"] == "district.pader"
+        assert "surveillance:view_aggregate" not in (body["permissions"] or [])
+        overview = live_client.get(
+            "/api/v1/surveillance/overview",
+            params={"period_start": "2026-07-01", "period_end": "2026-07-31"},
+        )
+        assert overview.status_code == 403
+        session = live_client.get("/api/v1/auth/session")
+        assert session.status_code == 200
+        assert session.json()["authenticated"] is True
 
 
 class TestLiveScopeEnforcement:
@@ -396,7 +433,7 @@ class TestLiveScopeEnforcement:
         assert body["requested_scope"] != "national"
 
     def test_gulu_scope_does_not_open_pader(self, live_client: TestClient, live_app) -> None:
-        live_app[1].snapshot = _snapshot("GuluUid")
+        live_app[1].snapshot = _snapshot(GULU_UID, name="Gulu")
         assert _login(live_client).status_code == 200
         session = live_client.get("/api/v1/auth/session").json()
         assert session["scope"]["org_unit_name"] == "Gulu"
@@ -406,9 +443,17 @@ class TestLiveScopeEnforcement:
 
     def test_multiple_districts_are_not_national(self, live_client: TestClient, live_app) -> None:
         live_app[1].snapshot = _snapshot(
-            "PaderUid",
+            PADER_UID,
+            name="Pader",
             extra_units=(
-                RemoteOrgUnit(uid="GuluUid", name="Gulu", code=None, level=3, path="/x/GuluUid"),
+                RemoteOrgUnit(
+                    uid=GULU_UID,
+                    name="Gulu",
+                    code=None,
+                    level=3,
+                    path=f"/UgandanRoot/{GULU_UID}",
+                    parent_uid="UgandanRoot",
+                ),
             ),
         )
         body = _login(live_client).json()
@@ -421,7 +466,7 @@ class TestLiveScopeEnforcement:
     def test_national_user_may_drill_into_an_authorised_district(
         self, live_client: TestClient, live_app
     ) -> None:
-        live_app[1].snapshot = _snapshot("UgRootUid", level=1)
+        live_app[1].snapshot = _snapshot(ROOT_UID, level=1, name="Uganda")
         assert _login(live_client).status_code == 200
         session = live_client.get("/api/v1/auth/session").json()
         assert session["scope"]["national_access"] is True
@@ -438,7 +483,7 @@ class TestLiveScopeEnforcement:
         assert overview.json()["title"] == "National Overview"
 
     def test_facility_user_cannot_open_a_sibling(self, live_client: TestClient, live_app) -> None:
-        live_app[1].snapshot = _snapshot("FacUid", level=4)
+        live_app[1].snapshot = _snapshot(FAC_UID, level=4, name="HC III")
         body = _login(live_client).json()
         assert body["scope"]["scope_type"] == "facility"
         assert body["profile"]["landing_path"] == f"/facility/{FACILITY_ID}"
@@ -487,14 +532,114 @@ class TestLiveScopeEnforcement:
         dumped_db = json.dumps([str(item) for item in live_app[2].added])
         assert SENTINEL not in dumped_db
 
+    def test_empty_data_view_does_not_inherit_capture(
+        self, live_client: TestClient, live_app
+    ) -> None:
+        live_app[1].snapshot = LoginSnapshot(
+            remote_user_id="UserUid0001",
+            username="officer",
+            display_name="Officer",
+            authorities=(),
+            organisation_units=(
+                RemoteOrgUnit(
+                    uid=PADER_UID,
+                    name="Pader",
+                    code=None,
+                    level=3,
+                    path=f"/UgandanRoot/{PADER_UID}",
+                    parent_uid="UgandanRoot",
+                ),
+            ),
+            data_view_organisation_units=(),
+            tei_search_organisation_units=(),
+            organisation_unit_levels=(
+                RemoteOrgUnitLevel(1, "Country"),
+                RemoteOrgUnitLevel(3, "District"),
+                RemoteOrgUnitLevel(4, "Facility"),
+            ),
+            organisation_unit_groups=(),
+            system_name="eRegisters",
+            system_version="2.40",
+            requested_paths=("/api/me",),
+            data_view_field_present=True,
+        )
+        body = _login(live_client).json()
+        assert body["workspace"]["authorization_status"] == "unresolved"
+        assert body["profile"]["landing_path"] == "/no-authorised-scope"
+        assert body["workspace"]["fallback_used"] is False
+
+    def test_tracker_scope_does_not_become_dashboard_scope(
+        self, live_client: TestClient, live_app
+    ) -> None:
+        live_app[1].snapshot = _snapshot(
+            PADER_UID,
+            name="Pader",
+            tracker=(
+                RemoteOrgUnit(
+                    uid=TRACKER_UID,
+                    name="Pader HC III",
+                    code=None,
+                    level=4,
+                    path=f"/UgandanRoot/{PADER_UID}/{TRACKER_UID}",
+                    parent_uid=PADER_UID,
+                ),
+            ),
+        )
+        body = _login(live_client).json()
+        assert body["workspace"]["scope_type"] == "district"
+        assert body["workspace"]["external_uid"] == PADER_UID
+        assert body["workspace"]["data_view_count"] == 1
+        assert body["workspace"]["tracker_search_count"] == 1
+        assert body["profile"]["landing_path"] == f"/district/{PADER_ID}"
+
+    def test_dhis2_uid_is_rejected_by_local_uuid_routes(self, live_client: TestClient) -> None:
+        assert _login(live_client).status_code == 200
+        response = live_client.get(f"/api/v1/geography/units/{PADER_UID}")
+        assert response.status_code == 422
+
+    def test_no_usable_remote_authorization_is_no_authorised_scope(
+        self, live_client: TestClient, live_app
+    ) -> None:
+        live_app[1].snapshot = LoginSnapshot(
+            remote_user_id="UserUid0001",
+            username="officer",
+            display_name="Officer",
+            authorities=(),
+            organisation_units=(),
+            data_view_organisation_units=(),
+            tei_search_organisation_units=(),
+            organisation_unit_levels=(RemoteOrgUnitLevel(3, "District"),),
+            organisation_unit_groups=(),
+            system_name="eRegisters",
+            system_version="2.40",
+            requested_paths=("/api/me",),
+            data_view_field_present=True,
+        )
+        body = _login(live_client).json()
+        assert body["workspace"]["scope_type"] == "unresolved"
+        assert body["profile"]["landing_path"] == "/no-authorised-scope"
+
 
 class TestLiveDoesNotFallBackToDemo:
-    def test_demo_app_refuses_live_login(self, client: TestClient) -> None:
-        response = client.post(
-            "/api/v1/auth/login",
-            json={"username": "officer", "password": SENTINEL},
-            headers={"Origin": "http://localhost:5173", "Content-Type": "application/json"},
+    def test_demo_app_refuses_live_login(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("MARS_AUTH_MODE", "demo")
+        monkeypatch.setenv("MARS_DEV_AUTH_ENABLED", "true")
+        settings = Settings(
+            environment=Environment.LOCAL,
+            auth_mode="demo",
+            database_url="postgresql+psycopg://mars:test@localhost:5432/mars_local",
+            dev_auth_enabled=True,
+            demo_mode_enabled=True,
+            cors_allow_origins=["http://localhost:5173"],
+            log_format="console",
         )
+        application = create_app(settings)
+        with TestClient(application, raise_server_exceptions=False) as demo_client:
+            response = demo_client.post(
+                "/api/v1/auth/login",
+                json={"username": "officer", "password": SENTINEL},
+                headers={"Origin": "http://localhost:5173", "Content-Type": "application/json"},
+            )
         assert response.status_code == 503
         assert response.json()["code"] == "feature_disabled"
         assert SENTINEL not in json.dumps(response.json())
