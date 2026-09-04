@@ -1,47 +1,29 @@
 # Human authentication boundary
 
-Upstream DHIS2/eRegisters authentication and human MARS authentication are
-separate.
+React never receives DHIS2 credentials, tokens or passwords. The browser never
+calls `eregisters.health.go.ug`.
 
-- React never receives DHIS2 credentials, tokens or passwords.
-- The browser never calls `eregisters.health.go.ug`.
-- Development authentication (`MARS_DEV_AUTH_ENABLED`) is synthetic and must
-  remain visibly labelled. It is not production authentication.
-- A GET-restricted DHIS2 PAT belongs only in the API/worker process environment.
+## Live local pilot (`MARS_AUTH_MODE=live`)
 
-A "Sign in with eRegisters" button that posts a DHIS2 password to MARS, or that
-reuses that password as the MARS session, is forbidden.
+An authorised Ministry user types their eRegisters username and password on the
+MARS login page. The browser posts those values **only** to the MARS API. The
+API authenticates server-to-server against `https://eregisters.health.go.ug`
+over verified HTTPS (Basic authentication behind
+`AuthenticationProvider`, replaceable later by PAT/OAuth/OIDC).
 
-If a human must authenticate *through* DHIS2, the only acceptable design is a
-DHIS2 OAuth 2 authorisation-code flow with an OAuth client registered by the
-DHIS2 administrator. That is not implemented here.
+MARS then issues an opaque HttpOnly session cookie. Upstream credentials stay
+in process memory for that session only. See `docs/security/live-sessions.md`.
 
-## Remaining decision (not taken)
+This path is refused in staging and production. Those environments still
+require Ministry OIDC (`oidc_issuer`).
 
-The dashboard can be visually completed before this is settled. It cannot be
-declared production-ready until one of the following is **explicitly approved**.
+## Demo (`MARS_AUTH_MODE=demo`)
 
-### Option A — preferred production path
+Development authentication (`MARS_DEV_AUTH_ENABLED`) is synthetic and must
+remain visibly labelled. It is not production authentication and it is not a
+fallback for a failed live login.
 
-Ministry OIDC/OAuth identity. Required in staging and production by current
-settings guards.
+## Discovery tokens
 
-### Option B — explicitly approved Pader pilot only
-
-A MARS-local user implementation, only if a Pader pilot cannot yet join Ministry
-identity. If approved, it must include:
-
-- Argon2id password hashing;
-- a secure HttpOnly session cookie;
-- CSRF protection;
-- login throttling and account lockout;
-- a short session lifetime;
-- password rotation;
-- audit events;
-- no default credentials;
-- a hidden account-provisioning prompt.
-
-Option B is **not** implemented. Do not treat development accounts as Option B.
-
-Until that decision, local sign-in remains development authentication and every
-session is marked synthetic when `is_synthetic` is true.
+A GET-restricted DHIS2 PAT belongs only in the API/worker process environment
+for metadata discovery. It is not a human login.
