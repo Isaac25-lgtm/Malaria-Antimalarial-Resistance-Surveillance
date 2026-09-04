@@ -64,6 +64,13 @@ class TestOverviewDoesNotInventCoverage:
         assert snap["requested_scope"] == "pader"
         assert "national" not in snap["title"].lower()
 
+    def test_a_gulu_account_is_labelled_from_the_mapped_district(
+        self, gulu_district_principal: Any
+    ) -> None:
+        snap = _service().snapshot(gulu_district_principal, **PERIOD)
+        assert snap["title"] == "Gulu Overview"
+        assert snap["has_national_scope"] is False
+
     def test_every_section_carries_provenance(self, national_principal: Any) -> None:
         snap = _service().snapshot(national_principal, **PERIOD)
         for key in (

@@ -200,14 +200,21 @@ class OverviewService:
     def _scope(self, principal: AuthenticatedPrincipal) -> dict[str, str]:
         if principal.has_national_scope:
             return {"title": "National Overview", "label": "national"}
-        names = [scope.name for scope in principal.geography_scopes]
-        if any("pader" in name.lower() for name in names):
-            return {"title": "Pader Overview", "label": "pader"}
-        if names:
-            return {"title": f"{names[0].title()} Overview", "label": names[0].lower()}
+        districts = [scope for scope in principal.geography_scopes if scope.level == "district"]
+        if len(districts) == 1:
+            name = districts[0].name.title()
+            return {"title": f"{name} Overview", "label": districts[0].name.lower()}
+        if len(districts) > 1:
+            return {"title": "Authorized Scope Overview", "label": "authorised-scope"}
         if principal.facility_scopes:
             return {"title": "Facility Overview", "label": "facility"}
-        return {"title": "Scoped Overview", "label": "unscoped"}
+        if principal.geography_scopes:
+            name = principal.geography_scopes[0].name.title()
+            return {
+                "title": f"{name} Overview",
+                "label": principal.geography_scopes[0].name.lower(),
+            }
+        return {"title": "Overview", "label": "unscoped"}
 
     def _data_mode(self, last_status: object) -> str:
         if self._settings.demo_mode_enabled:
