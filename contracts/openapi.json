@@ -3765,6 +3765,11 @@
       "RecordExternalResultRequest": {
         "description": "Record that an external result came back, by reference only.",
         "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
           "result_reference": {
             "maxLength": 256,
             "minLength": 1,
@@ -3773,7 +3778,8 @@
           }
         },
         "required": [
-          "result_reference"
+          "result_reference",
+          "expected_version"
         ],
         "title": "RecordExternalResultRequest",
         "type": "object"
@@ -3900,10 +3906,16 @@
             "minLength": 1,
             "title": "Description",
             "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
           }
         },
         "required": [
-          "description"
+          "description",
+          "expected_version"
         ],
         "title": "RequestEvidenceRequest",
         "type": "object"

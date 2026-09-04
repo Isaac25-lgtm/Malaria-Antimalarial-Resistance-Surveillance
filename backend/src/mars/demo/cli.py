@@ -41,9 +41,13 @@ from mars.demo.generator import (
     parse_period,
 )
 from mars.demo.storylines import STORYLINES, StorylineKey
-from mars.domain.enums import FacilityLevel, FacilityOwnership, GeographyLevel
+from mars.domain.aggregate import AggregateSubmission
+from mars.domain.encounter import OpdEncounter
+from mars.domain.enums import FacilityLevel, FacilityOwnership, GeographyLevel, OrganisationUnitType
 from mars.domain.geography import GeographyUnit
+from mars.domain.ingestion import ImportBatch
 from mars.domain.organisation import Facility, OrganisationUnit
+from mars.domain.signal import SurveillanceSignal
 
 logger = get_logger(__name__)
 
@@ -270,6 +274,11 @@ def _demo_organisation_unit(session: Session) -> OrganisationUnit:
             code=code,
             raw_name="MARS Demo Organisation",
             normalised_name="mars demo organisation",
+            # The demo root sits at the top of the organisational hierarchy,
+            # which is where a synthetic facility's parent has to hang. The
+            # column is NOT NULL: omitting it made ``register`` fail against a
+            # real database while passing every test that used a stub session.
+            unit_type=OrganisationUnitType.NATIONAL,
             depth=0,
             path=code,
             is_active=True,
@@ -289,34 +298,83 @@ def _purge(args: argparse.Namespace) -> int:
     date range or a district would eventually be pointed at real data.
     """
     with session_scope() as session:
-        codes = (
-            session.execute(
-                select(Facility.code).where(Facility.code.like(f"{FACILITY_CODE_PREFIX}-%"))
+        facilities = session.execute(
+            select(Facility.id, Facility.code).where(
+                Facility.code.like(f"{FACILITY_CODE_PREFIX}-%")
             )
-            .scalars()
-            .all()
-        )
+        ).all()
+        facility_ids = [row.id for row in facilities]
         encounters = session.execute(
             select(func.count())
-            .select_from(Facility)
-            .where(Facility.code.like(f"{FACILITY_CODE_PREFIX}-%"))
+            .select_from(OpdEncounter)
+            .where(
+                OpdEncounter.facility_id.in_(facility_ids),
+                OpdEncounter.source_system == SOURCE_SYSTEM,
+            )
         ).scalar_one()
 
         if not args.confirm:
-            print(f"would delete {len(codes)} demo facilities ({encounters} matched)")
+            print(f"would delete {len(facilities)} demo facilities and {encounters} encounters")
             print("  re-run with --confirm")
             return EXIT_OK
 
-        # Encounters reference the facility, so they go first. Only rows whose
-        # source system is the demo generator are touched.
-        from mars.domain.encounter import OpdEncounter
+        # Refuse rather than remove anything that does not unambiguously belong
+        # to the synthetic dataset. Derived signals and aggregate submissions
+        # are durable records with their own audit meaning; a development reset
+        # is the correct cleanup once either exists.
+        protected = {
+            "non-demo encounters": session.execute(
+                select(func.count())
+                .select_from(OpdEncounter)
+                .where(
+                    OpdEncounter.facility_id.in_(facility_ids),
+                    OpdEncounter.source_system != SOURCE_SYSTEM,
+                )
+            ).scalar_one(),
+            "non-demo import batches": session.execute(
+                select(func.count())
+                .select_from(ImportBatch)
+                .where(
+                    ImportBatch.facility_id.in_(facility_ids),
+                    ImportBatch.source_system != SOURCE_SYSTEM,
+                )
+            ).scalar_one(),
+            "aggregate submissions": session.execute(
+                select(func.count())
+                .select_from(AggregateSubmission)
+                .where(AggregateSubmission.facility_id.in_(facility_ids))
+            ).scalar_one(),
+            "surveillance signals": session.execute(
+                select(func.count())
+                .select_from(SurveillanceSignal)
+                .where(SurveillanceSignal.facility_id.in_(facility_ids))
+            ).scalar_one(),
+        }
+        blockers = {name: count for name, count in protected.items() if count}
+        if blockers:
+            print(
+                "REFUSED: demo facilities have durable dependent records: "
+                + ", ".join(f"{name}={count}" for name, count in blockers.items()),
+                file=sys.stderr,
+            )
+            print("Recreate the disposable development database instead.", file=sys.stderr)
+            return EXIT_USAGE
 
         removal = session.execute(
-            delete(OpdEncounter).where(OpdEncounter.source_system == SOURCE_SYSTEM)
+            delete(OpdEncounter).where(
+                OpdEncounter.facility_id.in_(facility_ids),
+                OpdEncounter.source_system == SOURCE_SYSTEM,
+            )
         )
         deleted = cast("CursorResult[Any]", removal).rowcount
+        session.execute(
+            delete(ImportBatch).where(
+                ImportBatch.facility_id.in_(facility_ids),
+                ImportBatch.source_system == SOURCE_SYSTEM,
+            )
+        )
         session.execute(delete(Facility).where(Facility.code.like(f"{FACILITY_CODE_PREFIX}-%")))
-        print(f"deleted {deleted} demo encounters and {len(codes)} demo facilities")
+        print(f"deleted {deleted} demo encounters and {len(facilities)} demo facilities")
     return EXIT_OK
 
 

@@ -38,9 +38,11 @@ from mars.domain.enums import (
     GeographyGrain,
     IndicatorValueStatus,
     LifecycleStatus,
+    MethodKind,
     SignalStatus,
 )
 from mars.domain.geography import GeographyUnit
+from mars.domain.governance import MethodDefinition, MethodVersion
 from mars.domain.indicator import (
     IndicatorDefinition,
     IndicatorDefinitionVersion,
@@ -68,6 +70,7 @@ KPI_INDICATORS: tuple[tuple[str, str], ...] = (
 #: Not an indicator: a count of governed signal records. Kept separate so it is
 #: never mistaken for a measured quantity with a numerator and denominator.
 ACTIVE_SIGNALS_CODE = "ACTIVE_SIGNALS"
+SIGNAL_METHOD_CODE = "signal_prioritisation"
 
 #: The measure a facility ranking is read against. Attendances, because it is
 #: the denominator every other facility figure is read against and the one
@@ -302,6 +305,9 @@ class SurveillanceSummaryService:
         statement = select(IndicatorResult).where(
             IndicatorResult.indicator_code == code,
             IndicatorResult.indicator_version_id == version_id,
+            # Results at national, district and facility grain can cover the
+            # same facts. Mixing them would count those facts more than once.
+            IndicatorResult.geography_grain == grain,
             IndicatorResult.period_start >= period.start,
             IndicatorResult.period_end <= period.end,
             IndicatorResult.value_status == IndicatorValueStatus.AVAILABLE,
@@ -315,7 +321,6 @@ class SurveillanceSummaryService:
                 return []
             statement = statement.where(
                 IndicatorResult.facility_id == facility_id,
-                IndicatorResult.geography_grain == GeographyGrain.FACILITY,
             )
             return list(self._session.execute(statement).scalars().all())
 
@@ -439,6 +444,17 @@ class SurveillanceSummaryService:
         geography_unit_id: uuid.UUID | None,
         facility_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
+        method_version_id = self._session.execute(
+            select(MethodVersion.id)
+            .join(MethodDefinition)
+            .where(
+                MethodDefinition.code == SIGNAL_METHOD_CODE,
+                MethodDefinition.kind == MethodKind.SIGNAL_RULE,
+                MethodVersion.status == LifecycleStatus.ACTIVE,
+            )
+            .limit(1)
+        ).scalar_one_or_none()
+
         statement = select(func.count(SurveillanceSignal.id)).where(
             SurveillanceSignal.signal_status == SignalStatus.ACTIVE,
             SurveillanceSignal.period_start >= period.start,
@@ -460,7 +476,41 @@ class SurveillanceSummaryService:
                 statement = statement.where(SurveillanceSignal.facility_id.in_(facilities or set()))
             elif geographies is not None:
                 statement = statement.where(SurveillanceSignal.geography_unit_id.in_(geographies))
+        grain = (
+            GeographyGrain.FACILITY.value
+            if facility_id
+            else GeographyGrain.DISTRICT.value
+            if geography_unit_id
+            else GeographyGrain.NATIONAL.value
+        )
+        if method_version_id is None:
+            return {
+                "code": ACTIVE_SIGNALS_CODE,
+                "label": "Active signals",
+                "value": None,
+                "unit": "count",
+                "numerator": None,
+                "denominator": None,
+                "period": period.as_dict(),
+                "geography_grain": grain,
+                "geography_unit_id": geography_unit_id,
+                "facility_id": facility_id,
+                "source": "table:surveillance_signal",
+                "method_version_id": None,
+                "source_freshness": None,
+                "comparison": None,
+                "status": STATUS_NOT_CONFIGURED,
+                "status_detail": (
+                    "No active signal-prioritisation method is configured, so "
+                    "an empty signal table cannot be interpreted as zero signals."
+                ),
+                "missing_configuration": [f"method:{SIGNAL_METHOD_CODE}"],
+            }
+
         count = int(self._session.execute(statement).scalar_one())
+        freshness_statement = statement.with_only_columns(
+            func.max(SurveillanceSignal.generated_at), maintain_column_froms=True
+        ).order_by(None)
         return {
             "code": ACTIVE_SIGNALS_CODE,
             "label": "Active signals",
@@ -469,28 +519,17 @@ class SurveillanceSummaryService:
             "numerator": count,
             "denominator": None,
             "period": period.as_dict(),
-            "geography_grain": (
-                GeographyGrain.FACILITY.value
-                if facility_id
-                else GeographyGrain.DISTRICT.value
-                if geography_unit_id
-                else GeographyGrain.NATIONAL.value
-            ),
+            "geography_grain": grain,
             "geography_unit_id": geography_unit_id,
             "facility_id": facility_id,
             "source": "table:surveillance_signal",
-            "method_version_id": None,
-            "source_freshness": self._session.execute(
-                select(func.max(SurveillanceSignal.generated_at))
-            ).scalar_one_or_none(),
+            "method_version_id": method_version_id,
+            "source_freshness": self._session.execute(freshness_statement).scalar_one_or_none(),
             "comparison": None,
-            # A count of governed records is always available, including zero.
-            # Zero active signals is a real answer; it is not "unconfigured".
             "status": STATUS_AVAILABLE,
             "status_detail": (
-                "Signals currently active for the period and scope. A count of "
-                "zero means no signal is active, which is not the same as no "
-                "analysis having run."
+                "Signals currently active for the period and scope under the "
+                "named active signal method."
             ),
             "missing_configuration": [],
         }
@@ -687,16 +726,44 @@ class SurveillanceSummaryService:
         registered = int(
             self._session.execute(select(func.count(IndicatorDefinition.id))).scalar_one()
         )
+        analytics_freshness = select(func.max(IndicatorResult.computed_at)).where(
+            IndicatorResult.period_start >= period.start,
+            IndicatorResult.period_end <= period.end,
+        )
+        signal_freshness = select(func.max(SurveillanceSignal.generated_at)).where(
+            SurveillanceSignal.period_start >= period.start,
+            SurveillanceSignal.period_end <= period.end,
+        )
+        geographies = self._scope.geography_ids(principal)
+        facilities = self._scope.facility_ids(principal)
+        if principal.is_facility_restricted:
+            analytics_freshness = analytics_freshness.where(
+                IndicatorResult.facility_id.in_(facilities or set())
+            )
+            signal_freshness = signal_freshness.where(
+                SurveillanceSignal.facility_id.in_(facilities or set())
+            )
+        elif geographies is not None and facilities is not None:
+            analytics_freshness = analytics_freshness.where(
+                or_(
+                    IndicatorResult.geography_unit_id.in_(geographies),
+                    IndicatorResult.facility_id.in_(facilities),
+                )
+            )
+            signal_freshness = signal_freshness.where(
+                or_(
+                    SurveillanceSignal.geography_unit_id.in_(geographies),
+                    SurveillanceSignal.facility_id.in_(facilities),
+                )
+            )
         return {
             "period": period.as_dict(),
             "indicators_registered": registered,
             "indicators_approved": approved,
             "analytics_refreshed_at": self._session.execute(
-                select(func.max(IndicatorResult.computed_at))
+                analytics_freshness
             ).scalar_one_or_none(),
-            "signals_generated_at": self._session.execute(
-                select(func.max(SurveillanceSignal.generated_at))
-            ).scalar_one_or_none(),
+            "signals_generated_at": self._session.execute(signal_freshness).scalar_one_or_none(),
             "interpretation_boundary": INTERPRETATION_BOUNDARY,
             "analytically_configured": approved > 0,
             "configuration_detail": (

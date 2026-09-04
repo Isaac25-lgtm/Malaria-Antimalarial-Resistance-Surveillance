@@ -123,6 +123,10 @@ class ReportService:
             raise ValidationFailedError(f"Unknown report product: {product}")
         if product == DISTRICT_BRIEF and geography_unit_id is None:
             raise ValidationFailedError("A district brief requires the district it is about.")
+        if product == NATIONAL_BRIEF and geography_unit_id is not None:
+            raise ValidationFailedError(
+                "A national brief cannot be filtered to one district; request a district brief."
+            )
 
         measures = self._summary.kpis(
             principal,

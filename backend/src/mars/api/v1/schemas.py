@@ -852,12 +852,14 @@ class RequestEvidenceRequest(MarsModel):
     """Ask for evidence MARS cannot produce itself, or add a note."""
 
     description: str = Field(min_length=1, max_length=4000)
+    expected_version: int = Field(ge=1)
 
 
 class RecordExternalResultRequest(MarsModel):
     """Record that an external result came back, by reference only."""
 
     result_reference: str = Field(min_length=1, max_length=256)
+    expected_version: int = Field(ge=1)
 
 
 # ---------------------------------------------------------------------------

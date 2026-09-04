@@ -63,10 +63,11 @@ the live one and discovering the archive was truncated.
 ## What a backup contains
 
 Everything, including `mars_identity`. The identity vault is encrypted at rest
-with the keys in `MARS_ENCRYPTION_KEYS`, so **a backup is useless without those
-keys and dangerous with them.** Store them separately from the dumps, under
-different access control. A backup archive and its key material in the same
-bucket is a single point of compromise.
+with the current and retired keys in `MARS_IDENTITY_ENCRYPTION_KEY` and
+`MARS_IDENTITY_ENCRYPTION_RETIRED_KEYS`, so **a backup is useless without those
+keys and dangerous with them.** The separate linkage keys are also required to
+reproduce and match linkage tokens. Store all key material separately from the
+dumps, under different access control.
 
 Retention is **not set** by MARS. How long a surveillance backup may be kept is
 a legal determination for the programme and its data protection authority, and
@@ -126,10 +127,13 @@ The vault is a separate schema behind a separate database role. Recovering it
 requires:
 
 1. the dump,
-2. `MARS_ENCRYPTION_KEYS` including every version that encrypted a row still
+2. `MARS_IDENTITY_ENCRYPTION_KEY` and
+   `MARS_IDENTITY_ENCRYPTION_RETIRED_KEYS`, including every version that encrypted a row still
    present — retired keys stay in the list to decrypt old rows, and are never
    used to encrypt new ones,
-3. the restricted role re-provisioned with `scripts/provision_identity_roles.sql`.
+3. `MARS_IDENTITY_LINKAGE_KEY` and `MARS_IDENTITY_LINKAGE_RETIRED_KEYS`, to
+   preserve linkage across rotations,
+4. the restricted role re-provisioned with `scripts/provision_identity_roles.sql`.
 
 If the keys are lost the vault is unrecoverable. That is the intended property
 of encryption at rest, and it is why the keys belong in a secret manager with

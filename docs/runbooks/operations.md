@@ -110,9 +110,11 @@ python -m mars.demo.cli generate --out-dir ./demo
 python -m mars.demo.cli register --out-dir ./demo
 ```
 
-`generate` writes the dataset; `register` loads it through the ingestion
-pipeline. Both are deterministic given `--seed`, so two people running the same
-command see the same demonstration.
+`generate` writes the dataset and `register` creates its synthetic facilities.
+Load the generated batch files separately with `mars.ingestion.encounters.cli`;
+that explicit step exercises the same ingestion and quarantine path used for a
+real deployment. Both demo commands are deterministic given `--seed`, so two
+people running the same command see the same demonstration.
 
 Facilities are prefixed `DEMO-HF` and patient references `SYN`. No real patient
 data exists anywhere in this repository, and no synthetic record carries a

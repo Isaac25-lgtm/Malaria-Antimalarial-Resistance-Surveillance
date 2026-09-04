@@ -2862,6 +2862,8 @@ export interface components {
          * @description Record that an external result came back, by reference only.
          */
         RecordExternalResultRequest: {
+            /** Expected Version */
+            expected_version: number;
             /** Result Reference */
             result_reference: string;
         };
@@ -2912,6 +2914,8 @@ export interface components {
         RequestEvidenceRequest: {
             /** Description */
             description: string;
+            /** Expected Version */
+            expected_version: number;
         };
         /** SignalEvidenceSummary */
         SignalEvidenceSummary: {

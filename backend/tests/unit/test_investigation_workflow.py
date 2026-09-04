@@ -8,11 +8,14 @@ reason, and the learning loop changes nothing on its own.
 
 from __future__ import annotations
 
+from sqlalchemy import inspect
+
 from mars.domain.enums import (
     InvestigationEventKind,
     InvestigationOutcome,
     InvestigationStatus,
 )
+from mars.domain.investigation import Investigation
 from mars.investigations.service import (
     ALLOWED_TRANSITIONS,
     QUEUES,
@@ -38,6 +41,11 @@ class TestTheStateMachineIsComplete:
     def test_a_new_investigation_cannot_jump_to_assigned(self) -> None:
         assert InvestigationStatus.ASSIGNED not in ALLOWED_TRANSITIONS[InvestigationStatus.NEW]
 
+    def test_an_investigation_cannot_be_closed_before_work_starts(self) -> None:
+        assert InvestigationStatus.CLOSED not in ALLOWED_TRANSITIONS[InvestigationStatus.NEW]
+        assert InvestigationStatus.CLOSED not in ALLOWED_TRANSITIONS[InvestigationStatus.TRIAGED]
+        assert InvestigationStatus.CLOSED not in ALLOWED_TRANSITIONS[InvestigationStatus.ASSIGNED]
+
     def test_every_state_can_reach_a_terminal_one(self) -> None:
         """No investigation can become permanently stuck in a queue."""
         for status, allowed in ALLOWED_TRANSITIONS.items():
@@ -59,6 +67,10 @@ class TestTheStateMachineIsComplete:
             InvestigationStatus.ASSIGNED
             in ALLOWED_TRANSITIONS[InvestigationStatus.UNDER_INVESTIGATION]
         )
+
+    def test_record_version_is_an_atomic_orm_concurrency_token(self) -> None:
+        mapper = inspect(Investigation)
+        assert mapper.version_id_col is Investigation.__table__.c.record_version
 
 
 def _closure(start: InvestigationStatus) -> set[InvestigationStatus]:
@@ -104,6 +116,7 @@ class TestTheTimelineRecordsWhoDidWhat:
             "note_added",
             "evidence_requested",
             "external_result_recorded",
+            "started",
             "closed",
             "escalated",
         ):

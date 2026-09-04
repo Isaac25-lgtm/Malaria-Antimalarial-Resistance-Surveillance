@@ -1341,7 +1341,7 @@ class InvestigationEventKind(str, enum.Enum):
     NOTE_ADDED = "note_added"
     EVIDENCE_REQUESTED = "evidence_requested"
     EXTERNAL_RESULT_RECORDED = "external_result_recorded"
-    OUTCOME_RECORDED = "outcome_recorded"
+    STARTED = "started"
     CLOSED = "closed"
     ESCALATED = "escalated"
 

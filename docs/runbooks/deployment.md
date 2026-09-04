@@ -28,7 +28,10 @@ so one artefact runs in every environment.
 MARS_ENVIRONMENT=production
 MARS_DATABASE_URL=postgresql+psycopg://USER@HOST:5432/mars
 MARS_IDENTITY_DATABASE_URL=postgresql+psycopg://IDENTITY_USER@HOST:5432/mars
-MARS_ENCRYPTION_KEYS=v1:...
+MARS_IDENTITY_LINKAGE_KEY=...
+MARS_IDENTITY_LINKAGE_KEY_VERSION=v1
+MARS_IDENTITY_ENCRYPTION_KEY=...
+MARS_IDENTITY_ENCRYPTION_KEY_VERSION=v1
 MARS_OIDC_ISSUER=https://id.example.org/realms/moh
 MARS_OIDC_AUDIENCE=mars
 ```
@@ -40,7 +43,7 @@ a log line.
 ### Optional, and off unless set
 
 ```
-MARS_CORS_ALLOW_ORIGINS=https://mars.example.org
+MARS_CORS_ALLOW_ORIGINS=["https://mars.example.org"]
 MARS_AI_ASSISTANT_ENABLED=false
 MARS_DHIS2_ENABLED=false
 MARS_API_WORKERS=4
@@ -101,10 +104,11 @@ content; a test asserts this.
 
 ## Workers
 
-The worker runs as its own service from the same image, so a long analytical
-run cannot starve request serving, and the two processes can never drift apart
-in dependency versions. A worker computing an indicator differently from the
-API that serves it would be an invisible and serious defect.
+The worker runs as its own service from the same image, isolating analytical
+work from request serving while keeping dependency versions identical. The
+current worker intentionally has no built-in schedule: an operator or external
+scheduler invokes the job modules listed in the operations runbook. Deployment
+must therefore configure that orchestration explicitly.
 
 Jobs are idempotent and keyed by an input fingerprint: re-running over unchanged
 evidence writes nothing, and changed evidence writes a new row beside the old.
@@ -114,7 +118,7 @@ A worker can be restarted mid-run without corrupting a result.
 
 ```bash
 curl -fsS https://mars.example.org/api/v1/health/ready
-curl -fsS https://mars.example.org/api/v1/health/schema      # expect head 0023_active_signal_index
+curl -fsS https://mars.example.org/api/v1/health/schema      # expect head 0024_investigation_hardening
 curl -fsS https://mars.example.org/api/v1/meta/version
 curl -fsSI https://mars.example.org/api/v1/health/live | grep -i x-frame-options
 ```

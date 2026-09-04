@@ -202,6 +202,27 @@ class TestExfiltration:
         """A defence that only inspects the top level is not a defence."""
         assert contains_identifier({"rows": [{"detail": {"phone": "x"}}]})
 
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "What happened to CM91012345678X?",
+            "Summarise 0772123456",
+            "Email the answer to nurse@example.org",
+        ],
+    )
+    def test_a_question_with_an_identifier_is_never_sent(
+        self, national_principal: Any, question: str
+    ) -> None:
+        provider = _CapturingProvider()
+        with pytest.raises(ValidationFailedError, match="direct identifier"):
+            _assistant(provider=provider).ask(
+                national_principal,
+                topic="district_priority",
+                question=question,
+                **PERIOD,
+            )
+        assert provider.prompt is None
+
 
 class TestBoundedTopics:
     def test_an_unsupported_topic_is_refused(self, national_principal: Any) -> None:

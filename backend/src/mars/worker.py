@@ -76,17 +76,17 @@ class Worker:
                 detail="No jobs are registered yet. The process will exit cleanly on SIGTERM.",
             )
         else:
-            # No scheduler yet: jobs are invoked explicitly by an operator or a
-            # test. A queue consumer replaces this loop when the first
-            # event-driven job lands in Prompt 9.
+            # Jobs are invoked explicitly by an operator, external scheduler,
+            # or test. This process advertises their availability and provides
+            # the isolated worker deployment boundary.
             self._logger.info(
                 "worker_jobs_available",
                 jobs=list(REGISTERED_JOBS),
                 detail="Invoked on demand; no scheduler is running.",
             )
 
-        # Wait rather than spin. A scheduler replaces this when the first job
-        # lands in Prompt 9.
+        # Wait rather than spin. Scheduling stays outside this process so the
+        # deployment can govern cadence explicitly.
         while not self._stop.wait(timeout=30.0):
             self._logger.debug("worker_heartbeat", registered_jobs=len(REGISTERED_JOBS))
 

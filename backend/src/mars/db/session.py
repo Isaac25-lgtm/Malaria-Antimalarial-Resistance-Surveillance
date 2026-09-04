@@ -18,6 +18,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from mars.core.logging import get_logger
 from mars.core.settings import Settings, get_settings
 
+# The ORM registry must be complete before anything flushes. A mapper resolves
+# a foreign key against whatever tables happen to be registered at that moment,
+# so a process that imported only the models it names directly fails on the
+# first write with a NoReferencedTableError naming a table it never mentions.
+#
+# Importing the registry here binds completeness to the thing every writer
+# already goes through, rather than to fifteen entrypoints each remembering.
+# Six workers and one ingestion CLI were relying on transitive luck, and the
+# ones that worked were not more careful, only luckier.
+from mars.db import models as _models  # noqa: F401
+
 logger = get_logger(__name__)
 
 

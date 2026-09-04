@@ -161,6 +161,14 @@ class Investigation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     #: investigation for the same signal.
     idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
+    # SQLAlchemy includes record_version in every UPDATE predicate. A second
+    # session writing a stale object therefore updates zero rows instead of
+    # silently overwriting the first reviewer's decision.
+    __mapper_args__ = {  # noqa: RUF012
+        "version_id_col": record_version,
+        "version_id_generator": False,
+    }
+
     events: Mapped[list[InvestigationEvent]] = relationship(
         back_populates="investigation",
         cascade="all, delete-orphan",
@@ -190,7 +198,9 @@ class InvestigationEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_investigation_event_investigation", "investigation_id", "sequence"),
         {
             "schema": CORE,
-            "comment": "Append-only investigation timeline. No update or delete path.",
+            "comment": (
+                "Append-only investigation timeline. UPDATE and DELETE are rejected by trigger."
+            ),
         },
     )
 

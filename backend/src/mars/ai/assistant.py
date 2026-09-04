@@ -38,10 +38,11 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from mars.ai.provider import AssistantProvider, ProviderResponse, resolve_provider
-from mars.core.errors import ValidationFailedError
+from mars.core.errors import NotFoundError, ValidationFailedError
 from mars.core.logging import get_logger
 from mars.domain.enums import AuditAction
 from mars.security.principal import AuthenticatedPrincipal
+from mars.services.analytics_query import AnalyticsQueryService
 from mars.services.audit_service import AuditService
 from mars.services.signal_query import SignalQueryService
 from mars.services.surveillance_summary import (
@@ -210,6 +211,7 @@ class AskMarsAssistant:
         self._provider = provider if provider is not None else resolve_provider()
         self._summary = SurveillanceSummaryService(session)
         self._signals = SignalQueryService(session)
+        self._analytics = AnalyticsQueryService(session)
 
     # -- Availability --------------------------------------------------------
     def availability(self) -> dict[str, Any]:
@@ -260,6 +262,18 @@ class AskMarsAssistant:
             raise ValidationFailedError(f"Ask MARS answers: {', '.join(SUPPORTED_TOPICS)}.")
         if not question.strip():
             raise ValidationFailedError("A question needs text.")
+
+        question_identifier = contains_identifier(question)
+        if question_identifier is not None:
+            # The question is sent to the same external provider as context.
+            # Scanning only retrieved records would leave the most direct
+            # exfiltration route open to accidental use.
+            logger.warning("ask_mars_question_identifier_blocked", detail=question_identifier)
+            raise ValidationFailedError(
+                "The question contained something resembling a direct identifier, "
+                "so it was refused before anything was sent. Remove identifying "
+                "information and ask about an aggregate or MARS record instead."
+            )
 
         state = self.availability()
         if not state["available"]:
@@ -354,7 +368,7 @@ class AskMarsAssistant:
         citations: list[Citation] = []
         missing: list[str] = []
 
-        if topic in ("district_priority", "compare_recurrence"):
+        if topic == "district_priority":
             districts = self._summary.priority_districts(
                 principal, period_start=period_start, period_end=period_end, limit=15
             )
@@ -381,28 +395,45 @@ class AskMarsAssistant:
                 missing.append("No district has an active signal in this period within your scope.")
 
         if topic == "commodity_alerts":
-            measures = self._summary.kpis(
-                principal, period_start=period_start, period_end=period_end
+            alerts = self._analytics.commodity_alerts(
+                principal,
+                period_from=period_start,
+                period_to=period_end,
+                limit=15,
             )
-            for measure in measures:
-                context.append(
-                    {
-                        "kind": "measure",
-                        "code": measure["code"],
-                        "label": measure["label"],
-                        "value": measure["value"],
-                        "status": measure["status"],
-                        "status_detail": measure["status_detail"],
-                    }
-                )
+            for alert in alerts:
+                context.append(alert)
                 citations.append(
                     Citation(
-                        kind="measure",
-                        record_id=measure["code"],
-                        period_start=period_start,
-                        period_end=period_end,
+                        kind="commodity_alert",
+                        record_id=str(alert["id"]),
+                        period_start=alert["period_start"],
+                        period_end=alert["period_end"],
                     )
                 )
+            if not alerts:
+                missing.append("No commodity alert records match this period and scope.")
+
+        if topic == "compare_recurrence":
+            results = self._analytics.aggregate_results(
+                principal,
+                kind="recurrence",
+                period_from=period_start,
+                period_to=period_end,
+                limit=15,
+            )
+            for result in results:
+                context.append(result)
+                citations.append(
+                    Citation(
+                        kind="recurrence_result",
+                        record_id=str(result["id"]),
+                        period_start=result["period_start"],
+                        period_end=result["period_end"],
+                    )
+                )
+            if not results:
+                missing.append("No governed recurrence results match this period and scope.")
 
         if topic in ("explain_signal", "investigation_brief"):
             if signal_id is None:
@@ -434,7 +465,7 @@ class AskMarsAssistant:
             )
             try:
                 explanation = self._signals.explanation(principal, signal_id)
-            except Exception:
+            except NotFoundError:
                 missing.append("No deterministic explanation has been generated yet.")
             else:
                 context.append(

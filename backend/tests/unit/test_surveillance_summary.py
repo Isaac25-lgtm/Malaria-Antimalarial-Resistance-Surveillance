@@ -14,8 +14,10 @@ from datetime import date
 from typing import Any
 
 import pytest
+from sqlalchemy.dialects import postgresql
 
 from mars.core.errors import ValidationFailedError
+from mars.domain.enums import GeographyGrain
 from mars.services.surveillance_summary import (
     ACTIVE_SIGNALS_CODE,
     INTERPRETATION_BOUNDARY,
@@ -23,6 +25,7 @@ from mars.services.surveillance_summary import (
     STATUS_AVAILABLE,
     STATUS_NOT_CONFIGURED,
     STATUS_UNAVAILABLE,
+    Period,
     SurveillanceSummaryService,
 )
 
@@ -102,17 +105,18 @@ class TestAnUnconfiguredSystemSaysSo:
 
 
 class TestZeroAndAbsenceAreDifferentAnswers:
-    def test_no_active_signals_is_a_real_zero(self, national_principal: Any) -> None:
-        """A count of governed records is available even when it is zero. That
-        is different from a measure that was never computed."""
+    def test_signals_are_not_configured_without_an_active_method(
+        self, national_principal: Any
+    ) -> None:
+        """An empty table cannot prove zero when the engine was never enabled."""
         signals = next(
             r
             for r in _service().kpis(national_principal, **PERIOD)
             if r["code"] == ACTIVE_SIGNALS_CODE
         )
-        assert signals["status"] == STATUS_AVAILABLE
-        assert signals["value"] == "0"
-        assert "not the same as no analysis having run" in signals["status_detail"]
+        assert signals["status"] == STATUS_NOT_CONFIGURED
+        assert signals["value"] is None
+        assert signals["missing_configuration"] == ["method:signal_prioritisation"]
 
     def test_the_statuses_a_screen_must_distinguish_are_all_declared(self) -> None:
         assert STATUS_AVAILABLE != STATUS_UNAVAILABLE != STATUS_NOT_CONFIGURED
@@ -134,6 +138,37 @@ class TestScope:
         self, gulu_facility_principal: Any
     ) -> None:
         assert _service().priority_districts(gulu_facility_principal, **PERIOD) == []
+
+    def test_provenance_freshness_is_period_and_facility_scoped(
+        self, gulu_facility_principal: Any
+    ) -> None:
+        session = _EmptySession()
+        SurveillanceSummaryService(session).provenance(gulu_facility_principal, **PERIOD)
+        sql = "\n".join(
+            str(statement.compile(dialect=postgresql.dialect()))
+            for statement in session.statements[-2:]
+        )
+        assert "facility_id IN" in sql
+        assert "period_start" in sql
+        assert "period_end" in sql
+
+
+class TestAggregationGrain:
+    def test_national_results_do_not_mix_district_and_facility_rows(
+        self, national_principal: Any
+    ) -> None:
+        session = _EmptySession()
+        service = SurveillanceSummaryService(session)
+        service._indicator_results(
+            national_principal,
+            code="ENC_ATTENDANCE_TOTAL",
+            version_id=uuid.UUID(int=1),
+            period=Period(PERIOD["period_start"], PERIOD["period_end"]),
+            grain=GeographyGrain.NATIONAL,
+            geography_unit_id=None,
+        )
+        sql = str(session.statements[-1].compile(dialect=postgresql.dialect()))
+        assert "geography_grain" in sql
 
 
 class TestEveryFigureCarriesItsContext:

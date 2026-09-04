@@ -28,8 +28,9 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm.exc import StaleDataError
 
 from mars.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from mars.domain.enums import (
@@ -57,15 +58,12 @@ from mars.services.audit_service import AuditService
 #: conclusion that can be quietly withdrawn is not a conclusion, and a genuine
 #: change of mind belongs in a new investigation that cites the old one.
 ALLOWED_TRANSITIONS: dict[InvestigationStatus, frozenset[InvestigationStatus]] = {
-    InvestigationStatus.NEW: frozenset({InvestigationStatus.TRIAGED, InvestigationStatus.CLOSED}),
-    InvestigationStatus.TRIAGED: frozenset(
-        {InvestigationStatus.ASSIGNED, InvestigationStatus.CLOSED}
-    ),
+    InvestigationStatus.NEW: frozenset({InvestigationStatus.TRIAGED}),
+    InvestigationStatus.TRIAGED: frozenset({InvestigationStatus.ASSIGNED}),
     InvestigationStatus.ASSIGNED: frozenset(
         {
             InvestigationStatus.UNDER_INVESTIGATION,
             InvestigationStatus.ASSIGNED,  # reassignment
-            InvestigationStatus.CLOSED,
         }
     ),
     InvestigationStatus.UNDER_INVESTIGATION: frozenset(
@@ -95,7 +93,11 @@ class InvestigationService:
         self._scope = AnalyticsQueryService(session)
 
     # -- Reading -------------------------------------------------------------
-    def _scoped(self, principal: AuthenticatedPrincipal, statement: Any) -> Any:
+    def _scoped(
+        self,
+        principal: AuthenticatedPrincipal,
+        statement: Select[tuple[Investigation]],
+    ) -> Select[tuple[Investigation]]:
         """Apply the caller's geography and facility scope in SQL."""
         geographies = self._scope.geography_ids(principal)
         facilities = self._scope.facility_ids(principal)
@@ -231,22 +233,53 @@ class InvestigationService:
         """
         if idempotency_key:
             existing = self._session.execute(
-                select(Investigation).where(Investigation.idempotency_key == idempotency_key)
+                self._scoped(
+                    principal,
+                    select(Investigation).where(Investigation.idempotency_key == idempotency_key),
+                )
             ).scalar_one_or_none()
             if existing is not None:
+                if existing.signal_id != signal_id:
+                    raise ConflictError(
+                        "That idempotency key was already used for a different signal."
+                    )
                 return existing
 
         existing = self._session.execute(
-            select(Investigation).where(Investigation.signal_id == signal_id)
+            self._scoped(
+                principal,
+                select(Investigation).where(Investigation.signal_id == signal_id),
+            )
         ).scalar_one_or_none()
         if existing is not None:
             return existing
 
-        signal = self._session.execute(
-            select(SurveillanceSignal).where(SurveillanceSignal.id == signal_id)
-        ).scalar_one_or_none()
+        signal_statement = select(SurveillanceSignal).where(SurveillanceSignal.id == signal_id)
+        geographies = self._scope.geography_ids(principal)
+        facilities = self._scope.facility_ids(principal)
+        if principal.is_facility_restricted:
+            geographies = set()
+        if geographies is not None and facilities is not None:
+            signal_statement = signal_statement.where(
+                or_(
+                    SurveillanceSignal.geography_unit_id.in_(geographies),
+                    SurveillanceSignal.facility_id.in_(facilities),
+                )
+            )
+        # Serialise two attempts to open work for the same signal. The second
+        # transaction sees the investigation created by the first.
+        signal = self._session.execute(signal_statement.with_for_update()).scalar_one_or_none()
         if signal is None:
             raise NotFoundError("signal not found or outside your assigned scope")
+
+        existing = self._session.execute(
+            self._scoped(
+                principal,
+                select(Investigation).where(Investigation.signal_id == signal_id),
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing
 
         now = datetime.now(UTC)
         investigation = Investigation(
@@ -325,8 +358,7 @@ class InvestigationService:
             investigation.closed_at = now
 
         investigation.investigation_status = to_status
-        investigation.record_version += 1
-        self._session.flush()
+        self._claim_version(investigation)
 
         self._append(
             investigation,
@@ -360,11 +392,14 @@ class InvestigationService:
         *,
         investigation_id: uuid.UUID,
         note: str,
+        expected_version: int,
     ) -> InvestigationEvent:
         """Append a note. Notes never change the state machine."""
         if not note.strip():
             raise ValidationFailedError("A note needs text.")
         investigation = self.get(principal, investigation_id)
+        self._check_version(investigation, expected_version)
+        self._claim_version(investigation)
         return self._append(
             investigation, principal, kind=InvestigationEventKind.NOTE_ADDED, note=note
         )
@@ -375,11 +410,14 @@ class InvestigationService:
         *,
         investigation_id: uuid.UUID,
         description: str,
+        expected_version: int,
     ) -> InvestigationEvidenceRequest:
         """Record a request for evidence MARS cannot produce itself."""
         if not description.strip():
             raise ValidationFailedError("An evidence request says what it wants.")
         investigation = self.get(principal, investigation_id)
+        self._check_version(investigation, expected_version)
+        self._claim_version(investigation)
         now = datetime.now(UTC)
         request = InvestigationEvidenceRequest(
             investigation_id=investigation.id,
@@ -406,6 +444,7 @@ class InvestigationService:
         investigation_id: uuid.UUID,
         evidence_request_id: uuid.UUID,
         result_reference: str,
+        expected_version: int,
     ) -> InvestigationEvidenceRequest:
         """Record that an external result came back, by reference only.
 
@@ -417,6 +456,7 @@ class InvestigationService:
         if not result_reference.strip():
             raise ValidationFailedError("A result needs a reference.")
         investigation = self.get(principal, investigation_id)
+        self._check_version(investigation, expected_version)
         request = next(
             (r for r in investigation.evidence_requests if r.id == evidence_request_id),
             None,
@@ -426,6 +466,7 @@ class InvestigationService:
         if request.request_status is not EvidenceRequestStatus.AWAITING:
             raise ConflictError("That evidence request is no longer awaiting a result.")
 
+        self._claim_version(investigation)
         request.request_status = EvidenceRequestStatus.RECEIVED
         request.result_reference = result_reference
         request.result_recorded_at = datetime.now(UTC)
@@ -509,6 +550,16 @@ class InvestigationService:
                 "try again - your view is out of date, and overwriting the "
                 "other change would lose it."
             )
+
+    def _claim_version(self, investigation: Investigation) -> None:
+        """Atomically claim the version before appending to the timeline."""
+        investigation.record_version += 1
+        try:
+            self._session.flush()
+        except StaleDataError as exc:
+            raise ConflictError(
+                "This investigation changed since you loaded it. Re-read it and try again."
+            ) from exc
 
     def _append(
         self,
@@ -595,7 +646,7 @@ class InvestigationService:
 _EVENT_FOR_STATUS: dict[InvestigationStatus, InvestigationEventKind] = {
     InvestigationStatus.TRIAGED: InvestigationEventKind.TRIAGED,
     InvestigationStatus.ASSIGNED: InvestigationEventKind.ASSIGNED,
-    InvestigationStatus.UNDER_INVESTIGATION: InvestigationEventKind.OUTCOME_RECORDED,
+    InvestigationStatus.UNDER_INVESTIGATION: InvestigationEventKind.STARTED,
     InvestigationStatus.CLOSED: InvestigationEventKind.CLOSED,
     InvestigationStatus.ESCALATED: InvestigationEventKind.ESCALATED,
     InvestigationStatus.NEW: InvestigationEventKind.OPENED,

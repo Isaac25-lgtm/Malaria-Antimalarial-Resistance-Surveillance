@@ -243,7 +243,12 @@ def add_note(
     principal: Updater,
     service: InvestigationServiceDep,
 ) -> InvestigationEventSummary:
-    event = service.add_note(principal, investigation_id=investigation_id, note=body.description)
+    event = service.add_note(
+        principal,
+        investigation_id=investigation_id,
+        note=body.description,
+        expected_version=body.expected_version,
+    )
     return InvestigationEventSummary.model_validate(service.event_shape(event))
 
 
@@ -255,7 +260,10 @@ def request_evidence(
     service: InvestigationServiceDep,
 ) -> EvidenceRequestSummary:
     request = service.request_evidence(
-        principal, investigation_id=investigation_id, description=body.description
+        principal,
+        investigation_id=investigation_id,
+        description=body.description,
+        expected_version=body.expected_version,
     )
     return EvidenceRequestSummary.model_validate(service.evidence_request_shape(request))
 
@@ -282,6 +290,7 @@ def record_external_result(
         investigation_id=investigation_id,
         evidence_request_id=evidence_request_id,
         result_reference=body.result_reference,
+        expected_version=body.expected_version,
     )
     return EvidenceRequestSummary.model_validate(service.evidence_request_shape(request))
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import io
+import uuid
 from datetime import date
 from typing import Any
 
@@ -97,9 +98,9 @@ class TestAnAbsentFigureStaysAbsent:
         for row in unconfigured:
             assert row[value_at] == ""
 
-        # The one real zero in this report is still written as a zero.
-        available = [row for row in body if row and row[status_at] == "available"]
-        assert any(row[value_at] == "0" for row in available)
+        # On a fresh deployment even active signals are unconfigured: an empty
+        # signal table cannot prove a zero until its method is active.
+        assert all(row[value_at] == "" for row in unconfigured)
 
 
 class TestTheCaveatTravelsWithTheFile:
@@ -161,6 +162,17 @@ class TestScopeAndAudit:
     ) -> None:
         with pytest.raises(ValidationFailedError):
             _service().generate(national_principal, product=DISTRICT_BRIEF, **PERIOD)
+
+    def test_a_national_brief_cannot_be_labelled_national_after_district_filtering(
+        self, national_principal: Any
+    ) -> None:
+        with pytest.raises(ValidationFailedError):
+            _service().generate(
+                national_principal,
+                product=NATIONAL_BRIEF,
+                geography_unit_id=uuid.UUID(int=1),
+                **PERIOD,
+            )
 
     def test_an_unknown_product_is_refused(self, national_principal: Any) -> None:
         with pytest.raises(ValidationFailedError):

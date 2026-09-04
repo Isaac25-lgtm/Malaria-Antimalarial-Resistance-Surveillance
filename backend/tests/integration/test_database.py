@@ -106,6 +106,30 @@ class TestSchemaBoundaries:
             value = connection.execute(text("SELECT gen_random_uuid()")).scalar_one()
         assert uuid.UUID(str(value))
 
+    def test_investigation_timeline_is_database_enforced_append_only(self, engine: Engine) -> None:
+        with engine.connect() as connection:
+            trigger = connection.execute(
+                text(
+                    "SELECT tgname FROM pg_trigger "
+                    "WHERE tgrelid = 'mars_core.investigation_event'::regclass "
+                    "AND NOT tgisinternal"
+                )
+            ).scalar_one_or_none()
+            event_kinds = set(
+                connection.execute(
+                    text(
+                        "SELECT enumlabel FROM pg_enum e "
+                        "JOIN pg_type t ON t.oid = e.enumtypid "
+                        "JOIN pg_namespace n ON n.oid = t.typnamespace "
+                        "WHERE n.nspname = 'mars_core' "
+                        "AND t.typname = 'investigation_event_kind'"
+                    )
+                ).scalars()
+            )
+        assert trigger == "investigation_event_append_only"
+        assert "started" in event_kinds
+        assert "outcome_recorded" not in event_kinds
+
 
 class TestMigrationReversibility:
     def test_downgrade_then_upgrade_restores_the_schema(
