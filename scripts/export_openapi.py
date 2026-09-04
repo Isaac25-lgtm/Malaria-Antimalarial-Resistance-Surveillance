@@ -33,7 +33,9 @@ def build_document() -> dict[str, object]:
     settings = Settings(
         environment=Environment.LOCAL,
         database_url="postgresql+psycopg://mars:contract@localhost:5432/mars",
+        auth_mode="demo",
         dev_auth_enabled=True,
+        demo_mode_enabled=True,
         dev_auth_secret="contract-export-only",
         log_format="console",
         # Pinned so the exported document does not change with the build.

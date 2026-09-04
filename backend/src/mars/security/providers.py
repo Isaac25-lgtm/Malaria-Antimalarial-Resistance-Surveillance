@@ -209,6 +209,8 @@ class DevelopmentTokenVerifier(TokenVerifier):
 
 def build_token_verifier(settings: Settings) -> TokenVerifier:
     """Select the verifier appropriate to this deployment."""
+    if settings.is_live_auth_active:
+        return LiveModeTokenVerifier()
     if settings.is_development_auth_active:
         return DevelopmentTokenVerifier(settings)
     if settings.oidc_issuer:
@@ -217,3 +219,12 @@ def build_token_verifier(settings: Settings) -> TokenVerifier:
         "No authentication provider is configured. Set MARS_OIDC_ISSUER, or "
         "enable MARS_DEV_AUTH_ENABLED in a non-protected environment."
     )
+
+
+class LiveModeTokenVerifier(TokenVerifier):
+    """Bearer tokens are not an authentication path in live cookie mode."""
+
+    method = "none"
+
+    def verify(self, token: str) -> VerifiedIdentity:
+        raise UnauthenticatedError("Bearer tokens are not accepted in live mode")

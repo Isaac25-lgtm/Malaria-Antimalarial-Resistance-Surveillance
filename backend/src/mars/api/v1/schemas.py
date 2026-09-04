@@ -71,6 +71,8 @@ class VersionResponse(MarsModel):
     ai_assistant_enabled: bool
     demo_mode_enabled: bool
     development_auth_active: bool
+    auth_mode: str = "demo"
+    live_login_enabled: bool = False
     active_method_versions: list[str] = Field(
         default_factory=list,
         description="Qualified identifiers, e.g. 'IND-TPR@1.2.0'. Empty when unconfigured.",
@@ -107,6 +109,56 @@ class CurrentUserResponse(MarsModel):
     is_synthetic: bool = Field(
         description="True for development accounts. The interface must mark these visibly."
     )
+    scope_type: str = "none"
+    mapping_status: str = "mapped"
+    landing_path: str | None = None
+
+
+class SourceStatusSummary(MarsModel):
+    mode: str
+    source: str
+    authentication: str
+    mapping: str
+    last_sync: datetime | None = None
+
+
+class AuthorisedDistrictSummary(MarsModel):
+    org_unit_id: uuid.UUID
+    org_unit_name: str
+    preferred_code: str
+
+
+class SessionScopeSummary(MarsModel):
+    scope_type: str
+    org_unit_id: uuid.UUID | None = None
+    org_unit_name: str | None = None
+    national_access: bool = False
+    authorised_districts: list[AuthorisedDistrictSummary] = Field(default_factory=list)
+
+
+class SessionUserSummary(MarsModel):
+    display_name: str
+    username: str
+
+
+class SessionStatusResponse(MarsModel):
+    """Public session probe. Never returns 401 for an anonymous caller."""
+
+    authenticated: bool
+    auth_mode: str
+    csrf_token: str | None = None
+    user: SessionUserSummary | None = None
+    scope: SessionScopeSummary | None = None
+    permissions: list[str] | None = None
+    source_status: SourceStatusSummary | None = None
+    profile: CurrentUserResponse | None = None
+
+
+class LiveLoginRequest(MarsModel):
+    """eRegisters username and password, posted only to MARS."""
+
+    username: str = Field(min_length=1, max_length=128)
+    password: str = Field(min_length=1, max_length=256)
 
 
 class DevelopmentLoginRequest(MarsModel):

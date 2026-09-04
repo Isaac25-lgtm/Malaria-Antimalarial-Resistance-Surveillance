@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mars.api.exception_handlers import register_exception_handlers
 from mars.api.middleware import (
     AccessLogMiddleware,
+    LiveRequestSecurityMiddleware,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
 )
@@ -66,6 +67,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "development_auth_active",
             detail="Synthetic authentication is enabled. Non-production only.",
         )
+    if settings.is_live_auth_active:
+        logger.warning(
+            "live_auth_active",
+            detail=(
+                "eRegisters password-pilot authentication is enabled. "
+                "Sessions and upstream credentials are in-process memory only."
+            ),
+        )
     yield
     logger.info("api_stopping")
 
@@ -86,6 +95,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         contact={"name": "MARS implementation team"},
     )
     app.state.settings = settings
+    if settings.is_live_auth_active:
+        from mars.integrations.dhis2.login.provider import Dhis2BasicAuthProvider
+        from mars.integrations.dhis2.mapping import Dhis2Crosswalk
+        from mars.security.live_session import InMemoryCredentialHolder, InMemorySessionStore
+        from mars.security.login_throttle import LoginThrottle
+        from mars.services.live_scope import SqlAlchemyGeographyLookup
+
+        app.state.live_session_store = InMemorySessionStore(
+            idle_seconds=settings.session_idle_seconds,
+            absolute_seconds=settings.session_absolute_seconds,
+        )
+        app.state.live_credential_holder = InMemoryCredentialHolder()
+        app.state.login_throttle = LoginThrottle(
+            max_attempts=settings.login_throttle_max_attempts,
+            window_seconds=settings.login_throttle_window_seconds,
+            secret=settings.login_throttle_secret,
+        )
+        app.state.dhis2_login_provider = Dhis2BasicAuthProvider(settings)
+        app.state.live_geography_lookup_factory = lambda session: SqlAlchemyGeographyLookup(
+            session, Dhis2Crosswalk(session)
+        )
 
     # Dependencies resolve settings through get_settings(), which reads the
     # environment. When an explicit Settings object is supplied - by tests, or by
@@ -96,6 +126,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Order matters: request context must be established before access logging
     # so every log line carries the request identifier.
     app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(LiveRequestSecurityMiddleware, settings=settings)
     app.add_middleware(SecurityHeadersMiddleware, settings=settings)
     app.add_middleware(RequestContextMiddleware, settings=settings)
 
@@ -115,7 +146,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_origins=settings.cors_allow_origins,
             allow_credentials=True,
             allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-            allow_headers=["Authorization", "Content-Type", settings.request_id_header],
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+                settings.request_id_header,
+                settings.csrf_header_name,
+            ],
             expose_headers=[settings.request_id_header],
         )
 

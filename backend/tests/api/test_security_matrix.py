@@ -32,6 +32,12 @@ UNAUTHENTICATED_ROUTES: dict[str, str] = {
     "/api/v1/meta/evidence-lanes": "Static description of the two evidence lanes.",
     "/api/v1/meta/assistant": "Whether the optional assistant is switched on.",
     "/api/v1/auth/me": "Returns the caller's own identity; authenticated by definition.",
+    "/api/v1/auth/session": (
+        "Public session probe. Anonymous callers receive authenticated=false."
+    ),
+    "/api/v1/auth/login": (
+        "Live eRegisters sign-in. Issues a session; does not return surveillance data."
+    ),
     "/api/v1/auth/logout": "Ends the caller's own session.",
     "/api/v1/auth/dev/users": "Development authentication; refused in protected environments.",
     "/api/v1/auth/dev/login": "Development authentication; refused in protected environments.",

@@ -11,6 +11,7 @@ from __future__ import annotations
 import enum
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -174,6 +175,34 @@ class Settings(BaseSettings):
     # data. Refused in protected environments.
     demo_mode_enabled: bool = False
 
+    # -- Runtime authentication mode -------------------------------------
+    # ``demo`` keeps synthetic development sign-in and the mars_local dataset.
+    # ``live`` is the Pader-pilot path: one eRegisters login, opaque cookie
+    # sessions, and the mars_live database. The two never share a process.
+    auth_mode: Literal["demo", "live"] = "demo"
+
+    #: HTTPS origin of the Ministry eRegisters/DHIS2 instance used at login.
+    dhis2_login_base_url: str = "https://eregisters.health.go.ug"
+    dhis2_login_timeout_seconds: float = Field(default=20.0, gt=0, le=60)
+    dhis2_login_max_retries: int = Field(default=1, ge=0, le=3)
+    dhis2_login_retry_backoff_seconds: float = Field(default=0.5, ge=0, le=10)
+    dhis2_login_max_response_bytes: int = Field(default=2 * 1024 * 1024, ge=1024)
+    dhis2_login_verify_tls: bool = True
+    dhis2_login_page_size: int = Field(default=200, ge=1, le=500)
+    dhis2_login_max_pages: int = Field(default=10, ge=1, le=40)
+
+    session_cookie_name: str = "mars_session"
+    csrf_cookie_name: str = "mars_csrf"
+    csrf_header_name: str = "X-CSRF-Token"
+    session_idle_seconds: int = Field(default=1_800, ge=60, le=28_800)
+    session_absolute_seconds: int = Field(default=28_800, ge=300, le=86_400)
+    login_max_body_bytes: int = Field(default=4_096, ge=256, le=65_536)
+    login_throttle_max_attempts: int = Field(default=5, ge=1, le=30)
+    login_throttle_window_seconds: int = Field(default=900, ge=60, le=3_600)
+    #: HMAC key for the non-reversible login throttle identifier. Not a
+    #: credential and not used to authenticate anyone.
+    login_throttle_secret: str = Field(default="local-login-throttle-hmac")
+
     # -- DHIS2 exchange ---------------------------------------------------
     # Disabled by default and unconfigured by default. A deployment that has
     # not been given a URL and credentials must report the integration as
@@ -261,22 +290,68 @@ class Settings(BaseSettings):
                 )
             if self.demo_mode_enabled:
                 raise ValueError("demo_mode_enabled must be false in staging and production.")
+            if self.auth_mode == "live":
+                raise ValueError(
+                    "auth_mode=live is a local DHIS2 password pilot and is not "
+                    "permitted in staging or production. Use Ministry OIDC."
+                )
             if not self.oidc_issuer:
                 raise ValueError(
                     "oidc_issuer is required in staging and production; "
                     "there is no fallback authentication path."
                 )
+        if self.auth_mode == "live":
+            if self.dev_auth_enabled:
+                raise ValueError("live mode refuses development authentication.")
+            if self.demo_mode_enabled:
+                raise ValueError("live mode refuses demo mode.")
+            database_name = _database_name(self.database_url)
+            if database_name == "mars_local":
+                raise ValueError("live mode refuses the mars_local database.")
+            if database_name != "mars_live":
+                raise ValueError(
+                    "live mode requires database mars_live; "
+                    f"configured database is {database_name!r}."
+                )
+            if not self.dhis2_login_verify_tls:
+                raise ValueError("live DHIS2 login refuses to disable TLS verification.")
+            if not self.cors_allow_origins:
+                raise ValueError("live mode requires cors_allow_origins for Origin checks.")
         return self
 
     @property
     def is_development_auth_active(self) -> bool:
         """True only when synthetic authentication may legitimately be used."""
-        return self.dev_auth_enabled and not self.environment.is_protected
+        return (
+            self.auth_mode == "demo" and self.dev_auth_enabled and not self.environment.is_protected
+        )
+
+    @property
+    def is_live_auth_active(self) -> bool:
+        """True when the eRegisters password-pilot login is the only path."""
+        return self.auth_mode == "live" and not self.environment.is_protected
+
+    @property
+    def session_cookie_secure(self) -> bool:
+        """Secure cookies except on explicitly local HTTP frontends."""
+        if self.environment.is_protected:
+            return True
+        origins = self.cors_allow_origins
+        if not origins:
+            return True
+        return all(origin.startswith("https://") for origin in origins)
 
     @property
     def docs_enabled(self) -> bool:
         """Interactive API docs are not exposed in protected environments."""
         return not self.environment.is_protected
+
+
+def _database_name(database_url: str) -> str:
+    """The PostgreSQL database name from a SQLAlchemy URL."""
+    normalised = database_url.replace("postgresql+psycopg", "postgresql", 1)
+    path = urlsplit(normalised).path.lstrip("/")
+    return path.split("?")[0].split("/")[0]
 
 
 @lru_cache(maxsize=1)

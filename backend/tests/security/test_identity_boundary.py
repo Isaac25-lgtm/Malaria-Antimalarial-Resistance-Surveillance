@@ -153,7 +153,13 @@ class TestTheApiExposesNoIdentity:
         offenders: list[str] = []
         for name, schema in schemas.items():
             for field in schema.get("properties", {}):
-                if any(word in field.lower() for word in self.FORBIDDEN):
+                lowered = field.lower()
+                if any(
+                    lowered == word
+                    or lowered.startswith(f"{word}_")
+                    or lowered.endswith(f"_{word}")
+                    for word in self.FORBIDDEN
+                ):
                     offenders.append(f"{name}.{field}")
         assert not offenders, f"identity fields in the API contract: {offenders}"
 

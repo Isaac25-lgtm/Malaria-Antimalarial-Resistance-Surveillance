@@ -6,12 +6,23 @@ affordance reaching production. They are tested here rather than trusted.
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from pydantic import ValidationError
 
 from mars.core.settings import Environment, Settings
 
 _VALID_URL = "postgresql+psycopg://mars:pw@db:5432/mars"
+_LIVE_URL = "postgresql+psycopg://mars:pw@db:5432/mars_live"
+
+
+@pytest.fixture(autouse=True)
+def _clear_mars_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Constructor tests must not inherit the operator's process environment."""
+    for key in list(os.environ):
+        if key.startswith("MARS_") and key != "MARS_TEST_DATABASE_URL":
+            monkeypatch.delenv(key, raising=False)
 
 
 class TestDatabaseUrlValidation:
@@ -77,6 +88,51 @@ class TestDevelopmentEnvironments:
 
     def test_docs_enabled_locally(self) -> None:
         assert Settings(environment=Environment.LOCAL, database_url=_VALID_URL).docs_enabled
+
+
+class TestLiveModeGuards:
+    def test_live_mode_requires_mars_live_database(self) -> None:
+        with pytest.raises(ValidationError, match="mars_local"):
+            Settings(
+                auth_mode="live",
+                database_url="postgresql+psycopg://mars:pw@db:5432/mars_local",
+                dev_auth_enabled=False,
+                demo_mode_enabled=False,
+                cors_allow_origins=["http://127.0.0.1:5173"],
+            )
+
+    def test_live_mode_refuses_demo_and_dev_auth(self) -> None:
+        with pytest.raises(ValidationError, match="development authentication"):
+            Settings(
+                auth_mode="live",
+                database_url=_LIVE_URL,
+                dev_auth_enabled=True,
+                cors_allow_origins=["http://127.0.0.1:5173"],
+            )
+
+    def test_live_mode_is_refused_in_production(self) -> None:
+        with pytest.raises(ValidationError, match="local DHIS2 password pilot"):
+            Settings(
+                environment=Environment.PRODUCTION,
+                auth_mode="live",
+                database_url=_LIVE_URL,
+                oidc_issuer="https://id.example.org",
+                dev_auth_enabled=False,
+                demo_mode_enabled=False,
+                cors_allow_origins=["https://mars.example.org"],
+            )
+
+    def test_live_mode_is_active_locally(self) -> None:
+        settings = Settings(
+            auth_mode="live",
+            database_url=_LIVE_URL,
+            dev_auth_enabled=False,
+            demo_mode_enabled=False,
+            cors_allow_origins=["http://127.0.0.1:5173"],
+        )
+        assert settings.is_live_auth_active
+        assert not settings.is_development_auth_active
+        assert not settings.session_cookie_secure
 
 
 class TestFeatureDefaults:

@@ -110,6 +110,30 @@
         "title": "AnalyticalRecordSummary",
         "type": "object"
       },
+      "AuthorisedDistrictSummary": {
+        "properties": {
+          "org_unit_id": {
+            "format": "uuid",
+            "title": "Org Unit Id",
+            "type": "string"
+          },
+          "org_unit_name": {
+            "title": "Org Unit Name",
+            "type": "string"
+          },
+          "preferred_code": {
+            "title": "Preferred Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_unit_id",
+          "org_unit_name",
+          "preferred_code"
+        ],
+        "title": "AuthorisedDistrictSummary",
+        "type": "object"
+      },
       "BaselineSeriesKind": {
         "description": "Which analytical series a baseline is built over.\n\nKept explicit rather than inferred from the series key, because the same\nword can name an indicator and a measure, and a baseline built from the\nwrong table would compare a facility against a history that is not its own.",
         "enum": [
@@ -728,6 +752,22 @@
             "title": "Is Synthetic",
             "type": "boolean"
           },
+          "landing_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landing Path"
+          },
+          "mapping_status": {
+            "default": "mapped",
+            "title": "Mapping Status",
+            "type": "string"
+          },
           "max_sensitivity": {
             "title": "Max Sensitivity",
             "type": "string"
@@ -756,6 +796,11 @@
             },
             "title": "Roles",
             "type": "array"
+          },
+          "scope_type": {
+            "default": "none",
+            "title": "Scope Type",
+            "type": "string"
           },
           "user_id": {
             "format": "uuid",
@@ -2928,6 +2973,29 @@
         "title": "InvestigationQueueEntry",
         "type": "object"
       },
+      "LiveLoginRequest": {
+        "description": "eRegisters username and password, posted only to MARS.",
+        "properties": {
+          "password": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LiveLoginRequest",
+        "type": "object"
+      },
       "LivenessResponse": {
         "properties": {
           "service": {
@@ -4559,6 +4627,156 @@
         "title": "RequestEvidenceRequest",
         "type": "object"
       },
+      "SessionScopeSummary": {
+        "properties": {
+          "authorised_districts": {
+            "items": {
+              "$ref": "#/components/schemas/AuthorisedDistrictSummary"
+            },
+            "title": "Authorised Districts",
+            "type": "array"
+          },
+          "national_access": {
+            "default": false,
+            "title": "National Access",
+            "type": "boolean"
+          },
+          "org_unit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Unit Id"
+          },
+          "org_unit_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Unit Name"
+          },
+          "scope_type": {
+            "title": "Scope Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_type"
+        ],
+        "title": "SessionScopeSummary",
+        "type": "object"
+      },
+      "SessionStatusResponse": {
+        "description": "Public session probe. Never returns 401 for an anonymous caller.",
+        "properties": {
+          "auth_mode": {
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "authenticated": {
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "csrf_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Csrf Token"
+          },
+          "permissions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permissions"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurrentUserResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionScopeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceStatusSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionUserSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "authenticated",
+          "auth_mode"
+        ],
+        "title": "SessionStatusResponse",
+        "type": "object"
+      },
+      "SessionUserSummary": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "username"
+        ],
+        "title": "SessionUserSummary",
+        "type": "object"
+      },
       "SignalEvidenceSummary": {
         "properties": {
           "contribution": {
@@ -5030,6 +5248,46 @@
         "title": "SignalSummary",
         "type": "object"
       },
+      "SourceStatusSummary": {
+        "properties": {
+          "authentication": {
+            "title": "Authentication",
+            "type": "string"
+          },
+          "last_sync": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync"
+          },
+          "mapping": {
+            "title": "Mapping",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "source",
+          "authentication",
+          "mapping"
+        ],
+        "title": "SourceStatusSummary",
+        "type": "object"
+      },
       "SpatialAggregationBasis": {
         "description": "Which geography a figure was rolled up by.\n\nA patient may attend a clinic outside their own district. Rolling up by\nwhere care was given and rolling up by where people live answer different\nquestions - one points at a clinic, the other at a village - and merging\nthem attributes a pattern to the wrong place. Stored so the two can never\nbe summed together.",
         "enum": [
@@ -5398,6 +5656,11 @@
             "title": "Api Version",
             "type": "string"
           },
+          "auth_mode": {
+            "default": "demo",
+            "title": "Auth Mode",
+            "type": "string"
+          },
           "build_timestamp": {
             "anyOf": [
               {
@@ -5428,6 +5691,11 @@
           "git_sha": {
             "title": "Git Sha",
             "type": "string"
+          },
+          "live_login_enabled": {
+            "default": false,
+            "title": "Live Login Enabled",
+            "type": "boolean"
           },
           "name": {
             "title": "Name",
@@ -5938,9 +6206,51 @@
         ]
       }
     },
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "Authenticate server-to-server against eRegisters and issue a cookie session.\n\nThe browser never receives a DHIS2 credential. Failed live authentication\ndoes not fall back to demo authentication.",
+        "operationId": "live_login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sign in with an authorised eRegisters account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "Record the logout.\n\nToken revocation is the identity provider's responsibility; MARS records the\nevent so the audit trail has both ends of the session.",
+        "description": "Invalidate a live cookie session, or record a demo logout.\n\nCSRF is required in live mode. Demo bearer logout remains a recorded event;\ntoken drop is the client's responsibility.",
         "operationId": "logout_api_v1_auth_logout_post",
         "responses": {
           "204": {
@@ -5980,6 +6290,33 @@
           }
         ],
         "summary": "The caller's profile and effective authorisation",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/session": {
+      "get": {
+        "description": "Return a sanitized session snapshot, or authenticated=false.\n\nNever 401. Live cookie sessions and demo bearer tokens both surface here\nso the frontend can bootstrap without a noisy expected error.",
+        "operationId": "session_status_api_v1_auth_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Whether this browser has a MARS session",
         "tags": [
           "auth"
         ]

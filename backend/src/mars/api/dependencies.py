@@ -34,6 +34,7 @@ from mars.services.geography_service import GeographyService
 from mars.services.governance_service import ConfigurationService, MethodRegistryService
 from mars.services.indicator_query import IndicatorQueryService
 from mars.services.integration_status import IntegrationStatusService
+from mars.services.live_auth import LiveAuthService
 from mars.services.organisation_service import FacilityService, OrganisationService
 from mars.services.overview import OverviewService
 from mars.services.report_service import ReportService
@@ -154,18 +155,53 @@ IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integrati
 
 
 # -- Authentication -------------------------------------------------------
+def get_live_auth_service(
+    request: Request, settings: SettingsDep, session: SessionDep | None = None
+) -> LiveAuthService:
+    """The live login orchestrator for this application instance."""
+    from mars.services.live_auth import LiveAuthService
+
+    provider = getattr(request.app.state, "dhis2_login_provider", None)
+    if provider is None:
+        raise UnauthenticatedError("Live authentication is not initialised")
+    lookup = getattr(request.app.state, "live_geography_lookup", None)
+    if lookup is None:
+        factory = getattr(request.app.state, "live_geography_lookup_factory", None)
+        if factory is None or session is None:
+            raise UnauthenticatedError("Live authentication is not initialised")
+        lookup = factory(session)
+    return LiveAuthService(
+        settings=settings,
+        provider=provider,
+        sessions=request.app.state.live_session_store,
+        credentials=request.app.state.live_credential_holder,
+        throttle=request.app.state.login_throttle,
+        lookup=lookup,
+    )
+
+
 def get_current_principal(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     auth_service: AuthServiceDep,
     verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
+    settings: SettingsDep,
 ) -> AuthenticatedPrincipal:
     """Resolve the caller into an authorisation context.
 
-    A valid token for an unknown or deactivated subject is rejected. Provisioning
-    is an administrative act; MARS does not create an account because a provider
-    vouched for someone.
+    Live mode uses the opaque session cookie and never accepts a demo bearer
+    token. Demo mode uses the existing development/OIDC bearer path. There is
+    no fallback from a failed live session to synthetic authentication.
     """
+    if settings.is_live_auth_active:
+        principal = _principal_from_live_session(request)
+        if principal is None:
+            raise UnauthenticatedError("A session cookie is required")
+        set_actor_id(str(principal.user_id))
+        set_session_id(principal.session_reference)
+        request.state.principal = principal
+        return principal
+
     if credentials is None or not credentials.credentials:
         raise UnauthenticatedError("A bearer token is required")
 
@@ -179,14 +215,68 @@ def get_current_principal(
 
     principal = auth_service.build_principal(user, identity)
 
-    # Bind to the logging and audit context for the rest of the request.
     set_actor_id(str(principal.user_id))
     set_session_id(principal.session_reference)
     request.state.principal = principal
     return principal
 
 
+def get_optional_principal(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    auth_service: AuthServiceDep,
+    verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
+    settings: SettingsDep,
+) -> AuthenticatedPrincipal | None:
+    """A principal if one can be resolved, otherwise None. Never 401."""
+    if settings.is_live_auth_active:
+        principal = _principal_from_live_session(request)
+        if principal is not None:
+            set_actor_id(str(principal.user_id))
+            set_session_id(principal.session_reference)
+            request.state.principal = principal
+        return principal
+    if credentials is None or not credentials.credentials:
+        return None
+    try:
+        identity = verifier.verify(credentials.credentials)
+    except UnauthenticatedError:
+        return None
+    user = auth_service.find_user_by_subject(identity.subject)
+    if user is None or not user.is_active:
+        return None
+    principal = auth_service.build_principal(user, identity)
+    set_actor_id(str(principal.user_id))
+    set_session_id(principal.session_reference)
+    request.state.principal = principal
+    return principal
+
+
+def _principal_from_live_session(request: Request) -> AuthenticatedPrincipal | None:
+    live = getattr(request.state, "live_session", None)
+    if live is not None:
+        principal = live.principal
+        return principal if isinstance(principal, AuthenticatedPrincipal) else None
+    settings: Settings = request.app.state.settings
+    raw = request.cookies.get(settings.session_cookie_name)
+    if not raw:
+        return None
+    store = getattr(request.app.state, "live_session_store", None)
+    holder = getattr(request.app.state, "live_credential_holder", None)
+    if store is None:
+        return None
+    record = store.get(raw)
+    if record is None:
+        if holder is not None:
+            holder.drop(raw)
+        return None
+    request.state.live_session = record
+    principal = record.principal
+    return principal if isinstance(principal, AuthenticatedPrincipal) else None
+
+
 PrincipalDep = Annotated[AuthenticatedPrincipal, Depends(get_current_principal)]
+OptionalPrincipalDep = Annotated[AuthenticatedPrincipal | None, Depends(get_optional_principal)]
 
 
 # -- Authorisation --------------------------------------------------------
