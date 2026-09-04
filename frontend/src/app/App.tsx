@@ -32,6 +32,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { NotFoundView } from "./NotFoundView";
 import { SignInView } from "../features/auth/SignInView";
 import { AccessProfileView } from "../features/profile/AccessProfileView";
+import { NoAuthorisedScopeView } from "../features/profile/NoAuthorisedScopeView";
 import {
   FacilitiesView,
   GeographyView,
@@ -102,6 +103,31 @@ function AppRoutes() {
             </RequireAuth>
           }
         />
+        <Route
+          path="district/:unitId"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <CommandCentreView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="authorised-scope"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <CommandCentreView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="facility/:facilityId"
+          element={
+            <RequireAuth permissions={["surveillance:view_aggregate"]}>
+              <FacilityWorkspaceView />
+            </RequireAuth>
+          }
+        />
+        <Route path="no-authorised-scope" element={<NoAuthorisedScopeView />} />
 
         <Route path="status" element={<SystemStatusView />} />
         <Route path="profile" element={<AccessProfileView />} />

@@ -49,6 +49,50 @@
   font-size: var(--text-xs);
 }
 
+.sign-in__tagline {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-secondary);
+  font-size: var(--text-sm);
+}
+
+.sign-in__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sign-in__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sign-in__field label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+}
+
+.sign-in__field input {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-page);
+  color: var(--ink-primary);
+}
+
+.sign-in__field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.sign-in__hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-tertiary);
+}
+
 .sign-in__list-heading {
   font-size: var(--text-base);
   margin: var(--space-2) 0 0;

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "../api/client";
 import { useAuth } from "../auth/context";
+import type { AuthContextValue } from "../auth/context";
 import { monthPeriod } from "../design-system/period";
 import "./app-shell.css";
 
@@ -104,13 +105,7 @@ export function AppShell() {
 
       <div className="shell__workspace">
         <header className="shell__toolbar">
-          {user?.is_synthetic ? (
-            <span className="chip chip--attention" title="Synthetic development session">
-              Development session
-            </span>
-          ) : (
-            <span className="shell__toolbar-spacer" />
-          )}
+          <SourceStatusChip user={user} />
           <div className="shell__toolbar-end">
             <button type="button" className="shell__icon-button" aria-label="Notifications">
               <span aria-hidden="true">●</span>
@@ -138,6 +133,35 @@ export function AppShell() {
       </div>
     </div>
   );
+}
+
+function SourceStatusChip({
+  user,
+}: {
+  user: AuthContextValue["user"];
+}) {
+  if (user?.is_synthetic) {
+    return (
+      <span className="chip chip--attention" title="Synthetic development session">
+        Development session
+      </span>
+    );
+  }
+  const source = user?.source_status;
+  if (!source || source.mode !== "live") {
+    return <span className="shell__toolbar-spacer" />;
+  }
+  if (source.authentication !== "connected") {
+    return <span className="chip chip--priority">CONNECTION ISSUE — eRegisters unavailable</span>;
+  }
+  if (source.mapping === "pending") {
+    return (
+      <span className="chip chip--attention">
+        LIVE — authentication succeeded; malaria mapping pending
+      </span>
+    );
+  }
+  return <span className="chip">LIVE — eRegisters connected</span>;
 }
 
 function highPrioritySignalCount(

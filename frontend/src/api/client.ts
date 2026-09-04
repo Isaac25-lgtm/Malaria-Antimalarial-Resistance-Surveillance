@@ -14,6 +14,34 @@ import type { components, paths } from "./schema";
 export type Schemas = components["schemas"];
 export type ApiPaths = paths;
 
+/** Cookie-session bootstrap payload. Credentials never appear here. */
+export interface SessionStatus {
+  authenticated: boolean;
+  auth_mode: string;
+  csrf_token?: string | null;
+  user?: { display_name: string; username: string } | null;
+  scope?: {
+    scope_type: string;
+    org_unit_id?: string | null;
+    org_unit_name?: string | null;
+    national_access: boolean;
+    authorised_districts: {
+      org_unit_id: string;
+      org_unit_name: string;
+      preferred_code: string;
+    }[];
+  } | null;
+  permissions?: string[] | null;
+  source_status?: {
+    mode: string;
+    source: string;
+    authentication: string;
+    mapping: string;
+    last_sync: string | null;
+  } | null;
+  profile?: Schemas["CurrentUserResponse"] | null;
+}
+
 /** RFC 7807 problem document, as returned by every MARS error path. */
 export interface ProblemDetail {
   type: string;
@@ -73,6 +101,8 @@ const API_BASE: string =
 
 /** In-memory only. A token is never written to localStorage or a cookie. */
 let accessToken: string | null = null;
+/** Non-secret CSRF value for cookie sessions. Memory only. */
+let csrfToken: string | null = null;
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
@@ -80,6 +110,14 @@ export function setAccessToken(token: string | null): void {
 
 export function getAccessToken(): string | null {
   return accessToken;
+}
+
+export function setCsrfToken(token: string | null): void {
+  csrfToken = token;
+}
+
+export function getCsrfToken(): string | null {
+  return csrfToken;
 }
 
 interface RequestOptions {
@@ -110,6 +148,7 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
  * prose.
  */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const method = options.method ?? "GET";
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
@@ -117,14 +156,18 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
+  if (csrfToken && method !== "GET") {
+    headers["X-CSRF-Token"] = csrfToken;
+  }
 
   let response: Response;
   try {
     response = await fetch(buildUrl(path, options.query), {
-      method: options.method ?? "GET",
+      method,
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: options.signal,
+      credentials: "include",
     });
   } catch {
     // A network failure is not an empty result. Surface it as unavailable so
@@ -187,6 +230,14 @@ export const api = {
   evidenceLanes: () => request<Record<string, unknown>>("/meta/evidence-lanes"),
 
   currentUser: () => request<Schemas["CurrentUserResponse"]>("/auth/me"),
+
+  session: () => request<SessionStatus>("/auth/session"),
+
+  liveLogin: (username: string, password: string) =>
+    request<SessionStatus>("/auth/login", {
+      method: "POST",
+      body: { username, password },
+    }),
 
   logout: () => request<void>("/auth/logout", { method: "POST" }),
 

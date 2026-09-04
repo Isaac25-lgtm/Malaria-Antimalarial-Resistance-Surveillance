@@ -44,9 +44,24 @@ export function CommandCentreView() {
     retry: false,
   });
 
+  const districtScopes = (user?.geography_scopes ?? []).filter((scope) => scope.level === "district");
+  const nationalMap = Boolean(user?.has_national_scope);
+  const soleDistrict = districtScopes.length === 1 ? districtScopes[0] : undefined;
+  const singleDistrictId = !nationalMap && soleDistrict ? soleDistrict.geography_unit_id : null;
+
   const features = useQuery({
-    queryKey: ["map", "context", "district"],
-    queryFn: () => api.mapContext({ level: "district" }),
+    queryKey: nationalMap
+      ? ["map", "context", "district"]
+      : singleDistrictId
+        ? ["map", "features", "subcounty", singleDistrictId]
+        : ["map", "features", "district"],
+    queryFn: () => {
+      if (nationalMap) return api.mapContext({ level: "district" });
+      if (singleDistrictId) {
+        return api.mapFeatures({ level: "subcounty", within_id: singleDistrictId });
+      }
+      return api.mapFeatures({ level: "district" });
+    },
     retry: false,
   });
 
@@ -101,7 +116,7 @@ export function CommandCentreView() {
       </header>
 
       <p className={`overview__mode overview__mode--${snap?.data_mode ?? "unavailable"}`} role="status">
-        {modeLine(snap)}
+        {modeLine(snap, user)}
       </p>
 
       <section aria-labelledby="kpi-heading">
@@ -123,8 +138,18 @@ export function CommandCentreView() {
         <section className="overview__map panel" aria-labelledby="map-heading">
           <div className="panel__header">
             <div>
-              <h2 id="map-heading">Uganda: active surveillance signals</h2>
-              <p className="panel__lede">Districts by highest-priority active signal</p>
+              <h2 id="map-heading">
+                {nationalMap
+                  ? "Uganda: active surveillance signals"
+                  : singleDistrictId
+                    ? "District and subcounty geography"
+                    : "Authorised geography"}
+              </h2>
+              <p className="panel__lede">
+                {nationalMap
+                  ? "Districts by highest-priority active signal"
+                  : "Boundaries inside the authorised scope. Surveillance values stay scoped."}
+              </p>
             </div>
           </div>
           <div className="overview__map-canvas">
@@ -202,13 +227,15 @@ export function CommandCentreView() {
       <SignalTable section={snap?.recent_signals} />
 
       <footer className="overview__freshness">
+        <span>
+          Last sync:{" "}
+          {snap?.last_successful_synchronization
+            ? formatMoment(snap.last_successful_synchronization)
+            : "Not yet run"}
+        </span>
         <span>Last updated {formatMoment(snap?.provenance.analytics_refreshed_at ?? null)}</span>
         <span className={`freshness freshness--${snap?.data_mode ?? "unavailable"}`}>
-          {snap?.data_mode === "synthetic"
-            ? "Synthetic demonstration data"
-            : snap?.data_mode === "live"
-              ? "Data up to date"
-              : "Source not synchronised"}
+          {sourceFreshness(snap, user)}
         </span>
       </footer>
     </div>
@@ -219,13 +246,36 @@ function executiveKpis(items: Schemas["SurveillanceMeasure"][]): Schemas["Survei
   return items.filter((item) => item.code !== "ACTIVE_SIGNALS").slice(0, 6);
 }
 
-function modeLine(snap: Snapshot | undefined): string {
+function modeLine(
+  snap: Snapshot | undefined,
+  user: ReturnType<typeof useAuth>["user"],
+): string {
+  if (user?.source_status?.mode === "live") {
+    if (user.source_status.authentication !== "connected") {
+      return "CONNECTION ISSUE — eRegisters unavailable";
+    }
+    if (user.source_status.mapping === "pending") {
+      return "LIVE — authentication succeeded; malaria mapping pending";
+    }
+    return "LIVE — eRegisters connected";
+  }
   if (!snap) return "Loading source status.";
   if (snap.data_mode === "synthetic") {
     return "Development session · synthetic data · not a live Ministry feed.";
   }
   if (snap.data_mode === "live") return snap.data_mode_detail;
   return "Source connected, no synchronisation yet.";
+}
+
+function sourceFreshness(
+  snap: Snapshot | undefined,
+  user: ReturnType<typeof useAuth>["user"],
+): string {
+  if (user?.is_synthetic || snap?.data_mode === "synthetic") {
+    return "Synthetic demonstration data";
+  }
+  if (snap?.last_successful_synchronization) return "Synchronised";
+  return "Last sync: Not yet run";
 }
 
 function scopeLabel(snap: Snapshot | undefined, national: boolean): string {

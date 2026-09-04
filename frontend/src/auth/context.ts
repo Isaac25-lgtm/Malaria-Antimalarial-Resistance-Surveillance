@@ -31,6 +31,7 @@ export interface AuthContextValue {
   user: CurrentUser | null;
   error: ApiError | null;
   signInAsDevelopmentUser: (username: string) => Promise<void>;
+  signInWithEregisters: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   /**
    * Whether the signed-in user holds a permission.

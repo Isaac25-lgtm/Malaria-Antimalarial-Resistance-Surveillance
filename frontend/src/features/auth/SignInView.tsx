@@ -1,13 +1,11 @@
 /**
  * Sign-in.
  *
- * In staging and production this screen redirects to the configured OIDC
- * provider. This build has no provider, so it offers the synthetic development
- * accounts - visibly marked as such, because a development session must never
- * be mistaken for a real one.
+ * Live mode: one eRegisters username and password form. Credentials go only
+ * to the MARS API. Demo mode keeps the synthetic account chooser.
  */
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -21,6 +19,162 @@ interface LocationState {
 }
 
 export function SignInView() {
+  const version = useQuery({
+    queryKey: ["meta", "version"],
+    queryFn: api.version,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  if (version.isPending) {
+    return (
+      <main className="sign-in">
+        <div className="sign-in__panel">
+          <SignInHeader />
+          <LoadingState label="sign-in" rows={3} />
+        </div>
+      </main>
+    );
+  }
+
+  const data = version.data as {
+    live_login_enabled?: boolean;
+    auth_mode?: string;
+    development_auth_active?: boolean;
+    demo_mode_enabled?: boolean;
+  } | undefined;
+  const live = data?.live_login_enabled === true || data?.auth_mode === "live";
+  const demo = data?.development_auth_active === true || data?.demo_mode_enabled === true;
+
+  if (live || !demo) {
+    return <LiveSignInForm />;
+  }
+  return <DemoSignInChooser />;
+}
+
+function SignInHeader() {
+  return (
+    <header className="sign-in__header">
+      <span className="sign-in__mark" aria-hidden="true">
+        M
+      </span>
+      <div>
+        <h1>MARS</h1>
+        <p className="sign-in__subtitle">Malaria Antimalarial Resistance Surveillance</p>
+        <p className="sign-in__tagline">
+          Routine-data early warning and malaria surveillance
+        </p>
+      </div>
+    </header>
+  );
+}
+
+function LiveSignInForm() {
+  const { signInWithEregisters } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const usernameId = useId();
+  const passwordId = useId();
+  const errorId = useId();
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<"credentials" | "upstream" | "other" | null>(
+    null,
+  );
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const usernameValue = data.get("username");
+    const passwordValue = data.get("password");
+    const username = typeof usernameValue === "string" ? usernameValue : "";
+    const password = typeof passwordValue === "string" ? passwordValue : "";
+    setSubmitting(true);
+    setError(null);
+    setErrorKind(null);
+    try {
+      await signInWithEregisters(username, password);
+      const intended = (location.state as LocationState | null)?.from;
+      navigate(intended && intended !== "/sign-in" ? intended : "/", { replace: true });
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.isUnavailable) {
+        setError("Unable to connect to eRegisters");
+        setErrorKind("upstream");
+      } else if (caught instanceof ApiError && caught.isUnauthenticated) {
+        setError("Invalid username or password");
+        setErrorKind("credentials");
+      } else {
+        setError("Invalid username or password");
+        setErrorKind("credentials");
+      }
+      usernameRef.current?.focus();
+    } finally {
+      if (passwordRef.current) passwordRef.current.value = "";
+      form.reset();
+      if (usernameRef.current && username) usernameRef.current.value = username;
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="sign-in">
+      <div className="sign-in__panel">
+        <SignInHeader />
+        <form className="sign-in__form" onSubmit={(event) => void handleSubmit(event)} noValidate>
+          {error ? (
+            <p className="sign-in__error" role="alert" id={errorId}>
+              {error}
+            </p>
+          ) : null}
+          <div className="sign-in__field">
+            <label htmlFor={usernameId}>Username</label>
+            <input
+              ref={usernameRef}
+              id={usernameId}
+              name="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              disabled={submitting}
+              aria-invalid={errorKind === "credentials"}
+              aria-describedby={error ? errorId : undefined}
+            />
+          </div>
+          <div className="sign-in__field">
+            <label htmlFor={passwordId}>Password</label>
+            <input
+              ref={passwordRef}
+              id={passwordId}
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              disabled={submitting}
+              aria-invalid={errorKind === "credentials"}
+              aria-describedby={error ? errorId : undefined}
+            />
+          </div>
+          <button type="submit" className="button button--primary" disabled={submitting}>
+            {submitting ? "Signing in" : "Sign in"}
+          </button>
+          <p className="sign-in__hint">Use your authorised Ministry eRegisters account.</p>
+        </form>
+        <p className="sign-in__boundary">
+          MARS signals indicate patterns requiring investigation. They do not confirm
+          antimalarial resistance.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+function DemoSignInChooser() {
   const { signInAsDevelopmentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,17 +208,7 @@ export function SignInView() {
   return (
     <main className="sign-in">
       <div className="sign-in__panel">
-        <header className="sign-in__header">
-          <span className="sign-in__mark" aria-hidden="true">
-            M
-          </span>
-          <div>
-            <h1>MARS</h1>
-            <p className="sign-in__subtitle">
-              Malaria Antimalarial Resistance Surveillance
-            </p>
-          </div>
-        </header>
+        <SignInHeader />
 
         <div className="notice notice--attention">
           <div>

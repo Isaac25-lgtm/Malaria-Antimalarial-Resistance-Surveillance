@@ -1,14 +1,14 @@
 /**
  * Authentication provider.
  *
- * Holds the session and the caller's effective authorisation. The access token
- * lives in memory only - never in localStorage or a cookie - so closing the tab
- * ends the session and no other script on the origin can read it.
+ * Live sessions are an HttpOnly cookie plus an in-memory CSRF value.
+ * Demo sessions may still use a memory-only bearer token.
+ * Nothing is written to localStorage or sessionStorage.
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { ApiError, api, setAccessToken } from "../api/client";
+import { ApiError, api, getAccessToken, setAccessToken, setCsrfToken } from "../api/client";
 import {
   AuthContext,
   SENSITIVITY_ORDER,
@@ -19,30 +19,47 @@ import {
 } from "./context";
 import { resolveLandingPath } from "./landing";
 
+function profileFromSession(
+  session: Awaited<ReturnType<typeof api.session>>,
+): CurrentUser | null {
+  if (!session.authenticated || !session.profile) return null;
+  return {
+    ...session.profile,
+    source_status: session.source_status ?? null,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("initialising");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
 
-  // Probe for an existing session on mount. Without a token this returns 401,
-  // which is the expected anonymous state rather than an error.
   useEffect(() => {
     let cancelled = false;
 
-    async function probe() {
+    async function bootstrap() {
       try {
-        const profile = await api.currentUser();
-        if (!cancelled) {
+        const session = await api.session();
+        if (cancelled) return;
+        if (session.authenticated) {
+          setCsrfToken(session.csrf_token ?? null);
+          setUser(profileFromSession(session));
+          setStatus("authenticated");
+          return;
+        }
+        if (getAccessToken()) {
+          const profile = await api.currentUser();
+          if (cancelled) return;
           setUser(profile);
           setStatus("authenticated");
+          return;
         }
+        setStatus("anonymous");
       } catch (caught) {
         if (cancelled) return;
         if (caught instanceof ApiError && caught.isUnauthenticated) {
           setStatus("anonymous");
         } else if (caught instanceof ApiError) {
-          // A dependency failure is not the same as being signed out, and the
-          // shell must not present it as one.
           setError(caught);
           setStatus("unavailable");
         } else {
@@ -51,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    void probe();
+    void bootstrap();
     return () => {
       cancelled = true;
     };
@@ -66,13 +83,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("authenticated");
   }, []);
 
+  const signInWithEregisters = useCallback(async (username: string, password: string) => {
+    setError(null);
+    const session = await api.liveLogin(username, password);
+    setCsrfToken(session.csrf_token ?? null);
+    const profile = profileFromSession(session);
+    if (!profile) {
+      throw new ApiError(401, null, "Sign-in failed.");
+    }
+    setUser(profile);
+    setStatus("authenticated");
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       await api.logout();
     } finally {
-      // Clear locally even if the server call failed: a session must not
-      // survive a sign-out because the network was down.
       setAccessToken(null);
+      setCsrfToken(null);
       setUser(null);
       setStatus("anonymous");
     }
@@ -98,12 +126,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       error,
       signInAsDevelopmentUser,
+      signInWithEregisters,
       signOut,
       can,
       canAccessSensitivity,
       landingPath: resolveLandingPath(user),
     }),
-    [status, user, error, signInAsDevelopmentUser, signOut, can, canAccessSensitivity],
+    [
+      status,
+      user,
+      error,
+      signInAsDevelopmentUser,
+      signInWithEregisters,
+      signOut,
+      can,
+      canAccessSensitivity,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

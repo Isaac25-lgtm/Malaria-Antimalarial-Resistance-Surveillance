@@ -122,6 +122,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with an authorised eRegisters account
+         * @description Authenticate server-to-server against eRegisters and issue a cookie session.
+         *
+         *     The browser never receives a DHIS2 credential. Failed live authentication
+         *     does not fall back to demo authentication.
+         */
+        post: operations["live_login_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -133,10 +156,10 @@ export interface paths {
         put?: never;
         /**
          * End the current session
-         * @description Record the logout.
+         * @description Invalidate a live cookie session, or record a demo logout.
          *
-         *     Token revocation is the identity provider's responsibility; MARS records the
-         *     event so the audit trail has both ends of the session.
+         *     CSRF is required in live mode. Demo bearer logout remains a recorded event;
+         *     token drop is the client's responsibility.
          */
         post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
@@ -161,6 +184,29 @@ export interface paths {
          *     response gains nothing.
          */
         get: operations["current_user_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether this browser has a MARS session
+         * @description Return a sanitized session snapshot, or authenticated=false.
+         *
+         *     Never 401. Live cookie sessions and demo bearer tokens both surface here
+         *     so the frontend can bootstrap without a noisy expected error.
+         */
+        get: operations["session_status_api_v1_auth_session_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1465,6 +1511,18 @@ export interface components {
             /** Value Status */
             value_status: string;
         };
+        /** AuthorisedDistrictSummary */
+        AuthorisedDistrictSummary: {
+            /**
+             * Org Unit Id
+             * Format: uuid
+             */
+            org_unit_id: string;
+            /** Org Unit Name */
+            org_unit_name: string;
+            /** Preferred Code */
+            preferred_code: string;
+        };
         /**
          * BaselineSeriesKind
          * @description Which analytical series a baseline is built over.
@@ -1647,6 +1705,13 @@ export interface components {
              * @description True for development accounts. The interface must mark these visibly.
              */
             is_synthetic: boolean;
+            /** Landing Path */
+            landing_path?: string | null;
+            /**
+             * Mapping Status
+             * @default mapped
+             */
+            mapping_status: string;
             /** Max Sensitivity */
             max_sensitivity: string;
             /** Organisation Label */
@@ -1655,6 +1720,11 @@ export interface components {
             permissions: string[];
             /** Roles */
             roles: string[];
+            /**
+             * Scope Type
+             * @default none
+             */
+            scope_type: string;
             /**
              * User Id
              * Format: uuid
@@ -2489,6 +2559,16 @@ export interface components {
              */
             signal_id: string;
         };
+        /**
+         * LiveLoginRequest
+         * @description eRegisters username and password, posted only to MARS.
+         */
+        LiveLoginRequest: {
+            /** Password */
+            password: string;
+            /** Username */
+            username: string;
+        };
         /** LivenessResponse */
         LivenessResponse: {
             /** Service */
@@ -3127,6 +3207,47 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** SessionScopeSummary */
+        SessionScopeSummary: {
+            /** Authorised Districts */
+            authorised_districts?: components["schemas"]["AuthorisedDistrictSummary"][];
+            /**
+             * National Access
+             * @default false
+             */
+            national_access: boolean;
+            /** Org Unit Id */
+            org_unit_id?: string | null;
+            /** Org Unit Name */
+            org_unit_name?: string | null;
+            /** Scope Type */
+            scope_type: string;
+        };
+        /**
+         * SessionStatusResponse
+         * @description Public session probe. Never returns 401 for an anonymous caller.
+         */
+        SessionStatusResponse: {
+            /** Auth Mode */
+            auth_mode: string;
+            /** Authenticated */
+            authenticated: boolean;
+            /** Csrf Token */
+            csrf_token?: string | null;
+            /** Permissions */
+            permissions?: string[] | null;
+            profile?: components["schemas"]["CurrentUserResponse"] | null;
+            scope?: components["schemas"]["SessionScopeSummary"] | null;
+            source_status?: components["schemas"]["SourceStatusSummary"] | null;
+            user?: components["schemas"]["SessionUserSummary"] | null;
+        };
+        /** SessionUserSummary */
+        SessionUserSummary: {
+            /** Display Name */
+            display_name: string;
+            /** Username */
+            username: string;
+        };
         /** SignalEvidenceSummary */
         SignalEvidenceSummary: {
             /** Contribution */
@@ -3304,6 +3425,19 @@ export interface components {
             /** Uncertainty */
             uncertainty: string[];
         };
+        /** SourceStatusSummary */
+        SourceStatusSummary: {
+            /** Authentication */
+            authentication: string;
+            /** Last Sync */
+            last_sync?: string | null;
+            /** Mapping */
+            mapping: string;
+            /** Mode */
+            mode: string;
+            /** Source */
+            source: string;
+        };
         /**
          * SpatialAggregationBasis
          * @description Which geography a figure was rolled up by.
@@ -3429,6 +3563,11 @@ export interface components {
             ai_assistant_enabled: boolean;
             /** Api Version */
             api_version: string;
+            /**
+             * Auth Mode
+             * @default demo
+             */
+            auth_mode: string;
             /** Build Timestamp */
             build_timestamp: string | null;
             /** Demo Mode Enabled */
@@ -3441,6 +3580,11 @@ export interface components {
             environment: string;
             /** Git Sha */
             git_sha: string;
+            /**
+             * Live Login Enabled
+             * @default false
+             */
+            live_login_enabled: boolean;
             /** Name */
             name: string;
             /** Release Version */
@@ -3648,6 +3792,39 @@ export interface operations {
             };
         };
     };
+    live_login_api_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     logout_api_v1_auth_logout_post: {
         parameters: {
             query?: never;
@@ -3682,6 +3859,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentUserResponse"];
+                };
+            };
+        };
+    };
+    session_status_api_v1_auth_session_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionStatusResponse"];
                 };
             };
         };

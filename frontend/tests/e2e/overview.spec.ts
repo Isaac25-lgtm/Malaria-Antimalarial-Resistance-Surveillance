@@ -32,6 +32,12 @@ async function waitForDistrictGeometry(page: Page) {
 }
 
 test.describe("overview visual evidence", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/sign-in");
+    if (await page.getByLabel("Password").count()) {
+      test.skip(true, "Live login is serving this port; demo overview tests need 5174.");
+    }
+  });
   test("national development scope at 1536×1024", async ({ page }) => {
     await page.setViewportSize({ width: 1536, height: 1024 });
     await signIn(page, /National Programme Officer/);

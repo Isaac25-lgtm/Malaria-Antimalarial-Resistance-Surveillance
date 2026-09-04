@@ -26,6 +26,8 @@ function user(overrides: Partial<CurrentUser> = {}): CurrentUser {
     has_national_scope: false,
     auth_method: "development",
     is_synthetic: true,
+    scope_type: "unresolved",
+    mapping_status: "mapped",
     ...overrides,
   };
 }
@@ -39,7 +41,7 @@ describe("landing path", () => {
     expect(resolveLandingPath(user({ has_national_scope: true }))).toBe("/command-centre");
   });
 
-  it("sends a district user to the scoped overview, never a national map they cannot populate", () => {
+  it("sends a district user to the district overview, never a national map they cannot populate", () => {
     const path = resolveLandingPath(
       user({
         geography_scopes: [
@@ -52,47 +54,56 @@ describe("landing path", () => {
         ],
       }),
     );
-    expect(path).toBe("/command-centre");
+    expect(path).toBe("/district/00000000-0000-4000-8000-000000000304");
   });
 
-  it("sends a facility user to their own facility", () => {
+  it("sends a facility-only user to their facility", () => {
     const path = resolveLandingPath(
       user({
         facility_scope_ids: ["00000000-0000-4000-8000-00000000f001"],
+      }),
+    );
+    expect(path).toBe("/facility/00000000-0000-4000-8000-00000000f001");
+  });
+
+  it("sends an unscoped account to no-authorised-scope, not to national data", () => {
+    expect(resolveLandingPath(user())).toBe("/no-authorised-scope");
+  });
+
+  it("does not use the username to choose a route", () => {
+    const scopes = [
+      {
+        geography_unit_id: "00000000-0000-4000-8000-000000000312",
+        preferred_code: "312",
+        level: "district",
+        name: "Pader",
+      },
+    ];
+    expect(resolveLandingPath(user({ username: "district.pader", geography_scopes: scopes }))).toBe(
+      resolveLandingPath(user({ username: "someone.else", geography_scopes: scopes })),
+    );
+  });
+
+  it("sends multiple districts to authorised-scope, not national", () => {
+    const path = resolveLandingPath(
+      user({
         geography_scopes: [
           {
             geography_unit_id: "00000000-0000-4000-8000-000000000304",
             preferred_code: "304",
             level: "district",
-            name: "GULU",
+            name: "Gulu",
           },
-        ],
-      }),
-    );
-    expect(path).toBe("/facilities/00000000-0000-4000-8000-00000000f001");
-  });
-
-  it("sends an unscoped account to their access profile, not to a dashboard", () => {
-    // An empty scope is a misconfiguration. Landing on an empty national view
-    // would hide it; landing on the profile makes it visible and explained.
-    expect(resolveLandingPath(user())).toBe("/profile");
-  });
-
-  it("prefers the facility scope over the district scope", () => {
-    const path = resolveLandingPath(
-      user({
-        facility_scope_ids: ["facility-a"],
-        geography_scopes: [
           {
-            geography_unit_id: "district-id",
-            preferred_code: "304",
+            geography_unit_id: "00000000-0000-4000-8000-000000000312",
+            preferred_code: "312",
             level: "district",
-            name: "GULU",
+            name: "Pader",
           },
         ],
       }),
     );
-    expect(path).toBe("/facilities/facility-a");
+    expect(path).toBe("/authorised-scope");
   });
 });
 

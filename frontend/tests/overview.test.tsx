@@ -205,9 +205,12 @@ const auth: AuthContextValue = {
     has_national_scope: true,
     auth_method: "development",
     is_synthetic: true,
+    scope_type: "national",
+    mapping_status: "mapped",
   },
   error: null,
   signInAsDevelopmentUser: () => Promise.resolve(),
+  signInWithEregisters: () => Promise.resolve(),
   signOut: () => Promise.resolve(),
   can: () => true,
   canAccessSensitivity: () => false,
@@ -298,5 +301,71 @@ describe("operational overview", () => {
     const path = await screen.findByLabelText("GULU");
     await user.click(path);
     expect(screen.queryByText("District workspace")).not.toBeInTheDocument();
+  });
+
+  it("loads district and subcounty geography for a one-district live user", async () => {
+    const nationalUser = auth.user;
+    if (!nationalUser) throw new Error("expected an authenticated test user");
+    const districtAuth: AuthContextValue = {
+      ...auth,
+      user: {
+        ...nationalUser,
+        is_synthetic: false,
+        has_national_scope: false,
+        username: "officer",
+        auth_method: "dhis2_pilot",
+        scope_type: "district",
+        mapping_status: "mapped",
+        geography_scopes: [
+          {
+            geography_unit_id: PADER,
+            preferred_code: "312",
+            level: "district",
+            name: "Pader",
+          },
+        ],
+        source_status: {
+          mode: "live",
+          source: "eRegisters",
+          authentication: "connected",
+          mapping: "mapped",
+          last_sync: null,
+        },
+      },
+    };
+    stubApis({
+      ...SNAPSHOT,
+      title: "Pader Overview",
+      requested_scope: "pader",
+      has_national_scope: false,
+      data_mode: "unavailable",
+      demo_mode_enabled: false,
+      last_successful_synchronization: null,
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <AuthContext.Provider value={districtAuth}>
+        <QueryClientProvider client={client}>
+          <MemoryRouter
+            initialEntries={[`/district/${PADER}`]}
+            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+          >
+            <Routes>
+              <Route path="/district/:unitId" element={<CommandCentreView />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </AuthContext.Provider>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Pader Overview" })).toBeInTheDocument();
+    expect(screen.getByText("LIVE — eRegisters connected")).toBeInTheDocument();
+    expect(screen.getAllByText(/Last sync:\s*Not yet run/).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("heading", { name: "District and subcounty geography" })).toBeInTheDocument();
+    expect(api.mapContext).not.toHaveBeenCalled();
+    expect(api.mapFeatures).toHaveBeenCalledWith({
+      level: "subcounty",
+      within_id: PADER,
+    });
   });
 });
