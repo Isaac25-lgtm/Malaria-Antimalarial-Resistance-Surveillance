@@ -36,6 +36,10 @@ secrets/
 # Generated geography audit output. Regenerate with scripts/geography_audit.py.
 /data/manifests/geography-audit.json
 
+# Generated DHIS2 metadata-discovery reports. They name a live origin and the
+# service account's scope; they are evidence of a run, not repository facts.
+/data/discovery/
+
 # Generated geography import report. One per import run: it carries that run's
 # timestamps and version code, so it is evidence of a run rather than a fact
 # about the repository. Regenerate with `mars-import-geography --json`.

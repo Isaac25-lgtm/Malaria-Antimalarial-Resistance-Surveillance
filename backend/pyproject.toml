@@ -48,6 +48,7 @@ mars-import-encounters = "mars.ingestion.encounters.cli:run"
 mars-demo-dataset = "mars.demo.cli:run"
 mars-import-aggregate = "mars.ingestion.aggregate.cli:run"
 mars-dhis2 = "mars.integrations.dhis2.cli:run"
+mars-dhis2-discover = "mars.integrations.dhis2.discovery.cli:run"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

@@ -154,6 +154,13 @@ survive a client disconnecting.
   are invented. Until a deployment supplies them they are configuration gaps,
   visible as mapping proposals.
 
+## Metadata-only discovery
+
+A separate GET-only utility can inspect system info, current-user scope and
+metadata definitions without retrieving patient collections. See
+[dhis2-discovery.md](../runbooks/dhis2-discovery.md). After it writes reports,
+stop for the [pre-patient approval checklist](../runbooks/pre-patient-approval.md).
+
 ## What is still required from the programme
 
 | Input | Needed for |

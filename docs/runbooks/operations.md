@@ -34,6 +34,9 @@ Disabled and unconfigured by default. A deployment that has not been given a URL
 and credentials reports the integration as **unconfigured** — it does not fail
 at the first request and does not quietly do nothing.
 
+Metadata-only discovery is a separate GET-only utility. It never retrieves
+patient collections. See [dhis2-discovery.md](dhis2-discovery.md).
+
 ```bash
 MARS_DHIS2_ENABLED=true
 MARS_DHIS2_BASE_URL=https://dhis2.example.org

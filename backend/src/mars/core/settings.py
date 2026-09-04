@@ -218,6 +218,25 @@ class Settings(BaseSettings):
     dhis2_push_enabled: bool = False
     dhis2_push_dataset_uid: str | None = Field(default=None, max_length=32)
 
+    # -- DHIS2 metadata discovery ---------------------------------------
+    # Separate from exchange. A GET-restricted discovery token must not be
+    # confused with credentials that can pull patient collections or push data.
+    dhis2_discovery_base_url: str | None = Field(
+        default=None,
+        description="HTTPS origin for metadata-only DHIS2 discovery.",
+    )
+    dhis2_discovery_username: str | None = Field(default=None, max_length=128)
+    dhis2_discovery_password: SecretStr | None = Field(default=None)
+    dhis2_discovery_token: SecretStr | None = Field(default=None)
+    dhis2_discovery_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    dhis2_discovery_max_retries: int = Field(default=2, ge=0, le=5)
+    dhis2_discovery_retry_backoff_seconds: float = Field(default=1.0, ge=0, le=60)
+    dhis2_discovery_page_size: int = Field(default=200, ge=1, le=1000)
+    dhis2_discovery_max_pages: int = Field(default=40, ge=1, le=200)
+    dhis2_discovery_max_response_bytes: int = Field(default=8 * 1024 * 1024, ge=1024)
+    dhis2_discovery_verify_tls: bool = True
+    dhis2_discovery_output_dir: str = "data/discovery"
+
     @field_validator("database_url")
     @classmethod
     def _require_psycopg_driver(cls, value: str) -> str:
