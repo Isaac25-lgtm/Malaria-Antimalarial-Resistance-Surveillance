@@ -19,6 +19,7 @@ def render_markdown(report: DiscoveryReport) -> str:
         f"- Generated at (UTC): `{report.generated_at.isoformat()}`",
         f"- Origin host: `{report.origin_host}`",
         f"- Client version: `{report.client_version}`",
+        f"- Tracker API generation: `{report.api_generation}`",
         "- Patient data: **not retrieved**",
         "",
         "## System",
@@ -45,6 +46,20 @@ def render_markdown(report: DiscoveryReport) -> str:
     lines.append(
         f"- Tracker-search organisation units: {len(report.tracker_search_organisation_units)}"
     )
+    facility_count = (
+        str(report.accessible_facility_count)
+        if report.accessible_facility_count is not None
+        else "indeterminate"
+    )
+    lines.append(f"- Accessible Pader facility candidates: {facility_count}")
+    for scope_name in ("capture", "data_view", "tracker_search"):
+        count = report.facility_scope_counts.get(scope_name)
+        value = str(count) if count is not None else "indeterminate"
+        lines.append(f"- Pader facilities in {scope_name} scope: {value}")
+    lines.append(f"- Authorities reported: {len(report.authorities)}")
+    if report.authorities:
+        authorities = ", ".join(f"`{item}`" for item in report.authorities)
+        lines.append(f"- Authority identifiers: {authorities}")
     lines.extend(["", "## Pader candidates", ""])
     if report.pader_candidates:
         for unit in report.pader_candidates:
@@ -60,6 +75,20 @@ def render_markdown(report: DiscoveryReport) -> str:
             lines.append(f"- **{item.kind}** `{item.remote_id}` {item.name or ''} — {item.reason}")
     else:
         lines.append("No candidate mappings were proposed from the retrieved metadata.")
+    lines.extend(["", "## Metadata inventory", ""])
+    lines.append(f"- Programmes: {len(report.programmes)}")
+    for programme in report.programmes:
+        lines.append(_metadata_line(programme))
+    lines.append(f"- Program stages: {len(report.program_stages)}")
+    for stage in report.program_stages:
+        lines.append(_metadata_line(stage))
+    lines.append(f"- Tracked entity types: {len(report.tracked_entity_types)}")
+    for entity_type in report.tracked_entity_types:
+        lines.append(_metadata_line(entity_type))
+    lines.append(
+        f"- Data elements: {len(report.data_elements)} (full metadata is in the JSON report)"
+    )
+    lines.append(f"- Option sets: {len(report.option_sets)} (full metadata is in the JSON report)")
     lines.extend(["", "## Capability matrix", ""])
     lines.append("| Capability | Route | Status | HTTP | Probed |")
     lines.append("| --- | --- | --- | --- | --- |")
@@ -71,6 +100,22 @@ def render_markdown(report: DiscoveryReport) -> str:
             f"| {http_status} | {probed} |"
         )
         lines.append(row)
+    lines.extend(["", "## Analytical API summary", ""])
+    if report.supported_analytical_apis:
+        lines.append(
+            "Metadata/version evidence indicates these routes exist; authorization "
+            "was not probed and no data request was sent:"
+        )
+        for route in report.supported_analytical_apis:
+            lines.append(f"- `{route}`")
+    else:
+        lines.append("No analytical route was safely confirmed from metadata/version evidence.")
+    lines.extend(["", "## Access limitations", ""])
+    for limitation in report.access_limitations:
+        lines.append(f"- {limitation}")
+    lines.extend(["", "## Unresolved questions", ""])
+    for question in report.unresolved_questions:
+        lines.append(f"- {question}")
     if report.truncated_collections:
         lines.extend(["", "## Truncated collections", ""])
         lines.append(
@@ -94,6 +139,14 @@ def render_markdown(report: DiscoveryReport) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _metadata_line(item: dict[str, object]) -> str:
+    remote_id = item.get("id") or "unavailable-id"
+    name = item.get("name") or "(unnamed)"
+    code = item.get("code")
+    suffix = f"; code `{code}`" if code else ""
+    return f"  - `{remote_id}` {name}{suffix}"
 
 
 def write_reports(report: DiscoveryReport, output_dir: Path) -> tuple[Path, Path]:

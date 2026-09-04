@@ -51,8 +51,6 @@ CURRENT_USER_FIELDS: Final[str] = ",".join(
     )
 )
 
-AUTHORISATION_FIELDS: Final[str] = "authorities"
-
 ORGANISATION_UNIT_FIELDS: Final[str] = ",".join(
     (
         "id",
@@ -85,7 +83,7 @@ PROGRAM_STAGE_FIELDS: Final[str] = ",".join(
         "name",
         "code",
         "program[id,name]",
-        "programStageDataElements[dataElement[id,name,code]]",
+        "programStageDataElements[dataElement[id,name,code,valueType,optionSet[id,name,code]]]",
     )
 )
 
@@ -97,9 +95,13 @@ TRACKED_ENTITY_TYPE_FIELDS: Final[str] = ",".join(
     )
 )
 
-TRACKED_ENTITY_ATTRIBUTE_FIELDS: Final[str] = "id,name,code,valueType,unique,confidential"
+TRACKED_ENTITY_ATTRIBUTE_FIELDS: Final[str] = (
+    "id,name,code,valueType,unique,confidential,optionSet[id,name,code]"
+)
 
-DATA_ELEMENT_FIELDS: Final[str] = "id,name,code,valueType,domainType,categoryCombo[id,name]"
+DATA_ELEMENT_FIELDS: Final[str] = (
+    "id,name,code,valueType,domainType,categoryCombo[id,name],optionSet[id,name,code]"
+)
 
 OPTION_SET_FIELDS: Final[str] = "id,name,code,valueType,options[id,name,code]"
 
@@ -121,7 +123,12 @@ ALLOWED_ROUTES: Final[dict[str, frozenset[str]]] = {
     "/api/system/info": frozenset({"fields"}),
     "/api/resources": DEFAULT_QUERY_KEYS,
     "/api/me": frozenset({"fields"}),
-    "/api/me/authorization": frozenset({"fields"}),
+    # Current DHIS2 uses ``authorization``. Some older installations exposed
+    # ``authorities``; both return authority identifiers only and are safe to
+    # probe as metadata. Neither endpoint accepts a metadata ``fields``
+    # projection consistently across supported DHIS2 releases.
+    "/api/me/authorization": frozenset(),
+    "/api/me/authorities": frozenset(),
     "/api/organisationUnits": ORGANISATION_UNIT_QUERY_KEYS,
     "/api/programs": DEFAULT_QUERY_KEYS,
     "/api/programStages": DEFAULT_QUERY_KEYS,
@@ -162,6 +169,7 @@ RESPONSE_KEYS: Final[dict[str, frozenset[str]]] = {
         }
     ),
     "/api/me/authorization": frozenset({"authorities"}),
+    "/api/me/authorities": frozenset({"authorities"}),
     "/api/organisationUnits": frozenset({"organisationUnits", "pager"}),
     "/api/programs": frozenset({"programs", "pager"}),
     "/api/programStages": frozenset({"programStages", "pager"}),
@@ -194,6 +202,8 @@ ORGANISATION_UNIT_ITEM_KEYS: Final[frozenset[str]] = frozenset(
 #: them without requesting them.
 PATIENT_COLLECTION_PATHS: Final[frozenset[str]] = frozenset(
     {
+        # Non-standard/plural legacy-looking path retained in the deny list so
+        # a typo can never turn discovery into a data request.
         "/api/trackedEntities",
         "/api/trackedEntityInstances",
         "/api/enrollments",
@@ -201,6 +211,8 @@ PATIENT_COLLECTION_PATHS: Final[frozenset[str]] = frozenset(
         "/api/relationships",
         "/api/analytics",
         "/api/analytics/events/query",
+        "/api/analytics/events/aggregate",
+        "/api/analytics/enrollments/query",
         "/api/analytics/trackedEntities/query",
         "/api/dataValueSets",
         "/api/tracker",
@@ -212,7 +224,6 @@ PATIENT_COLLECTION_PATHS: Final[frozenset[str]] = frozenset(
 )
 
 PATIENT_COLLECTION_CAPABILITIES: Final[tuple[str, ...]] = (
-    "tracked_entities",
     "tracked_entity_instances",
     "enrollments",
     "events",
@@ -221,8 +232,10 @@ PATIENT_COLLECTION_CAPABILITIES: Final[tuple[str, ...]] = (
     "tracker_enrollments",
     "tracker_events",
     "tracker_relationships",
-    "patient_analytics",
-    "event_analytics",
+    "tracked_entity_analytics_query",
+    "enrollment_analytics_query",
+    "event_analytics_query",
+    "event_analytics_aggregate",
     "aggregate_data_values",
 )
 
@@ -231,6 +244,7 @@ METADATA_CAPABILITIES: Final[tuple[tuple[str, str], ...]] = (
     ("resources", "/api/resources"),
     ("current_user", "/api/me"),
     ("current_user_authorization", "/api/me/authorization"),
+    ("current_user_authorities_legacy", "/api/me/authorities"),
     ("organisation_units", "/api/organisationUnits"),
     ("programs", "/api/programs"),
     ("program_stages", "/api/programStages"),

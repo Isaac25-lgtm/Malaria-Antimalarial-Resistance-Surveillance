@@ -22,6 +22,25 @@ Preferred credential: a **GET-restricted personal access token** on a dedicated
 read-only service account, scoped to the minimum organisation units and
 programmes required for the Pader pilot.
 
+## Pader pilot - secure interactive launcher
+
+For the approved metadata-only pilot, open a normal PowerShell window at the
+repository root and run:
+
+```powershell
+& ".\scripts\run-eregisters-discovery.ps1"
+```
+
+The launcher asks for the username and then uses a hidden password prompt. It
+does not place either value in a command argument, file, report, or Git. It
+sets credentials only in the current process for the duration of the child
+Python command and restores the previous environment afterward. The reports
+are written under `data/discovery/` and remain gitignored.
+
+This temporary Basic-authentication path is permitted only over verified HTTPS
+for metadata discovery. Replace it with a dedicated least-privilege MARS PAT
+before production synchronization.
+
 ## PowerShell — configure, then discover
 
 From the repository root, in a session that already has the backend virtual

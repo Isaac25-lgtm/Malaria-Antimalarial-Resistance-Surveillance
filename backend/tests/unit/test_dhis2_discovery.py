@@ -248,6 +248,39 @@ class TestTransportSafety:
         assert "email" not in info
         assert "password" not in info
 
+    def test_unexpected_nested_keys_are_dropped_even_if_fields_is_ignored(self) -> None:
+        transport = scripted(
+            [
+                json_response(
+                    {
+                        "programs": [
+                            {
+                                "id": "P1",
+                                "name": "OPD",
+                                "patient_name": "must not survive",
+                                "trackedEntityType": {
+                                    "id": "T1",
+                                    "name": "Person",
+                                    "telephone": "must not survive",
+                                },
+                            }
+                        ],
+                        "pager": {"page": 1, "pageCount": 1},
+                    }
+                )
+            ]
+        )
+        with DiscoveryClient(config(), transport=transport) as client:
+            programmes, truncated = client.collect("/api/programs")
+        assert truncated is False
+        assert programmes == [
+            {
+                "id": "P1",
+                "name": "OPD",
+                "trackedEntityType": {"id": "T1", "name": "Person"},
+            }
+        ]
+
 
 class TestPaginationBounds:
     def test_collection_paging_stops_at_max_pages(self) -> None:
@@ -308,7 +341,10 @@ def _metadata_handler(request: httpx.Request) -> httpx.Response:
             }
         )
     if path == "/api/me/authorization":
-        return json_response({"authorities": ["F_METADATA_EXPORT"]})
+        # Current DHIS2 commonly returns the authority set as a bare JSON list.
+        return httpx.Response(200, json=["F_METADATA_EXPORT"])
+    if path == "/api/me/authorities":
+        return httpx.Response(404)
     collections = {
         "/api/resources": "resources",
         "/api/organisationUnits": "organisationUnits",
@@ -387,24 +423,94 @@ class TestDiscoveryRun:
         patient = [
             record
             for record in report.capabilities
-            if record.status is CapabilityStatus.NOT_PROBED_TO_PROTECT_PATIENT_DATA
+            if not record.probed
+            and record.name
+            in {
+                "tracked_entity_instances",
+                "enrollments",
+                "events",
+                "relationships",
+                "tracker_tracked_entities",
+                "tracker_enrollments",
+                "tracker_events",
+                "tracker_relationships",
+                "tracked_entity_analytics_query",
+                "enrollment_analytics_query",
+                "event_analytics_query",
+                "event_analytics_aggregate",
+                "aggregate_data_values",
+            }
         ]
         assert {record.name for record in patient} >= {
-            "tracked_entities",
             "enrollments",
             "events",
             "relationships",
-            "patient_analytics",
+            "tracked_entity_analytics_query",
         }
         assert all(record.probed is False for record in patient)
         assert any(item.kind == "opd_programme" for item in report.candidate_mappings)
         assert any(item.kind == "malaria_variable" for item in report.candidate_mappings)
         assert report.pader_candidates
         assert report.pader_candidates[0].id == "PAD1"
+        assert report.api_generation == "modern_tracker_preferred_legacy_deprecated"
+        assert report.accessible_facility_count == 1
+        assert report.accessible_facilities[0].id == "HF1"
+        assert report.facility_scope_counts == {
+            "capture": 1,
+            "data_view": 1,
+            "tracker_search": 1,
+        }
+        assert "/api/dataValueSets" in report.supported_analytical_apis
         assert report.stop_before_patient_data is True
         dumped = json.dumps(report.sanitized_dict())
         assert SECRET_TOKEN not in dumped
         assert "should-be-dropped@example.org" not in dumped
+
+    def test_resource_catalogue_classifies_analytics_without_requesting_it(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/resources":
+                return json_response(
+                    {
+                        "resources": [
+                            {
+                                "name": "Analytics",
+                                "relativeApiEndpoint": "/api/analytics",
+                            }
+                        ]
+                    }
+                )
+            return _metadata_handler(request)
+
+        transport = recording(handler)
+        with DiscoveryClient(config(), transport=transport) as client:
+            report = run_discovery(client, origin_host="dhis2.example.org")
+        record = next(
+            item for item in report.capabilities if item.name == "event_analytics_aggregate"
+        )
+        assert record.status is CapabilityStatus.SUPPORTED_BY_VERSION_AUTHORIZATION_NOT_PROBED
+        assert record.probed is False
+        assert "/api/analytics/events/aggregate" in report.supported_analytical_apis
+        assert not any(request.url.path.startswith("/api/analytics/") for request in transport.seen)
+
+    def test_version_42_selects_modern_tracker_and_rejects_legacy_generation(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/system/info":
+                return json_response({"version": "2.42.0"})
+            return _metadata_handler(request)
+
+        transport = recording(handler)
+        with DiscoveryClient(config(), transport=transport) as client:
+            report = run_discovery(client, origin_host="dhis2.example.org")
+        assert report.api_generation == "modern_tracker_only"
+        modern = next(
+            item for item in report.capabilities if item.name == "tracker_tracked_entities"
+        )
+        legacy = next(
+            item for item in report.capabilities if item.name == "tracked_entity_instances"
+        )
+        assert modern.status is CapabilityStatus.SUPPORTED_BY_VERSION_AUTHORIZATION_NOT_PROBED
+        assert legacy.status is CapabilityStatus.NOT_SUPPORTED
+        assert modern.probed is legacy.probed is False
 
     def test_forbidden_metadata_is_classified_without_being_called_a_zero(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:

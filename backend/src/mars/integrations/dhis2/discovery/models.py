@@ -73,6 +73,7 @@ class DiscoveryReport(BaseModel):
     origin_host: str
     interpretation_limit: str
     stop_before_patient_data: Literal[True] = True
+    api_generation: str = "indeterminate"
     system: dict[str, Any] = Field(default_factory=dict)
     current_user: dict[str, Any] = Field(default_factory=dict)
     authorities: list[str] = Field(default_factory=list)
@@ -80,7 +81,9 @@ class DiscoveryReport(BaseModel):
     data_view_organisation_units: list[OrganisationUnitRecord] = Field(default_factory=list)
     tracker_search_organisation_units: list[OrganisationUnitRecord] = Field(default_factory=list)
     pader_candidates: list[OrganisationUnitRecord] = Field(default_factory=list)
-    confirmed_facility_candidates: list[OrganisationUnitRecord] = Field(default_factory=list)
+    accessible_facilities: list[OrganisationUnitRecord] = Field(default_factory=list)
+    accessible_facility_count: int | None = None
+    facility_scope_counts: dict[str, int | None] = Field(default_factory=dict)
     programmes: list[dict[str, Any]] = Field(default_factory=list)
     program_stages: list[dict[str, Any]] = Field(default_factory=list)
     tracked_entity_types: list[dict[str, Any]] = Field(default_factory=list)
@@ -91,6 +94,9 @@ class DiscoveryReport(BaseModel):
     category_combos: list[dict[str, Any]] = Field(default_factory=list)
     candidate_mappings: list[CandidateMapping] = Field(default_factory=list)
     capabilities: list[CapabilityRecord] = Field(default_factory=list)
+    supported_analytical_apis: list[str] = Field(default_factory=list)
+    access_limitations: list[str] = Field(default_factory=list)
+    unresolved_questions: list[str] = Field(default_factory=list)
     truncated_collections: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
 

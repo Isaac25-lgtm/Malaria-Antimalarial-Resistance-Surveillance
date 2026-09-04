@@ -31,7 +31,6 @@ from mars.core.logging import get_logger
 from mars.domain.enums import IntegrationErrorCategory
 from mars.integrations.dhis2.discovery.allowlists import (
     ALLOWED_ROUTES,
-    AUTHORISATION_FIELDS,
     CATEGORY_COMBO_FIELDS,
     CURRENT_USER_FIELDS,
     DATA_ELEMENT_FIELDS,
@@ -79,6 +78,51 @@ _COLLECTION_KEYS: dict[str, str] = {
     "/api/dataSets": "dataSets",
     "/api/categoryCombos": "categoryCombos",
 }
+
+# Defence in depth: a DHIS2 instance or intermediary that ignores ``fields=``
+# must still be unable to place unexpected profile or record-shaped properties
+# into the sanitized report.
+_SAFE_METADATA_KEYS = frozenset(
+    {
+        "id",
+        "name",
+        "code",
+        "username",
+        "authorities",
+        "organisationUnits",
+        "dataViewOrganisationUnits",
+        "teiSearchOrganisationUnits",
+        "level",
+        "path",
+        "leaf",
+        "openingDate",
+        "closedDate",
+        "parent",
+        "organisationUnitGroups",
+        "programType",
+        "trackedEntityType",
+        "trackedEntityTypeAttributes",
+        "trackedEntityAttribute",
+        "programStages",
+        "program",
+        "programStageDataElements",
+        "dataElement",
+        "valueType",
+        "unique",
+        "confidential",
+        "domainType",
+        "categoryCombo",
+        "optionSet",
+        "options",
+        "periodType",
+        "dataSetElements",
+        "categories",
+        "resources",
+        "plural",
+        "singular",
+        "relativeApiEndpoint",
+    }
+)
 
 
 class DiscoveryError(RuntimeError):
@@ -274,6 +318,8 @@ class DiscoveryClient:
                 IntegrationErrorCategory.MALFORMED_RESPONSE,
                 "DHIS2 returned a body that is not JSON",
             ) from exc
+        if path in {"/api/me/authorization", "/api/me/authorities"} and isinstance(payload, list):
+            payload = {"authorities": [item for item in payload if isinstance(item, str)]}
         if not isinstance(payload, dict):
             raise DiscoveryError(
                 IntegrationErrorCategory.MALFORMED_RESPONSE,
@@ -320,7 +366,11 @@ class DiscoveryClient:
         return self._get("/api/me", {"fields": CURRENT_USER_FIELDS})
 
     def current_user_authorization(self) -> dict[str, Any]:
-        return self._get("/api/me/authorization", {"fields": AUTHORISATION_FIELDS})
+        return self._get("/api/me/authorization", {})
+
+    def current_user_authorities_legacy(self) -> dict[str, Any]:
+        """Probe the legacy spelling without treating its absence as failure."""
+        return self._get("/api/me/authorities", {})
 
     def iter_collection(self, path: str) -> Iterator[dict[str, Any]]:
         """Page an allowlisted collection, stopping at ``max_pages``."""
@@ -412,8 +462,22 @@ def _project_payload(path: str, payload: dict[str, Any]) -> dict[str, Any]:
         if key == "pager" and isinstance(value, dict):
             projected[key] = {k: v for k, v in value.items() if k in PAGER_KEYS}
         else:
-            projected[key] = value
+            projected[key] = _sanitize_metadata_value(value)
     return projected
+
+
+def _sanitize_metadata_value(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_sanitize_metadata_value(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: _sanitize_metadata_value(item)
+            for key, item in value.items()
+            if key in _SAFE_METADATA_KEYS
+        }
+    if isinstance(value, str | int | float | bool) or value is None:
+        return value
+    return None
 
 
 __all__ = ["DISCOVERY_CLIENT_VERSION", "DiscoveryClient", "DiscoveryError"]
