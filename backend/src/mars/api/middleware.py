@@ -85,3 +85,55 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             ),
         )
         return response
+
+
+#: Response headers applied to every request — Prompt 28.
+#:
+#: MARS serves an API, not markup, but a surveillance API is exactly the kind
+#: of endpoint that ends up rendered in a browser tab during a demonstration or
+#: a debugging session. These headers cost nothing and remove a class of
+#: problems that only appears when someone does that.
+SECURITY_HEADERS: dict[str, str] = {
+    # A JSON response rendered as HTML because a browser sniffed it is how a
+    # stored value becomes a script.
+    "X-Content-Type-Options": "nosniff",
+    # Nothing here is meant to be framed. Clickjacking a triage button is a
+    # cheap attack against a workflow that changes real records.
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+    # A signal identifier in a Referer header would leak which district a user
+    # was looking at to whatever they navigate to next.
+    "Referrer-Policy": "no-referrer",
+    # This API has no use for a camera, a microphone or a location.
+    "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
+    # Surveillance responses are per-principal and scope-dependent. A shared
+    # cache holding one district officer's answer for the next is the leak this
+    # prevents; individual endpoints may still opt into caching deliberately.
+    "Cache-Control": "no-store",
+}
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Applies :data:`SECURITY_HEADERS` to every response.
+
+    HSTS is added only in a protected environment, and only there: sending it
+    from a local HTTP deployment would pin a developer's browser to HTTPS for
+    localhost and break the next person's afternoon.
+    """
+
+    def __init__(self, app: Callable[..., Awaitable[None]], settings: Settings) -> None:
+        super().__init__(app)
+        self._settings = settings
+
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        response = await call_next(request)
+        for header, value in SECURITY_HEADERS.items():
+            # An endpoint that set its own caching rule keeps it.
+            response.headers.setdefault(header, value)
+        if self._settings.environment.is_protected:
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
+        return response

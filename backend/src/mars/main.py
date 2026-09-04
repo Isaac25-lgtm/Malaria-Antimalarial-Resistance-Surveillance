@@ -9,7 +9,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from mars.api.exception_handlers import register_exception_handlers
-from mars.api.middleware import AccessLogMiddleware, RequestContextMiddleware
+from mars.api.middleware import (
+    AccessLogMiddleware,
+    RequestContextMiddleware,
+    SecurityHeadersMiddleware,
+)
 from mars.api.v1.router import build_v1_router
 from mars.core.logging import configure_logging, get_logger
 from mars.core.settings import Settings, get_settings
@@ -88,9 +92,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Order matters: request context must be established before access logging
     # so every log line carries the request identifier.
     app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware, settings=settings)
     app.add_middleware(RequestContextMiddleware, settings=settings)
 
     if settings.cors_allow_origins:
+        # A wildcard origin with credentials is rejected by browsers and would
+        # be a mistake in any case: it would let any site read a district
+        # officer's surveillance data using their session. Refused loudly
+        # rather than silently narrowed, so a misconfiguration cannot ship.
+        if "*" in settings.cors_allow_origins:
+            raise RuntimeError(
+                "cors_allow_origins may not contain '*': MARS sends credentials "
+                "with cross-origin requests, and a wildcard origin would let any "
+                "site read surveillance data using a signed-in user's session."
+            )
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors_allow_origins,

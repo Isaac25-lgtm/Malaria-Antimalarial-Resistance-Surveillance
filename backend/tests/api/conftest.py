@@ -23,13 +23,19 @@ from mars.api.dependencies import (
     get_facility_service,
     get_geography_map_service,
     get_geography_service,
+    get_investigation_service,
     get_method_registry_service,
     get_organisation_service,
+    get_report_service,
     get_signal_query_service,
+    get_surveillance_summary_service,
 )
 from mars.core.settings import Environment, Settings
+from mars.investigations.service import InvestigationService
 from mars.main import create_app
 from mars.security.principal import AuthenticatedPrincipal
+from mars.services.report_service import ReportService
+from mars.services.surveillance_summary import SurveillanceSummaryService
 
 
 class FakeAuditService:
@@ -219,6 +225,41 @@ def audit_recorder() -> FakeAuditService:
     return FakeAuditService()
 
 
+class EmptyResult:
+    """A query result over an empty database.
+
+    Used so the composed services can run their real code in API tests. An
+    empty database is the state a fresh deployment is in, and it is the state
+    whose honest reporting these tests are checking.
+    """
+
+    def scalars(self) -> EmptyResult:
+        return self
+
+    def all(self) -> list[object]:
+        return []
+
+    def scalar_one(self) -> int:
+        return 0
+
+    def scalar_one_or_none(self) -> object | None:
+        return None
+
+    def __iter__(self):
+        return iter(())
+
+
+class EmptySession:
+    def execute(self, _statement: object) -> EmptyResult:
+        return EmptyResult()
+
+    def add(self, _instance: object) -> None:
+        return None
+
+    def flush(self) -> None:
+        return None
+
+
 @pytest.fixture
 def app(api_settings: Settings, audit_recorder: FakeAuditService) -> Iterator[FastAPI]:
     application = create_app(api_settings)
@@ -233,6 +274,18 @@ def app(api_settings: Settings, audit_recorder: FakeAuditService) -> Iterator[Fa
     application.dependency_overrides[get_method_registry_service] = FakeMethodRegistryService
     application.dependency_overrides[get_analytics_query_service] = FakeAnalyticsQueryService
     application.dependency_overrides[get_signal_query_service] = FakeSignalQueryService
+    # The composed services run their real logic against an empty stub
+    # session, so the API tests exercise the genuine "not configured"
+    # answers rather than a fake's idea of them.
+    application.dependency_overrides[get_surveillance_summary_service] = (
+        lambda: SurveillanceSummaryService(EmptySession())
+    )
+    application.dependency_overrides[get_report_service] = lambda: ReportService(
+        EmptySession(), audit_recorder
+    )
+    application.dependency_overrides[get_investigation_service] = lambda: InvestigationService(
+        EmptySession(), audit_recorder
+    )
 
     yield application
 
