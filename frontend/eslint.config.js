@@ -11,7 +11,7 @@ export default tseslint.config(
     // the build renames the locked directory aside and carries on. Those
     // directories hold minified bundles, so linting them reports thousands of
     // meaningless errors about single-letter variables.
-    ignores: ["dist", "dist-stuck-*", "node_modules", "src/api/schema.d.ts"],
+    ignores: ["dist", "dist-verify", "dist-stuck-*", "node_modules", "src/api/schema.d.ts", "tests/e2e", "playwright.config.ts", "playwright-report", "test-results"],
   },
 
   js.configs.recommended,

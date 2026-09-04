@@ -101,6 +101,9 @@ node_modules/
 # after renaming the stuck directory aside. Those renames are artefacts too.
 /frontend/dist-stuck-*/
 /frontend/dist-verify/
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/tests/visual/screenshots/
 
 # npm debug output
 npm-debug.log*
