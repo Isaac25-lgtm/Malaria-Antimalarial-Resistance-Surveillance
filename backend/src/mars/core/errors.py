@@ -143,3 +143,38 @@ class FeatureDisabledError(MarsError):
     status_code = 503
     code = "feature_disabled"
     title = "Feature is disabled in this deployment"
+
+
+class RateLimitedError(MarsError):
+    """The caller has exceeded a conservative request budget."""
+
+    status_code = 429
+    code = "rate_limited"
+    title = "Too many requests"
+
+
+class OriginRejectedError(MarsError):
+    """The request did not come from an approved MARS frontend origin."""
+
+    status_code = 403
+    code = "origin_rejected"
+    title = "Request rejected"
+
+
+class CsrfRejectedError(MarsError):
+    """An unsafe request was missing or mismatched a CSRF token."""
+
+    status_code = 403
+    code = "csrf_rejected"
+    title = "Request rejected"
+
+
+class UpstreamUnavailableError(ServiceUnavailableError):
+    """An approved upstream system could not be reached.
+
+    The detail is a sanitised operator message. Upstream bodies, stack traces
+    and implementation strings never travel with this error.
+    """
+
+    code = "upstream_unavailable"
+    title = "Upstream service unavailable"

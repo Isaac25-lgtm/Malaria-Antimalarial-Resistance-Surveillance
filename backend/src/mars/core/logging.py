@@ -49,6 +49,12 @@ REDACTED_KEYS: frozenset[str] = frozenset(
         "authorization",
         "api_key",
         "client_secret",
+        "dhis2_password",
+        "current_password",
+        "basic_auth",
+        "cookie",
+        "set_cookie",
+        "mars_session",
     }
 )
 
