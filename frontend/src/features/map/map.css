@@ -42,10 +42,41 @@
 }
 
 /* -- Canvas -------------------------------------------------------------- */
-.boundary-map {
+.geography-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.geography-canvas__map {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.geography-canvas__map.is-ready {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.geography-canvas .boundary-map {
+  width: 100%;
+  height: 100%;
+}
+
+.boundary-map--svg {
   width: 100%;
   height: 32rem;
   background: var(--surface-sunken);
+}
+
+.boundary-map--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-secondary);
+  font-size: var(--text-sm);
 }
 
 @media (max-width: 59.99rem) {

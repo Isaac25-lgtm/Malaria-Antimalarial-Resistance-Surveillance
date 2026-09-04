@@ -374,6 +374,43 @@ def map_features(
 
 
 @router.get(
+    "/map/context",
+    response_model=MapFeatureCollection,
+    responses=_LAYER_RESPONSES,
+    summary="Public administrative geometry for map context, with in-scope flags",
+)
+def map_context(
+    principal: GeographyViewer,
+    service: GeographyMapServiceDep,
+    request: Request,
+    response: Response,
+    level: Annotated[
+        GeographyLevel, Query(description="Country, region or district. Finer grains are refused.")
+    ],
+    limit: Annotated[int, Query(ge=1, le=MAX_FEATURES)] = DEFAULT_FEATURE_LIMIT,
+) -> Any:
+    """Return Uganda's public administrative outlines at one national grain.
+
+    Every published unit at that level is included so a Pader-scoped map can
+    still draw the rest of the country. ``in_scope`` says whether the caller
+    may open the unit. No indicator, signal, investigation or commodity value
+    is attached.
+
+    Subcounty and finer requests are refused: those are not a context view.
+    """
+    collection = service.context_collection(principal, level=level, limit=limit)
+
+    if collection.etag:
+        response.headers["ETag"] = collection.etag
+        response.headers["Cache-Control"] = "private, max-age=300, must-revalidate"
+        response.headers["Vary"] = "Authorization"
+        if request.headers.get("if-none-match") == collection.etag:
+            return Response(status_code=304, headers=dict(response.headers))
+
+    return collection.as_geojson()
+
+
+@router.get(
     "/national",
     response_model=NationalGeographyResponse,
     responses=_DENIED,

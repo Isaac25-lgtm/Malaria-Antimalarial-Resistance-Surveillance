@@ -137,6 +137,28 @@ class FakeGeographyMapService:
 
         return FeatureCollection(level=_k.get("level").value if _k.get("level") else None)
 
+    def context_collection(self, *_a: Any, **_k: Any) -> Any:
+        from mars.core.errors import FieldError, ValidationFailedError
+        from mars.domain.enums import GeographyLevel
+        from mars.services.geography_map_service import (
+            NATIONAL_LAYER_LEVELS,
+            FeatureCollection,
+        )
+
+        level = _k.get("level")
+        if level is not None and level not in NATIONAL_LAYER_LEVELS:
+            raise ValidationFailedError(
+                "The context layer is country, region or district only.",
+                errors=[
+                    FieldError(
+                        field="level",
+                        message="Request district (or region/country) context, not a finer grain.",
+                        code="unsupported_context_level",
+                    )
+                ],
+            )
+        return FeatureCollection(level=level.value if isinstance(level, GeographyLevel) else None)
+
     def unit_geometry(self, *_a: Any, **_k: Any) -> Any:
         from mars.core.errors import NotFoundError
 

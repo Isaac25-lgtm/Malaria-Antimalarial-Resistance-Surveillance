@@ -17,7 +17,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { Suspense, lazy, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { ApiError, api, type Schemas } from "../../api/client";
 import {
@@ -26,17 +26,10 @@ import {
   NoDataState,
   UnavailableState,
 } from "../../design-system/States";
+import { GeographyCanvas } from "./GeographyCanvas";
 import { GeographyList } from "./GeographyList";
+import { decorateCollection, isInScope } from "./geography";
 import "./map.css";
-
-/**
- * MapLibre is roughly 800 kB, and most of MARS is not a map. Loading it lazily
- * keeps it out of the bundle every other page pays for; it arrives when someone
- * opens the map, behind the same loading state the geometry uses.
- */
-const BoundaryMap = lazy(() =>
-  import("./BoundaryMap").then((module) => ({ default: module.BoundaryMap })),
-);
 
 type UnitSummary = Schemas["GeographyUnitSummary"];
 type MapMetadata = Schemas["MapMetadataResponse"];
@@ -86,13 +79,17 @@ export function NationalMapView() {
     retry: false,
   });
 
+  const useContextLayer = step.drawLevel === "district" && step.filter === "none";
+
   const features = useQuery({
-    queryKey: ["map", "features", step.drawLevel, step.unitId, step.filter],
+    queryKey: ["map", useContextLayer ? "context" : "features", step.drawLevel, step.unitId, step.filter],
     queryFn: () =>
-      api.mapFeatures({
-        level: step.drawLevel,
-        ...(step.filter === "within" && step.unitId ? { within_id: step.unitId } : {}),
-      }),
+      useContextLayer
+        ? api.mapContext({ level: step.drawLevel })
+        : api.mapFeatures({
+            level: step.drawLevel,
+            ...(step.filter === "within" && step.unitId ? { within_id: step.unitId } : {}),
+          }),
     enabled: metadata.data?.is_available === true,
     retry: false,
   });
@@ -118,9 +115,20 @@ export function NationalMapView() {
   }, [features.data?.bbox, metadata.data?.initial_bounds]);
 
   /** The drawn features, as list rows. One source of truth for both views. */
+  const collection = useMemo(
+    () =>
+      features.data
+        ? decorateCollection(features.data, {
+            signalPriorityByUnitId: new Map(),
+            inScopeUnitIds: null,
+          })
+        : null,
+    [features.data],
+  );
+
   const units = useMemo<UnitSummary[]>(() => {
-    if (!features.data) return [];
-    return features.data.features.map((feature) => ({
+    if (!collection) return [];
+    return collection.features.map((feature) => ({
       id: feature.properties.unit_id,
       level: feature.properties.level,
       unit_kind: "unspecified",
@@ -134,9 +142,15 @@ export function NationalMapView() {
       effective_from: null,
       effective_to: null,
     }));
-  }, [features.data]);
+  }, [collection]);
 
-  const selectedUnit = units.find((unit) => unit.id === selectedUnitId) ?? null;
+  const selectedFeature = collection?.features.find(
+    (feature) => feature.properties.unit_id === selectedUnitId,
+  );
+  const selectedUnit =
+    selectedFeature && isInScope(selectedFeature)
+      ? (units.find((unit) => unit.id === selectedUnitId) ?? null)
+      : null;
 
   const drillInto = useCallback((unit: UnitSummary) => {
     setTrail((current) => [
@@ -248,19 +262,19 @@ export function NationalMapView() {
                 />
               </div>
             ) : (
-              <Suspense
-                fallback={
-                  <div className="panel__body">
-                    <LoadingState label="the map" rows={4} />
-                  </div>
-                }
-              >
-                <BoundaryMap
-                  collection={features.data}
+              <GeographyCanvas
+                  collection={collection}
                   bounds={bounds}
+                  metadata={metadata.data}
                   selectedUnitId={selectedUnitId}
                   hoveredUnitId={hoveredUnitId}
-                  onSelect={setSelectedUnitId}
+                  onSelect={(unitId) => {
+                    const feature = collection?.features.find(
+                      (item) => item.properties.unit_id === unitId,
+                    );
+                    if (!feature || !isInScope(feature)) return;
+                    setSelectedUnitId(unitId);
+                  }}
                   onHover={setHoveredUnitId}
                   label={
                     `Map of ${features.data.features.length} ${step.drawLevel} boundaries ` +
@@ -268,7 +282,6 @@ export function NationalMapView() {
                     `areas and is keyboard navigable.`
                   }
                 />
-              </Suspense>
             )}
           </div>
         </section>
@@ -288,10 +301,22 @@ export function NationalMapView() {
                 units={units}
                 selectedUnitId={selectedUnitId}
                 hoveredUnitId={hoveredUnitId}
-                onSelect={setSelectedUnitId}
+                onSelect={(unitId) => {
+                  const feature = collection?.features.find(
+                    (item) => item.properties.unit_id === unitId,
+                  );
+                  if (!feature || !isInScope(feature)) return;
+                  setSelectedUnitId(unitId);
+                }}
                 onHover={setHoveredUnitId}
                 levelLabel={step.drawLevel === "district" ? "Districts" : "Subcounties"}
-                canDrill={() => step.drawLevel === "district"}
+                canDrill={(unit) => {
+                  if (step.drawLevel !== "district") return false;
+                  const feature = collection?.features.find(
+                    (item) => item.properties.unit_id === unit.id,
+                  );
+                  return Boolean(feature && isInScope(feature));
+                }}
                 onDrill={drillInto}
               />
             ) : null}

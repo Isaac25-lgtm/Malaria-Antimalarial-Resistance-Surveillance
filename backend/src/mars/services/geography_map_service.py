@@ -12,14 +12,20 @@ server. The subcounty layer carries 1.67 million vertices; a request that could
 return it would be a denial-of-service vector wearing a map. Every response is
 built from ``geom_web``.
 
-**Scope is a WHERE clause.** The predicate is borrowed from ``GeographyService``
-rather than reimplemented, so map visibility and hierarchy visibility cannot
-drift apart. A district user's feature collection never contains another
-district, because the row never leaves the database.
+**Scope is a WHERE clause on the analytical layer.** The predicate is borrowed
+from ``GeographyService`` rather than reimplemented. A district user's
+``feature_collection`` never contains another district, because the row never
+leaves the database.
+
+The **context layer** is the exception: public administrative geometry at
+country, region or district level, with an ``in_scope`` flag and no health
+data. Out-of-scope districts stay on the map so Uganda remains geographically
+legible; they never carry a count or a signal class.
 
 **Properties are an allow-list.** A feature carries the fields named in
-:data:`FEATURE_PROPERTIES` and nothing else. Adding a column to the geometry
-table must never widen a public payload by accident.
+:data:`FEATURE_PROPERTIES` (plus ``in_scope`` on the context layer) and
+nothing else. Adding a column to the geometry table must never widen a public
+payload by accident.
 """
 
 from __future__ import annotations
@@ -34,7 +40,7 @@ from typing import Any, Final
 from sqlalchemy import Select, false, func, or_, select
 from sqlalchemy.orm import Session
 
-from mars.core.errors import MarsError, NotFoundError
+from mars.core.errors import FieldError, MarsError, NotFoundError, ValidationFailedError
 from mars.domain.enums import BoundaryImportStatus, GeographyLevel
 from mars.domain.geography import (
     BoundaryVersion,
@@ -67,6 +73,12 @@ FEATURE_PROPERTIES: Final[frozenset[str]] = frozenset(
         "is_active",
     }
 )
+
+#: Context-layer features add a single authorisation flag. It is not a health
+#: value: it says whether the caller may open that district, not what happened
+#: there. The scoped features layer omits it because every returned row is
+#: already in scope by construction.
+CONTEXT_FEATURE_PROPERTIES: Final[frozenset[str]] = FEATURE_PROPERTIES | {"in_scope"}
 
 #: Hard ceiling on features in one response, whatever the caller asks for.
 #:
@@ -472,7 +484,9 @@ class GeographyMapService:
         if within_id is not None:
             within_path = self._hierarchy.get_unit(principal, within_id).path
 
-        matched = self._count_features(principal, version, level, parent_id, within_path)
+        matched = self._count_features(
+            principal, version, level, parent_id, within_path, apply_scope=True
+        )
         collection.matched_count = matched
 
         effective_limit = min(max(limit, 1), MAX_FEATURES)
@@ -486,6 +500,7 @@ class GeographyMapService:
             within_id,
             effective_limit,
             scope_fingerprint(principal),
+            layer="features",
         )
 
         rows = self._session.execute(
@@ -523,6 +538,93 @@ class GeographyMapService:
             )
 
         collection.bbox = self._collection_bounds(principal, version, level, parent_id, within_path)
+        return collection
+
+    def context_collection(
+        self,
+        principal: AuthenticatedPrincipal,
+        *,
+        level: GeographyLevel,
+        limit: int = DEFAULT_FEATURE_LIMIT,
+    ) -> FeatureCollection:
+        """Public administrative geometry for geographic context.
+
+        Country, region and district outlines are already public. This layer
+        returns every published unit at that level, marks whether the caller's
+        geography scope may open it, and never attaches a surveillance value.
+        Subcounty and finer levels stay on the scoped features endpoint: those
+        are not a national context view.
+        """
+        if level not in NATIONAL_LAYER_LEVELS:
+            raise ValidationFailedError(
+                "The context layer is country, region or district only.",
+                errors=[
+                    FieldError(
+                        field="level",
+                        message="Request district (or region/country) context, not a finer grain.",
+                        code="unsupported_context_level",
+                    )
+                ],
+            )
+
+        version = self.published_version()
+        collection = FeatureCollection(level=level.value)
+        if version is None:
+            return collection
+
+        collection.boundary_version_id = version.id
+        collection.boundary_version_code = version.code
+
+        matched = self._count_features(principal, version, level, None, None, apply_scope=False)
+        collection.matched_count = matched
+
+        effective_limit = min(max(limit, 1), MAX_FEATURES)
+        if matched > effective_limit:
+            raise FeatureLimitExceededError(level.value, matched, effective_limit)
+
+        collection.etag = self._etag(
+            version,
+            level,
+            None,
+            None,
+            effective_limit,
+            scope_fingerprint(principal),
+            layer="context",
+        )
+
+        rows = self._session.execute(
+            self._feature_statement(version, level, None, None).limit(effective_limit)
+        ).all()
+
+        for row in rows:
+            geometry = row[0]
+            if not geometry:
+                continue
+            unit_id = row[1]
+            path = row[6]
+            in_scope = principal.covers_geography(unit_id, path)
+            collection.features.append(
+                {
+                    "type": "Feature",
+                    "id": str(unit_id),
+                    "geometry": json.loads(geometry),
+                    "properties": {
+                        "unit_id": str(unit_id),
+                        "level": row[2].value,
+                        "code": row[3],
+                        "name": row[4],
+                        "parent_id": str(row[5]) if row[5] else None,
+                        "path": path,
+                        "area_sq_km": round(float(row[7]), 2) if row[7] is not None else None,
+                        "is_active": row[8],
+                        "in_scope": in_scope,
+                    },
+                }
+            )
+
+        collection.bbox = self._collection_bounds(
+            principal, version, level, None, None, apply_scope=False
+        )
         return collection
 
     def _feature_statement(
@@ -577,6 +679,8 @@ class GeographyMapService:
         level: GeographyLevel,
         parent_id: uuid.UUID | None,
         within_path: str | None = None,
+        *,
+        apply_scope: bool = True,
     ) -> int:
         """How many features the caller would receive, before any limit.
 
@@ -601,7 +705,9 @@ class GeographyMapService:
             )
         )
         statement = _restrict(statement, parent_id, within_path)
-        return int(self._session.execute(self._scoped(statement, principal)).scalar_one())
+        if apply_scope:
+            statement = self._scoped(statement, principal)
+        return int(self._session.execute(statement).scalar_one())
 
     def _collection_bounds(
         self,
@@ -610,6 +716,8 @@ class GeographyMapService:
         level: GeographyLevel,
         parent_id: uuid.UUID | None,
         within_path: str | None = None,
+        *,
+        apply_scope: bool = True,
     ) -> BoundingBox | None:
         """Extent of the whole collection, so the client can fit its viewport.
 
@@ -641,8 +749,10 @@ class GeographyMapService:
             )
         )
         statement = _restrict(statement, parent_id, within_path)
+        if apply_scope:
+            statement = self._scoped(statement, principal)
 
-        row = self._session.execute(self._scoped(statement, principal)).first()
+        row = self._session.execute(statement).first()
         if row is None or row[0] is None:
             return None
         return BoundingBox(
@@ -781,6 +891,7 @@ class GeographyMapService:
         within_id: uuid.UUID | None,
         limit: int,
         scope: str,
+        layer: str = "features",
     ) -> str:
         """A strong validator for one representation.
 
@@ -808,6 +919,7 @@ class GeographyMapService:
                 str(within_id) if within_id else "-",
                 str(limit),
                 scope,
+                layer,
             ]
         )
         return f'"{hashlib.sha256(material.encode("utf-8")).hexdigest()[:32]}"'
@@ -867,6 +979,7 @@ def geojson_property_names(feature: dict[str, Any]) -> set[str]:
 
 
 __all__ = [
+    "CONTEXT_FEATURE_PROPERTIES",
     "DEFAULT_FEATURE_LIMIT",
     "FEATURE_PROPERTIES",
     "MAX_FEATURES",

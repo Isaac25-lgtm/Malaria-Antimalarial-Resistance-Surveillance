@@ -274,6 +274,14 @@ class MapFeatureProperties(MarsModel):
     path: str
     area_sq_km: float | None
     is_active: bool
+    in_scope: bool | None = Field(
+        default=None,
+        description=(
+            "Present on the public context layer: whether the caller may open "
+            "this unit. Absent on the scoped features layer, where every "
+            "returned row is already in scope."
+        ),
+    )
 
 
 class MapFeature(MarsModel):
@@ -727,6 +735,81 @@ class FacilityContribution(MarsModel):
     source_freshness: datetime | None
     status: str
     status_detail: str | None
+
+
+class DashboardSectionBase(MarsModel):
+    """Provenance shared by every overview panel.
+
+    A section that cannot speak is still present, with an availability other
+    than ``available`` and a refusal reason. Blank is not zero.
+    """
+
+    availability: str
+    requested_scope: str
+    reporting_period: PeriodWindow
+    source: str
+    source_period: PeriodWindow | None
+    freshness: datetime | None
+    last_successful_synchronization: datetime | None
+    method_version_id: uuid.UUID | None = None
+    refusal_reason: str | None = None
+
+
+class CountBucket(MarsModel):
+    code: str
+    label: str
+    count: int | None
+    status: str
+    detail: str | None = None
+
+
+class MeasureSection(DashboardSectionBase):
+    items: list[SurveillanceMeasure]
+
+
+class BucketSection(DashboardSectionBase):
+    items: list[CountBucket]
+
+
+class DistrictSection(DashboardSectionBase):
+    items: list[PriorityDistrict]
+
+
+class SignalListSection(DashboardSectionBase):
+    items: list[SignalSummary]
+
+
+class CommoditySection(DashboardSectionBase):
+    items: list[AnalyticalRecordSummary]
+
+
+class ChartSection(DashboardSectionBase):
+    items: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class OverviewSnapshot(MarsModel):
+    """One coherent dashboard payload. The browser does not compute figures."""
+
+    title: str
+    subtitle: str
+    interpretation_boundary: str
+    data_mode: str
+    data_mode_detail: str
+    demo_mode_enabled: bool
+    requested_scope: str
+    has_national_scope: bool
+    reporting_period: PeriodWindow
+    provenance: SurveillanceProvenance
+    last_successful_synchronization: datetime | None
+    kpis: MeasureSection
+    signals_by_priority: BucketSection
+    investigations_by_status: BucketSection
+    districts_requiring_review: DistrictSection
+    commodity_alerts: CommoditySection
+    needs_attention: BucketSection
+    recent_signals: SignalListSection
+    confirmed_malaria_trend: ChartSection
+    testing_positivity: ChartSection
 
 
 class ReportRow(MarsModel):

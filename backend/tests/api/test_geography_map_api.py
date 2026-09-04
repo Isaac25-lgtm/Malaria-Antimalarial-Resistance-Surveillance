@@ -31,6 +31,7 @@ UNIT_ID = uuid.UUID("00000000-0000-4000-8000-0000000000aa")
 MAP_ROUTES: list[str] = [
     "/api/v1/geography/map/metadata",
     "/api/v1/geography/map/features?level=district",
+    "/api/v1/geography/map/context?level=district",
     "/api/v1/geography/national",
     f"/api/v1/geography/units/{UNIT_ID}/geometry",
     f"/api/v1/geography/units/{UNIT_ID}/bounds",
@@ -263,6 +264,14 @@ class TestRequestValidation:
         )
         assert response.status_code == 422
 
+    def test_the_context_layer_refuses_a_subcounty_request(
+        self, authenticated_client, national_principal: AuthenticatedPrincipal
+    ) -> None:
+        response = authenticated_client(national_principal).get(
+            "/api/v1/geography/map/context?level=subcounty"
+        )
+        assert response.status_code == 422
+
 
 class TestDeliveryContract:
     """Constants that are part of the published contract, not implementation."""
@@ -295,6 +304,12 @@ class TestDeliveryContract:
         for name in FEATURE_PROPERTIES:
             assert not any(word in name.lower() for word in forbidden), name
 
+    def test_context_properties_add_only_in_scope(self) -> None:
+        from mars.services.geography_map_service import CONTEXT_FEATURE_PROPERTIES
+
+        assert FEATURE_PROPERTIES | {"in_scope"} == CONTEXT_FEATURE_PROPERTIES
+        assert "in_scope" not in FEATURE_PROPERTIES
+
     def test_the_allow_list_is_closed(self) -> None:
         """Pinned deliberately.
 
@@ -326,6 +341,7 @@ class TestOpenApiContract:
         for route in [
             "/api/v1/geography/map/metadata",
             "/api/v1/geography/map/features",
+            "/api/v1/geography/map/context",
             "/api/v1/geography/national",
             "/api/v1/geography/units/{unit_id}/geometry",
             "/api/v1/geography/units/{unit_id}/bounds",
@@ -342,7 +358,7 @@ class TestOpenApiContract:
         appearing in the contract.
         """
         schema = app.openapi()["components"]["schemas"]["MapFeatureProperties"]
-        assert set(schema["properties"]) == FEATURE_PROPERTIES
+        assert set(schema["properties"]) == FEATURE_PROPERTIES | {"in_scope"}
 
     def test_the_geography_namespace_was_extended_not_duplicated(self, app) -> None:
         """Prompt 6 asked for one geography API, not a competing one.

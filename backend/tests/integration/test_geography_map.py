@@ -369,6 +369,76 @@ class TestCrossDistrictDenial:
             )
 
 
+class TestContextLayer:
+    """Public administrative geometry, with in-scope flags and no health data."""
+
+    def test_a_district_caller_sees_every_district_outline(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        collection = GeographyMapService(session).context_collection(
+            principal(district_scope(1)), level=GeographyLevel.DISTRICT
+        )
+        assert len(collection.features) == 4
+
+    def test_only_the_callers_district_is_in_scope(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        collection = GeographyMapService(session).context_collection(
+            principal(district_scope(1)), level=GeographyLevel.DISTRICT
+        )
+        flags = {
+            feature["properties"]["code"]: feature["properties"]["in_scope"]
+            for feature in collection.features
+        }
+        assert flags["301"] is True
+        assert flags["300"] is False
+        assert flags["302"] is False
+        assert flags["303"] is False
+
+    def test_out_of_scope_features_carry_no_health_properties(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        from mars.services.geography_map_service import CONTEXT_FEATURE_PROPERTIES
+
+        collection = GeographyMapService(session).context_collection(
+            principal(district_scope(1)), level=GeographyLevel.DISTRICT
+        )
+        for feature in collection.features:
+            assert set(feature["properties"]) == CONTEXT_FEATURE_PROPERTIES
+            for forbidden in ("signal", "count", "indicator", "case", "patient"):
+                assert not any(forbidden in key for key in feature["properties"])
+
+    def test_the_context_bbox_is_the_national_extent(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        service = GeographyMapService(session)
+        context = service.context_collection(
+            principal(district_scope(1)), level=GeographyLevel.DISTRICT
+        )
+        national = service.feature_collection(
+            principal(national_scope()), level=GeographyLevel.DISTRICT
+        )
+        assert context.bbox == national.bbox
+
+    def test_subcounty_context_is_refused(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        from mars.core.errors import ValidationFailedError
+
+        with pytest.raises(ValidationFailedError):
+            GeographyMapService(session).context_collection(
+                principal(national_scope()), level=GeographyLevel.SUBCOUNTY
+            )
+
+    def test_a_national_caller_has_every_district_in_scope(
+        self, session: Session, synthetic_geography: None
+    ) -> None:
+        collection = GeographyMapService(session).context_collection(
+            principal(national_scope()), level=GeographyLevel.DISTRICT
+        )
+        assert all(feature["properties"]["in_scope"] is True for feature in collection.features)
+
+
 class TestPropertyAllowList:
     """Only the declared properties reach a client."""
 

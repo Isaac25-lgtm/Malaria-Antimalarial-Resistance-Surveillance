@@ -23,8 +23,8 @@ import { ApiError, type Schemas } from "../src/api/client";
 // -- The map canvas stub -----------------------------------------------------
 const mapProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
 
-vi.mock("../src/features/map/BoundaryMap", () => ({
-  BoundaryMap: (props: Record<string, unknown>) => {
+vi.mock("../src/features/map/GeographyCanvas", () => ({
+  GeographyCanvas: (props: Record<string, unknown>) => {
     mapProps.current = props;
     return <div data-testid="boundary-map" aria-label={String(props.label)} role="img" />;
   },
@@ -32,12 +32,13 @@ vi.mock("../src/features/map/BoundaryMap", () => ({
 
 const mapMetadata = vi.hoisted(() => vi.fn());
 const mapFeatures = vi.hoisted(() => vi.fn());
+const mapContext = vi.hoisted(() => vi.fn());
 
 vi.mock("../src/api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof ClientModule>();
   return {
     ...actual,
-    api: { ...actual.api, mapMetadata, mapFeatures },
+    api: { ...actual.api, mapMetadata, mapFeatures, mapContext },
   };
 });
 
@@ -128,6 +129,7 @@ beforeEach(() => {
   mapProps.current = null;
   mapMetadata.mockReset();
   mapFeatures.mockReset();
+  mapContext.mockReset();
 });
 
 // ---------------------------------------------------------------------------
@@ -135,6 +137,7 @@ describe("loading, empty and error states", () => {
   it("announces that it is loading rather than showing a blank page", () => {
     mapMetadata.mockReturnValue(new Promise(() => {}));
     mapFeatures.mockReturnValue(new Promise(() => {}));
+    mapContext.mockReturnValue(new Promise(() => {}));
     renderView();
     expect(screen.getByText(/loading the national map/i)).toBeInTheDocument();
   });
@@ -150,6 +153,7 @@ describe("loading, empty and error states", () => {
     renderView();
     await screen.findByText(/no boundaries have been loaded/i);
     expect(mapFeatures).not.toHaveBeenCalled();
+    expect(mapContext).not.toHaveBeenCalled();
   });
 
   it("distinguishes an unavailable dependency from an empty map", async () => {
@@ -181,7 +185,7 @@ describe("loading, empty and error states", () => {
 
   it("reports an over-large request as guidance rather than a failure", async () => {
     mapMetadata.mockResolvedValue(metadata());
-    mapFeatures.mockRejectedValue(
+    mapContext.mockRejectedValue(
       new ApiError(
         413,
         {
@@ -200,7 +204,7 @@ describe("loading, empty and error states", () => {
 
   it("reports an authorised but empty area as having nothing to draw", async () => {
     mapMetadata.mockResolvedValue(metadata());
-    mapFeatures.mockResolvedValue(collection([]));
+    mapContext.mockResolvedValue(collection([]));
     renderView();
     expect(await screen.findByText(/nothing to draw here/i)).toBeInTheDocument();
   });
@@ -209,13 +213,14 @@ describe("loading, empty and error states", () => {
 describe("national rendering", () => {
   beforeEach(() => {
     mapMetadata.mockResolvedValue(metadata());
+    mapContext.mockResolvedValue(twoDistricts());
     mapFeatures.mockResolvedValue(twoDistricts());
   });
 
-  it("requests the district layer for the national view", async () => {
+  it("requests the district context layer for the national view", async () => {
     renderView();
     await screen.findByTestId("boundary-map");
-    expect(mapFeatures).toHaveBeenCalledWith({ level: "district" });
+    expect(mapContext).toHaveBeenCalledWith({ level: "district" });
   });
 
   it("renders the map once geometry arrives", async () => {
@@ -266,6 +271,7 @@ describe("national rendering", () => {
 describe("selection without the map", () => {
   beforeEach(() => {
     mapMetadata.mockResolvedValue(metadata());
+    mapContext.mockResolvedValue(twoDistricts());
     mapFeatures.mockResolvedValue(twoDistricts());
   });
 
@@ -320,6 +326,7 @@ describe("selection without the map", () => {
 describe("drill-down", () => {
   beforeEach(() => {
     mapMetadata.mockResolvedValue(metadata());
+    mapContext.mockResolvedValue(twoDistricts());
     mapFeatures.mockImplementation((query: { level: string; within_id?: string }) => {
       if (query.level === "district") return Promise.resolve(twoDistricts());
       return Promise.resolve(
@@ -392,6 +399,7 @@ describe("drill-down", () => {
 describe("accessibility", () => {
   beforeEach(() => {
     mapMetadata.mockResolvedValue(metadata());
+    mapContext.mockResolvedValue(twoDistricts());
     mapFeatures.mockResolvedValue(twoDistricts());
   });
 
