@@ -47,18 +47,62 @@ class TestAiIsALeafDependency:
     false.
     """
 
+    #: The single permitted wiring point. ``build_v1_router`` imports the
+    #: assistant inside a feature-flag branch, so a deployment with it switched
+    #: off never loads the package. Every other module must not reach it at
+    #: all.
+    WIRING_POINT = "api/v1/router.py"
+
     def test_no_module_imports_the_ai_package(self) -> None:
         offenders: list[str] = []
         for path in _all_source_files():
-            if "ai" in path.relative_to(SRC).parts:
+            relative = path.relative_to(SRC)
+            if "ai" in relative.parts:
+                continue
+            if relative.as_posix().endswith(self.WIRING_POINT):
                 continue
             for module in _imports_of(path):
                 if module == "mars.ai" or module.startswith("mars.ai."):
-                    offenders.append(str(path.relative_to(SRC)))
+                    offenders.append(str(relative))
         assert not offenders, (
             "modules importing mars.ai - the assistant must remain a leaf so it "
             f"can be disabled without affecting anything else: {offenders}"
         )
+
+    def test_the_wiring_point_only_imports_it_behind_the_flag(self) -> None:
+        """The exemption above is narrow, and this is what keeps it narrow.
+
+        The import must sit inside the ``ai_assistant_enabled`` branch. A
+        module-level import there would load the assistant on every
+        deployment, including the ones that switched it off.
+        """
+        source = (SRC / "api" / "v1" / "router.py").read_text(encoding="utf-8")
+        before_flag, _, after_flag = source.partition("if settings.ai_assistant_enabled:")
+        assert after_flag, "the router no longer guards the assistant behind its flag"
+        assert "mars.ai" not in before_flag
+        assert "from mars.ai.api import router" in after_flag
+
+    def test_a_disabled_deployment_never_loads_the_assistant(self) -> None:
+        """The runtime half of the guarantee, which the import graph alone
+        cannot show."""
+        import subprocess
+        import sys
+
+        probe = (
+            "import sys;"
+            "from mars.core.settings import Settings;"
+            "from mars.api.v1.router import build_v1_router;"
+            "build_v1_router(Settings("
+            "database_url='postgresql+psycopg://mars:pw@db:5432/mars'));"
+            "print('mars.ai' in sys.modules)"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", probe],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert result.stdout.strip() == "False", result.stdout
 
     def test_ai_is_disabled_by_default(self) -> None:
         from mars.core.settings import Settings

@@ -860,6 +860,68 @@ class RecordExternalResultRequest(MarsModel):
     result_reference: str = Field(min_length=1, max_length=256)
 
 
+# ---------------------------------------------------------------------------
+# Ask MARS — Prompt 27
+# ---------------------------------------------------------------------------
+class AskMarsAvailability(MarsModel):
+    """Whether the optional assistant can answer here.
+
+    ``available`` is false on a shipped deployment: MARS registers no model
+    provider, because choosing one is a procurement and information-governance
+    decision. The reason is returned so a client can say so honestly.
+    """
+
+    available: bool
+    reason: str | None
+    detail: str | None
+    supported_topics: list[str]
+
+
+class AskMarsCitation(MarsModel):
+    """One MARS record an answer was grounded in."""
+
+    kind: str
+    record_id: str
+    period_start: date | None
+    period_end: date | None
+    detail: str | None
+
+
+class AskMarsRequest(MarsModel):
+    """A bounded question.
+
+    ``topic`` restricts what may be asked. A bounded assistant that says what
+    it can answer is more useful than an open one that answers badly.
+    """
+
+    topic: Literal[
+        "district_priority",
+        "commodity_alerts",
+        "explain_signal",
+        "compare_recurrence",
+        "investigation_brief",
+    ]
+    question: str = Field(min_length=1, max_length=2000)
+    period_start: date
+    period_end: date
+    signal_id: uuid.UUID | None = None
+
+
+class AskMarsAnswer(MarsModel):
+    """A grounded, cited answer - or an explicit absence of one."""
+
+    available: bool
+    topic: str
+    text: str
+    citations: list[AskMarsCitation]
+    missing_information: list[str]
+    interpretation_limit: str
+    provider: str | None
+    model: str | None
+    response_hash: str | None
+    unavailable_reason: str | None
+
+
 # Forward references resolved after all models are declared.
 GeographyOverviewResponse.model_rebuild()
 FacilityDetail.model_rebuild()

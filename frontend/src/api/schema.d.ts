@@ -1007,6 +1007,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/meta/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether the optional Ask MARS assistant is available
+         * @description Whether Ask MARS can answer on this deployment.
+         *
+         *     Lives in ``meta`` rather than in the assistant's own router, and reads
+         *     nothing but the feature flag. ADR 0008 requires ``mars.ai`` to be a leaf
+         *     that a deployment can disable entirely, so the endpoint a client uses to
+         *     discover the assistant must not itself import it - otherwise asking
+         *     whether AI is available would load AI.
+         *
+         *     When the flag is off the assistant's own routes are not registered at all.
+         *     That is the honest contract: MARS does not advertise an endpoint it will
+         *     not answer.
+         */
+        get: operations["assistant_availability_api_v1_meta_assistant_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta/evidence-lanes": {
         parameters: {
             query?: never;
@@ -4758,6 +4788,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assistant_availability_api_v1_meta_assistant_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

@@ -45,6 +45,15 @@ def build_v1_router(settings: Settings) -> APIRouter:
     router.include_router(signals.router)
     router.include_router(investigations.router)
 
+    if settings.ai_assistant_enabled:
+        # Imported inside the branch so that a deployment with the
+        # assistant switched off never loads ``mars.ai`` at all. ADR 0008
+        # asks for a leaf; this makes the claim testable at runtime rather
+        # than only in the import graph.
+        from mars.ai.api import router as ai_router
+
+        router.include_router(ai_router)
+
     if settings.is_development_auth_active:
         router.include_router(auth.development_router)
 

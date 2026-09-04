@@ -7584,6 +7584,30 @@
         ]
       }
     },
+    "/api/v1/meta/assistant": {
+      "get": {
+        "description": "Whether Ask MARS can answer on this deployment.\n\nLives in ``meta`` rather than in the assistant's own router, and reads\nnothing but the feature flag. ADR 0008 requires ``mars.ai`` to be a leaf\nthat a deployment can disable entirely, so the endpoint a client uses to\ndiscover the assistant must not itself import it - otherwise asking\nwhether AI is available would load AI.\n\nWhen the flag is off the assistant's own routes are not registered at all.\nThat is the honest contract: MARS does not advertise an endpoint it will\nnot answer.",
+        "operationId": "assistant_availability_api_v1_meta_assistant_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Assistant Availability Api V1 Meta Assistant Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Whether the optional Ask MARS assistant is available",
+        "tags": [
+          "metadata"
+        ]
+      }
+    },
     "/api/v1/meta/evidence-lanes": {
       "get": {
         "description": "Describe the two-lane evidence model.\n\nServed by the API rather than written into the interface so that the\nscientific boundary has one authoritative statement, used identically by the\ndashboard, generated reports and documentation.",

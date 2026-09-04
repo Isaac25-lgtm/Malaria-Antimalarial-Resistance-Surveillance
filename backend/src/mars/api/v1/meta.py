@@ -171,3 +171,39 @@ def evidence_lanes() -> dict[str, object]:
             ),
         },
     }
+
+
+@router.get(
+    "/meta/assistant",
+    response_model=dict[str, object],
+    summary="Whether the optional Ask MARS assistant is available",
+)
+def assistant_availability(settings: SettingsDep) -> dict[str, object]:
+    """Whether Ask MARS can answer on this deployment.
+
+    Lives in ``meta`` rather than in the assistant's own router, and reads
+    nothing but the feature flag. ADR 0008 requires ``mars.ai`` to be a leaf
+    that a deployment can disable entirely, so the endpoint a client uses to
+    discover the assistant must not itself import it - otherwise asking
+    whether AI is available would load AI.
+
+    When the flag is off the assistant's own routes are not registered at all.
+    That is the honest contract: MARS does not advertise an endpoint it will
+    not answer.
+    """
+    enabled = settings.ai_assistant_enabled
+    return {
+        "enabled": enabled,
+        "endpoint": "/api/v1/ai/ask" if enabled else None,
+        "detail": (
+            "Ask MARS is enabled. Whether it can answer also depends on an "
+            "approved model provider being registered; query /api/v1/ai/"
+            "availability for that."
+            if enabled
+            else (
+                "Ask MARS is switched off for this deployment. Every dashboard, "
+                "signal, explanation, investigation and report works without "
+                "it, and no assistant route is registered."
+            )
+        ),
+    }
