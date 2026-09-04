@@ -1,0 +1,134 @@
+# MARS production topology.
+#
+# Differs from the development compose file in the ways that matter:
+#
+#   * no source mounts and no reload - the image is the artefact
+#   * no development authentication, no demo mode, no exposed database port
+#   * every secret arrives from the environment, none is written here
+#   * the worker is a separate service from the API, so a long analytical run
+#     cannot starve request serving
+#   * migrations run as a one-shot job that must succeed before the API starts
+#
+# This file does not deploy anything by itself. It is the topology a deployment
+# reproduces, with an orchestrator or with `docker compose -f` and a populated
+# environment file that is never committed.
+#
+#   docker compose -f infra/docker-compose.production.yml --env-file /run/secrets/mars.env up -d
+#
+# TLS terminates at a reverse proxy in front of this stack. Nothing here listens
+# on a public interface.
+
+name: mars-production
+
+x-backend-image: &backend-image
+  image: ${MARS_IMAGE:?set MARS_IMAGE to the published backend image}
+  restart: unless-stopped
+  # The image is one artefact serving both processes, so the API and the worker
+  # can never drift apart in dependency versions. A worker computing an
+  # indicator differently from the API that serves it would be invisible.
+  environment: &backend-environment
+    MARS_ENVIRONMENT: production
+    MARS_DATABASE_URL: ${MARS_DATABASE_URL:?required}
+    MARS_IDENTITY_DATABASE_URL: ${MARS_IDENTITY_DATABASE_URL:?required}
+    MARS_ENCRYPTION_KEYS: ${MARS_ENCRYPTION_KEYS:?required}
+    MARS_OIDC_ISSUER: ${MARS_OIDC_ISSUER:?required}
+    MARS_OIDC_AUDIENCE: ${MARS_OIDC_AUDIENCE:?required}
+    MARS_CORS_ALLOW_ORIGINS: ${MARS_CORS_ALLOW_ORIGINS:-}
+    MARS_LOG_LEVEL: ${MARS_LOG_LEVEL:-INFO}
+    # Both default to off and must be switched on deliberately. Demo mode is
+    # refused outright in a protected environment.
+    MARS_AI_ASSISTANT_ENABLED: ${MARS_AI_ASSISTANT_ENABLED:-false}
+    MARS_DHIS2_ENABLED: ${MARS_DHIS2_ENABLED:-false}
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+  # Migrations run once, to completion, before anything serves traffic. A
+  # database at an older revision than the code is the failure mode this
+  # ordering exists to prevent.
+  migrate:
+    <<: *backend-image
+    container_name: mars-migrate
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+
+  api:
+    <<: *backend-image
+    container_name: mars-api
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command:
+      - "uvicorn"
+      - "mars.main:app"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      - "--workers"
+      - "${MARS_API_WORKERS:-4}"
+      - "--proxy-headers"
+      # Only a trusted proxy may set the forwarded headers that determine the
+      # client address in the audit log.
+      - "--forwarded-allow-ips"
+      - "${MARS_TRUSTED_PROXY_IPS:-127.0.0.1}"
+    expose:
+      - "8000"
+    healthcheck:
+      # Liveness only. Readiness is checked by the proxy, because a database
+      # blip should take the instance out of rotation, not restart it.
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8000/api/v1/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  worker:
+    <<: *backend-image
+    container_name: mars-worker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "mars.worker"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    image: ${MARS_FRONTEND_IMAGE:?set MARS_FRONTEND_IMAGE to the published frontend image}
+    container_name: mars-frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+
+# The database is deliberately absent. A production MARS runs against a managed
+# PostgreSQL 16 with PostGIS 3.4+, backed up and patched by whoever operates it;
+# running the database as a sibling container would put a national surveillance
+# dataset on the same lifecycle as the application image.
+networks:
+  default:
+    name: mars-production
