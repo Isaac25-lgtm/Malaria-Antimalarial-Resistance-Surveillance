@@ -192,8 +192,8 @@ export function FacilitiesView() {
   const { user } = useAuth();
   const liveMode = user?.source_status?.mode === "live";
   const live = useQuery({
-    queryKey: ["live", "dashboard"],
-    queryFn: api.latestLiveDashboard,
+    queryKey: ["live", "dashboard", "latest"],
+    queryFn: () => api.latestLiveDashboard(),
     enabled: liveMode,
     retry: false,
   });

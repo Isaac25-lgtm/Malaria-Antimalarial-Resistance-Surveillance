@@ -52,11 +52,14 @@ The live mode refuses the demonstration database at startup, and the API
 response schema for a live snapshot is typed `synthetic_data_used: Literal[False]`
 — the contract itself cannot carry a synthetic figure.
 
-**Deployment status.** No national environment has been provisioned and MARS is
-not running at any public URL. The live integration is verified end to end
-against an authorised eRegisters account; that account's DHIS2 scope currently
-resolves to one district, so that is the extent of the live data read so far.
-Nothing here claims otherwise.
+**Deployment status.** This repository hosts the **source code**. It is not a
+running system, and publishing it here is not a deployment: no national
+environment has been provisioned, no Ministry infrastructure runs this code, and
+MARS is not reachable at any public URL. The live integration is verified end to
+end from a local operator workstation against an authorised eRegisters account;
+that account's DHIS2 scope resolves to one district, so that is the extent of the
+live data read so far. Nothing here claims Ministry endorsement or production
+operation.
 
 ---
 
@@ -95,6 +98,8 @@ will find.
 | **Commodity surveillance** | Stock on hand, days out of stock, consumption — kept as *operational* alerts |
 | **Data-quality diagnostics** | Completeness, timeliness, internal consistency, denominator validity |
 | **Spatial analysis** | Geographic aggregation, hotspots and clustering under a privacy policy |
+| **Geography** | Supplied Uganda GeoJSON, district and subcounty boundary layers, no fabricated geometry |
+| **Patient surveillance** | Pseudonymous longitudinal evidence; the identity vault is never read by analytics |
 | **Signal prioritisation** | Governed rules, typed evidence, both supporting and counter-evidence |
 | **Investigations** | Queues, transitions and an append-only timeline that never mutates the signal |
 | **Reporting and explainability** | Deterministic explanations, governed exports, full audit trail |
@@ -111,12 +116,17 @@ not show zeroes.
 
 ---
 
-## Live DHIS2 / eRegisters integration
+## Live DHIS2 / eRegisters integration — the Pader Live Pilot
 
-MARS authenticates a real, authorised eRegisters user and reads only what that
-account may see. Nothing about the integration is tied to one district: the
-scope is whatever DHIS2 says the account holds, so a national account produces a
-national view and a facility account produces a facility view.
+MARS authenticates a real, authorised eRegisters user through **one login** and
+reads only what that account may see. Nothing about the integration is tied to
+one district: the scope is whatever DHIS2 says the account holds, so a national
+account produces a national view and a facility account produces a facility
+view.
+
+The pilot that has been exercised end to end is **Pader District** — the scope
+the authorised verification account resolves to. The platform is national; the
+live pilot is Pader.
 
 **Verified against the live instance**
 
@@ -139,7 +149,11 @@ derived from.
 - reads mapped aggregate HMIS values for every authorised facility
 - performs bounded Tracker event reads for repeat-positive evidence
 - builds a 12-month real HMIS trend and scope-level KPIs
+- assembles pseudonymous patient-level surveillance — repeat-positive evidence
+  under a keyed HMAC alias, with no direct identifier in any list view
 - derives data-quality diagnostics and operational commodity conditions
+- maps facilities onto the supplied Uganda GeoJSON at **district and subcounty**
+  boundary levels, matching through verified eRegisters ancestor names
 - withholds mathematically invalid ratios rather than publishing them
 
 **What it never does**
@@ -147,7 +161,9 @@ derived from.
 - substitute a demonstration figure into live mode
 - request tracked-entity attributes
 - return a DHIS2 tracked-entity UID to the browser
-- invent a facility coordinate for the map
+- invent a facility coordinate for the map, or guess a subcounty for an
+  unmatched facility — unmatched facilities stay in district totals and are
+  simply not plotted
 - present a district-scoped figure as a national one
 
 > **Scope is data-driven, never hardcoded.** National, district and facility
@@ -233,7 +249,7 @@ credentials and tokens never reach browser JavaScript.
 | **Opaque sessions** | HttpOnly cookies; the store holds a hash, never the raw identifier |
 | **Least-privilege scope** | Organisation-unit scope comes from the authenticated DHIS2 account |
 | **Scope enforced in SQL** | Never by filtering results afterwards. A facility's district membership does not grant the district-wide picture |
-| **Identity separation** | `mars_identity` is a separate schema on a separate database role; migration `0025` revokes it from the application role |
+| **Identity separation** | `mars_identity` is a separate schema on a separate database role; migrations `0025`/`0026` revoke it from the application role and from `PUBLIC` |
 | **Pseudonymous references** | Patient aliases are keyed HMAC with domain separation — never a truncated source identifier, and no fallback key exists |
 | **No probabilistic matching** | No linkage on names, phone numbers, villages or addresses |
 | **Sanitised errors** | Upstream failures report an exception *type*; no URL, credential or record content reaches a log or a response |
@@ -276,7 +292,7 @@ backend/
     integrations/   DHIS2 adapters — discovery, login, tracker, live dashboard
     identity/       Encrypted vault, linkage, never imported by analytics
     services/       Scope-applying read models
-  migrations/       Alembic revisions 0001 → 0025
+  migrations/       Alembic revisions 0001 → 0026
   tests/            unit · api · security · integration
 frontend/
   src/features/     command-centre, signals, investigations, patients, map, …
@@ -341,22 +357,30 @@ npm --prefix frontend run dev          # http://127.0.0.1:5173
 ## Live mode startup
 
 ```powershell
-./scripts/start-mars-live.ps1            # start
-./scripts/start-mars-live.ps1 -Restart   # replace existing MARS listeners
+./scripts/start-mars-live.ps1                          # start
+./scripts/start-mars-live.ps1 -Restart                 # replace existing MARS listeners
+./scripts/start-mars-live.ps1 -CheckOnly               # assert the running API matches the contract
+./scripts/start-mars-live.ps1 -InitializeNewLocalKeys  # create a new stable local key set
 ```
 
-The launcher applies migrations to the `mars_live` database, starts the API on
-**port 8000** and the UI on **port 5173**.
+The launcher validates the `mars_app_login` and `mars_identity_login` roles,
+optionally provisions missing restricted local roles, applies migrations through
+`0026_reapply_runtime_role_grants`, asserts the schema privilege boundary, starts
+the API on **port 8000**, waits for its OpenAPI contract to satisfy the dashboard
+schema, and only then starts the UI on **port 5173**.
 
 - The database password is read with a **hidden prompt** (`Read-Host -AsSecureString`)
   and the plaintext buffer is zeroed immediately after use.
 - Local keys are stored under `.local-secrets/` encrypted with Windows
   DPAPI. That directory is gitignored; **no key material is ever committed**.
 - If a previously generated DPAPI blob cannot be decrypted — a different Windows
-  identity, or a restored profile — the script can fall back to process-only keys
-  for the session.
+  identity, or a restored profile — the launcher **refuses to start** rather than
+  silently generating a replacement, because a new alias key would change every
+  pseudonymous patient identity. `-InitializeNewLocalKeys` accepts that reset
+  explicitly and preserves the unreadable originals untouched.
 - `-Restart` refuses to stop a process that is not the expected Python or Node
   listener on that port.
+- The UI is never started against an API that fails the contract check.
 - Credentials are never printed.
 
 A separate `./scripts/start-mars-demo.ps1` runs the synthetic environment. The two
@@ -374,15 +398,15 @@ Every figure below was produced by re-running the command in this repository.
 | Ruff format | `ruff format --check .` | 260 files clean |
 | Ruff lint | `ruff check .` | clean |
 | Type checking | `mypy` | clean, 189 source files |
-| Backend tests | `pytest tests -m "not integration"` | **1,099 passed** |
+| Backend tests | `pytest tests -m "not integration"` | **1,105 passed** |
 | Frontend lint | `npm run lint` | clean |
 | Frontend types | `npm run typecheck` | clean |
-| Frontend tests | `vitest --run` | **111 passed** (11 files) |
+| Frontend tests | `vitest --run` | **117 passed** (13 files) |
 | Production build | `npm run build` | succeeds; MapLibre split into its own chunk |
 | OpenAPI contract | `export_openapi.py --check` | up to date |
 | Terminology lint | `terminology_lint.py` | no prohibited claims |
 | Geography audit | `geography_audit.py --verify-only` | PASS — all four sources unchanged |
-| Migrations | `alembic heads`, offline render | single head `0025`, 71 tables, both directions render, no identifier over 63 characters |
+| Migrations | `alembic heads`, structural tests | single head `0026_reapply_runtime_role_grants`, linear chain, 32 structural tests passed |
 | PowerShell | AST parse | 4 scripts, no errors |
 
 Integration tests and the live `alembic check` drift gate require a PostgreSQL

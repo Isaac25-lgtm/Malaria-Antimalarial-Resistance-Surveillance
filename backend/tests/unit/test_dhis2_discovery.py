@@ -375,6 +375,7 @@ def _metadata_handler(request: httpx.Request) -> httpx.Response:
                         "level": 5,
                         "leaf": True,
                         "parent": {"id": "PAD1"},
+                        "path": "/UG/PAD1/HF1",
                     },
                 ],
                 "pager": {"page": 1, "pageCount": 1},
@@ -455,6 +456,7 @@ class TestDiscoveryRun:
         assert report.api_generation == "modern_tracker_preferred_legacy_deprecated"
         assert report.accessible_facility_count == 1
         assert report.accessible_facilities[0].id == "HF1"
+        assert report.accessible_facilities[0].ancestor_names == ["Pader"]
         assert report.facility_scope_counts == {
             "capture": 1,
             "data_view": 1,

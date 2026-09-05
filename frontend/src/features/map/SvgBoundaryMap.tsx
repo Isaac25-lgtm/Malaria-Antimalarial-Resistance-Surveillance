@@ -6,7 +6,7 @@
  */
 
 import type { MapCollection } from "./geography";
-import { FILL_COLOURS, boundsOf, featurePathD, fillClassOf, isInScope, project } from "./geography";
+import { FILL_COLOURS, boundsOf, featurePathD, fillClassOf, isInScope, overlayProps, project } from "./geography";
 import type { Schemas } from "../../api/client";
 
 const WIDTH = 640;
@@ -50,17 +50,19 @@ export function SvgBoundaryMap({
         const fillClass = fillClassOf(feature);
         const scoped = isInScope(feature);
         const selected = unitId === selectedUnitId;
+        const confirmed = scoped ? overlayProps(feature).confirmed_count : undefined;
+        const description = `${feature.properties.name}${typeof confirmed === "number" ? `: ${confirmed.toLocaleString()} reported confirmed malaria cases` : ""}`;
         return (
           <path
             key={unitId}
             d={d}
-            fill={FILL_COLOURS[fillClass] ?? FILL_COLOURS.none}
+            fill={typeof confirmed === "number" ? "#93c5e8" : FILL_COLOURS[fillClass] ?? FILL_COLOURS.none}
             stroke={selected ? "#0b6e63" : "#b6c2bf"}
             strokeWidth={selected ? 2.2 : 0.7}
             data-unit-id={unitId}
             data-in-scope={scoped ? "true" : "false"}
             data-fill-class={fillClass}
-            aria-label={feature.properties.name}
+            aria-label={description}
             tabIndex={scoped ? 0 : -1}
             role={scoped ? "button" : "presentation"}
             onClick={() => {
@@ -73,11 +75,13 @@ export function SvgBoundaryMap({
                 onSelect(unitId);
               }
             }}
-          />
+          ><title>{description}</title></path>
         );
       })}
       {facilities.map((facility) => {
         if (facility.latitude == null || facility.longitude == null) return null;
+        if (!Number.isFinite(facility.latitude) || !Number.isFinite(facility.longitude)) return null;
+        if (facility.longitude < extent[0] || facility.longitude > extent[2] || facility.latitude < extent[1] || facility.latitude > extent[3]) return null;
         const [x, y] = project(facility.longitude, facility.latitude, extent, WIDTH, HEIGHT);
         const stockOut =
           (facility.rdt_days_out_of_stock ?? 0) > 0 ||

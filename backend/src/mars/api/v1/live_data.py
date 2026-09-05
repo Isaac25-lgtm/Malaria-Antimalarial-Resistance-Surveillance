@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 
 from mars.api.dependencies import AuditDep, SettingsDep, require_permissions, require_sensitivity
 from mars.api.v1.schemas import (
@@ -12,6 +13,7 @@ from mars.api.v1.schemas import (
     ControlledTrackerPreviewSummary,
     LiveDashboardSnapshot,
     LiveDashboardSyncRequest,
+    LiveRepeatPositivePatient,
 )
 from mars.core.errors import FeatureDisabledError, UnauthenticatedError, UpstreamUnavailableError
 from mars.core.logging import get_logger
@@ -30,6 +32,79 @@ PatientReader = Annotated[
 
 
 @router.get(
+    "/patients/{patient_alias}",
+    response_model=LiveRepeatPositivePatient,
+    dependencies=[Depends(require_sensitivity(SensitivityLevel.PSEUDONYMOUS_CASE))],
+)
+def live_patient_evidence(
+    patient_alias: str,
+    request: Request,
+    settings: SettingsDep,
+    principal: PatientReader,
+    audit: AuditDep,
+) -> LiveRepeatPositivePatient:
+    from mars.core.errors import NotFoundError
+
+    raw_id = request.cookies.get(settings.session_cookie_name)
+    service = getattr(request.app.state, "live_dashboard", None)
+    snapshot = service.latest(raw_id) if service is not None and raw_id else None
+    rows = snapshot.get("positive_patients", []) if snapshot else []
+    patient = next((row for row in rows if row["mars_patient_id"] == patient_alias), None)
+    if patient is None:
+        raise NotFoundError("No patient evidence is available in this session's source scope")
+    audit.record(
+        action=AuditAction.CASE_EVIDENCE_ACCESSED,
+        principal=principal,
+        object_type="live_patient_evidence",
+        object_id=patient_alias,
+        context={"source": "dhis2", "direct_identity": False},
+    )
+    return LiveRepeatPositivePatient.model_validate(patient)
+
+
+@router.get("/dashboard/export.csv", response_class=Response)
+def export_live_dashboard(
+    request: Request,
+    settings: SettingsDep,
+    audit: AuditDep,
+    principal: Annotated[
+        AuthenticatedPrincipal,
+        Depends(
+            require_permissions(Permission.DATA_EXPORT, Permission.SURVEILLANCE_VIEW_AGGREGATE)
+        ),
+    ],
+    period_start: date,
+    period_end: date,
+) -> Response:
+    from mars.services.live_dashboard import snapshot_csv
+
+    raw_id = request.cookies.get(settings.session_cookie_name)
+    service = getattr(request.app.state, "live_dashboard", None)
+    snapshot = (
+        service.latest(raw_id, period_start=period_start, period_end=period_end)
+        if service is not None and raw_id
+        else None
+    )
+    if not snapshot:
+        raise FeatureDisabledError("Synchronize the selected reporting period before exporting")
+    audit.record(
+        action=AuditAction.EXPORT_GENERATED,
+        principal=principal,
+        object_type="live_district_brief",
+        object_id="pader",
+        context={"period_start": period_start.isoformat(), "period_end": period_end.isoformat()},
+    )
+    return Response(
+        content=snapshot_csv(snapshot),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="mars-district-{period_start}.csv"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@router.get(
     "/dashboard",
     response_model=LiveDashboardSnapshot | None,
     dependencies=[Depends(require_sensitivity(SensitivityLevel.PSEUDONYMOUS_CASE))],
@@ -38,6 +113,8 @@ def latest_live_dashboard(
     request: Request,
     settings: SettingsDep,
     principal: PatientReader,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ) -> LiveDashboardSnapshot | None:
     """Return only this session's last real source snapshot."""
     if not settings.is_live_auth_active:
@@ -46,7 +123,11 @@ def latest_live_dashboard(
     service = getattr(request.app.state, "live_dashboard", None)
     if not raw_id or service is None:
         return None
-    result = service.latest(raw_id)
+    if (period_start is None) != (period_end is None):
+        from mars.core.errors import ValidationFailedError
+
+        raise ValidationFailedError("Supply both period_start and period_end")
+    result = service.latest(raw_id, period_start=period_start, period_end=period_end)
     return LiveDashboardSnapshot.model_validate(result) if result else None
 
 

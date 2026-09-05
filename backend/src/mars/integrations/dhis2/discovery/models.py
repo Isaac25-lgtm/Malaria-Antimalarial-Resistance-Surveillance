@@ -46,6 +46,7 @@ class OrganisationUnitRecord(BaseModel):
     parent_id: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    ancestor_names: list[str] = Field(default_factory=list)
     group_names: list[str] = Field(default_factory=list)
     classification: Literal[
         "pader_candidate",

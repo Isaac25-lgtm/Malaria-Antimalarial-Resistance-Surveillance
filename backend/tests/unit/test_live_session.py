@@ -192,6 +192,7 @@ class TestOpaqueSessionStore:
                 "path": "/ug/root-1/facility-1",
                 "latitude": None,
                 "longitude": None,
+                "ancestor_names": [],
             }
         ]
         assert service.tracker_facility_uids("sid") == frozenset({"facility-1"})

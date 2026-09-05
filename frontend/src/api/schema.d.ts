@@ -1125,6 +1125,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/live/dashboard/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Live Dashboard */
+        get: operations["export_live_dashboard_api_v1_live_dashboard_export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/live/dashboard/synchronize": {
         parameters: {
             query?: never;
@@ -1139,6 +1156,23 @@ export interface paths {
          * @description Read scoped HMIS values and pseudonymous Tracker evidence server-to-server.
          */
         post: operations["synchronize_live_dashboard_api_v1_live_dashboard_synchronize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live/patients/{patient_alias}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live Patient Evidence */
+        get: operations["live_patient_evidence_api_v1_live_patients__patient_alias__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2783,6 +2817,8 @@ export interface components {
             aggregate_reported: boolean;
             /** Al Days Out Of Stock */
             al_days_out_of_stock?: number | null;
+            /** Ancestor Names */
+            ancestor_names?: string[];
             /** Artesunate Days Out Of Stock */
             artesunate_days_out_of_stock?: number | null;
             /** Confirmed Malaria */
@@ -2860,6 +2896,8 @@ export interface components {
             period_start: string;
             /** Positive Malaria Event Count */
             positive_malaria_event_count: number;
+            /** Positive Patients */
+            positive_patients?: components["schemas"]["LiveRepeatPositivePatient"][];
             /** Repeat Positive Patients */
             repeat_positive_patients: components["schemas"]["LiveRepeatPositivePatient"][];
             /**
@@ -3017,6 +3055,21 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** LivePatientTest */
+        LivePatientTest: {
+            /** Facility Name */
+            facility_name: string;
+            /**
+             * Occurred On
+             * Format: date
+             */
+            occurred_on: string;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "positive" | "negative" | "unmapped";
+        };
         /**
          * LiveRepeatPositivePatient
          * @description Pseudonymous evidence only; the source tracked-entity UID is excluded.
@@ -3042,6 +3095,8 @@ export interface components {
             mars_patient_id: string;
             /** Positive Encounter Count */
             positive_encounter_count: number;
+            /** Tests */
+            tests?: components["schemas"]["LivePatientTest"][];
         };
         /**
          * LiveTrackerFacilitySummary
@@ -5977,7 +6032,10 @@ export interface operations {
     };
     latest_live_dashboard_api_v1_live_dashboard_get: {
         parameters: {
-            query?: never;
+            query?: {
+                period_start?: string | null;
+                period_end?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5991,6 +6049,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LiveDashboardSnapshot"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_live_dashboard_api_v1_live_dashboard_export_csv_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -6015,6 +6112,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LiveDashboardSnapshot"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_patient_evidence_api_v1_live_patients__patient_alias__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveRepeatPositivePatient"];
                 };
             };
             /** @description Validation Error */

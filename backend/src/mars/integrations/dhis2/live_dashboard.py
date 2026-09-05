@@ -23,6 +23,7 @@ from mars.core.settings import Settings
 from mars.integrations.dhis2.client import Dhis2Client, Dhis2Config
 from mars.integrations.dhis2.tracker.client import BoundedTrackerEventClient, TrackerClientConfig
 from mars.integrations.ports import RemoteDataValue, RemoteEvent, RemoteScope, iterate_pages
+from mars.services.live_dashboard import LiveDashboardConfigurationError
 
 
 def build_live_dashboard_runner(
@@ -37,6 +38,15 @@ def build_live_dashboard_runner(
         period_start: date,
         period_end: date,
     ) -> dict[str, Any]:
+        display_key = settings.patient_display_key
+        if display_key is None:
+            # Check before any Ministry endpoint is contacted. A missing local
+            # alias key must never cause authenticated reads whose results are
+            # then discarded.
+            raise LiveDashboardConfigurationError(
+                "Patient evidence requires MARS_PATIENT_DISPLAY_KEY. "
+                "Start MARS with the live launcher so a stable protected key is loaded."
+            )
         mapping = _load_mapping(mapping_path)
         mapping["_runtime_facilities"] = [dict(item) for item in facilities]
         facility_names = {
@@ -147,9 +157,6 @@ def build_live_dashboard_runner(
                 f"{len(facility_uids)} authorised facilities"
             )
 
-        display_key = settings.patient_display_key
-        if display_key is None:
-            raise RuntimeError("MARS_PATIENT_DISPLAY_KEY is required for live patient aliases")
         return _assemble(
             mapping,
             aggregate_values,
@@ -235,11 +242,21 @@ def _assemble(
         _normalise_option(item) for item in tracker_options["positive_malaria_results"]
     }
     positives_by_person: dict[str, list[RemoteEvent]] = defaultdict(list)
+    tests_by_person: dict[str, list[dict[str, Any]]] = defaultdict(list)
     tracker_reporting_facilities: set[str] = set()
     latest_tracker_update: datetime | None = None
     malaria_lab_events = 0
     positive_malaria_events = 0
+    unmapped_malaria_results = 0
+    # A page retry can repeat a source event. Count its latest revision once.
+    unique_events: dict[str, RemoteEvent] = {}
     for event in events:
+        previous = unique_events.get(event.remote_id)
+        if previous is None or (event.updated_at or event.occurred_at) >= (
+            previous.updated_at or previous.occurred_at
+        ):
+            unique_events[event.remote_id] = event
+    for event in unique_events.values():
         tracker_reporting_facilities.add(event.organisation_unit_remote_id)
         if event.updated_at and (
             latest_tracker_update is None or event.updated_at > latest_tracker_update
@@ -248,35 +265,66 @@ def _assemble(
         if _normalise_option(event.data_values.get(test_uid)) not in malaria_tests:
             continue
         malaria_lab_events += 1
-        if _normalise_option(event.data_values.get(result_uid)) in positive_results:
+        result_value = _normalise_option(event.data_values.get(result_uid))
+        positive = result_value in positive_results
+        negative = result_value == _normalise_option(
+            tracker_options.get("negative_result", "Negative")
+        )
+        if not positive and not negative:
+            unmapped_malaria_results += 1
+        tests_by_person[event.person_remote_id].append(
+            {
+                "occurred_on": event.occurred_at.date().isoformat(),
+                "facility_name": facility_names.get(
+                    event.organisation_unit_remote_id, "Authorised facility"
+                ),
+                "result": "positive" if positive else "negative" if negative else "unmapped",
+            }
+        )
+        if positive:
             positive_malaria_events += 1
             positives_by_person[event.person_remote_id].append(event)
 
+    if unmapped_malaria_results:
+        warnings = [
+            *warnings,
+            f"{unmapped_malaria_results} malaria-test events have missing or unmapped "
+            "results; recurrence counts may be incomplete",
+        ]
     patient_rows: list[dict[str, Any]] = []
+    positive_patient_rows: list[dict[str, Any]] = []
     repeat_positive_count = 0
     for person_uid, positive_events in positives_by_person.items():
-        positive_events.sort(key=lambda event: (event.occurred_at, event.remote_id))
-        if len(positive_events) < 2:
-            continue
-        repeat_positive_count += 1
+        # RDT and microscopy on one visit are two tests, not a recurrence.
+        parent_uid = mapping["tracker"].get("parent_event_data_element_uid")
+        visits: dict[str, RemoteEvent] = {}
+        for event in positive_events:
+            parent = event.data_values.get(parent_uid) if parent_uid else None
+            visit_key = parent or f"{event.organisation_unit_remote_id}:{event.occurred_at.date()}"
+            visits.setdefault(visit_key, event)
+        positive_events = sorted(
+            visits.values(), key=lambda event: (event.occurred_at, event.remote_id)
+        )
+        if len(positive_events) >= 2:
+            repeat_positive_count += 1
         first = positive_events[0]
         latest = positive_events[-1]
-        patient_rows.append(
-            {
-                "mars_patient_id": _patient_alias(display_key, person_uid),
-                "first_positive_on": first.occurred_at.date().isoformat(),
-                "latest_positive_on": latest.occurred_at.date().isoformat(),
-                "positive_encounter_count": len(positive_events),
-                "interval_days": (latest.occurred_at.date() - first.occurred_at.date()).days,
-                "facility_name": facility_names.get(
-                    latest.organisation_unit_remote_id, "Authorised facility"
-                ),
-                "cross_facility": len(
-                    {event.organisation_unit_remote_id for event in positive_events}
-                )
-                > 1,
-            }
-        )
+        row = {
+            "mars_patient_id": _patient_alias(display_key, person_uid),
+            "first_positive_on": first.occurred_at.date().isoformat(),
+            "latest_positive_on": latest.occurred_at.date().isoformat(),
+            "positive_encounter_count": len(positive_events),
+            "interval_days": (latest.occurred_at.date() - first.occurred_at.date()).days,
+            "facility_name": facility_names.get(
+                latest.organisation_unit_remote_id, "Authorised facility"
+            ),
+            "cross_facility": len({event.organisation_unit_remote_id for event in positive_events})
+            > 1,
+            "tests": sorted(tests_by_person[person_uid], key=lambda test: test["occurred_on"]),
+        }
+        positive_patient_rows.append(row)
+        if len(positive_events) >= 2:
+            patient_rows.append(row)
     patient_rows.sort(
         key=lambda row: (row["latest_positive_on"], row["positive_encounter_count"]),
         reverse=True,
@@ -329,6 +377,9 @@ def _assemble(
         facility_payload["parent_remote_id"] = (
             str(metadata.get("parent_id")) if metadata.get("parent_id") else None
         )
+        facility_payload["ancestor_names"] = [
+            str(name) for name in metadata.get("ancestor_names", []) if isinstance(name, str)
+        ]
 
     trend = _trend_points(elements, trend_values or unique_values)
     operational_alerts = _operational_alerts(facilities_payload, suspected, tested, confirmed)
@@ -340,7 +391,7 @@ def _assemble(
     has_tracker = bool(events)
     status = (
         "synchronized"
-        if has_aggregate and has_tracker
+        if has_aggregate and has_tracker and not warnings and not tracker_failed
         else "partial"
         if has_aggregate or has_tracker
         else "unavailable"
@@ -372,7 +423,9 @@ def _assemble(
             _kpi(
                 "ENC_REPEAT_POSITIVE_INPUT",
                 "Repeat-positive patients",
-                repeat_positive_count if has_tracker else None,
+                repeat_positive_count
+                if has_tracker and not tracker_failed and not unmapped_malaria_results
+                else None,
                 "eRegisters Tracker",
             ),
         ],
@@ -391,6 +444,9 @@ def _assemble(
         "trend": trend,
         "operational_alerts": operational_alerts,
         "repeat_positive_patients": patient_rows[:25],
+        "positive_patients": sorted(
+            positive_patient_rows, key=lambda row: row["latest_positive_on"], reverse=True
+        ),
         "warnings": warnings,
         "synthetic_data_used": False,
     }
@@ -522,7 +578,10 @@ def _trend_points(
         confirmed = counts.get(elements["confirmed_malaria"])
         positivity = (
             round(100 * confirmed / tested, 1)
-            if confirmed is not None and tested is not None and 0 < confirmed <= tested
+            if confirmed is not None
+            and tested is not None
+            and tested > 0
+            and 0 <= confirmed <= tested
             else None
         )
         result.append(

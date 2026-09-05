@@ -132,6 +132,7 @@ def run_discovery(client: DiscoveryClient, *, origin_host: str) -> DiscoveryRepo
         pader_candidates=pader_candidates,
         scope_roots=_unique_units([*capture, *data_view, *tracker_search]),
     )
+    accessible_facilities = _with_ancestor_names(accessible_facilities, all_units)
     facility_scope_sets = {
         "capture": _accessible_pader_facilities(
             hierarchy=hierarchy,
@@ -356,6 +357,24 @@ def _accessible_pader_facilities(
         if below_pader and inside_scope:
             facilities.append(unit)
     return sorted(facilities, key=lambda unit: ((unit.name or "").casefold(), unit.id))
+
+
+def _with_ancestor_names(
+    facilities: list[OrganisationUnitRecord],
+    all_units: list[OrganisationUnitRecord],
+) -> list[OrganisationUnitRecord]:
+    """Attach public hierarchy labels so GeoJSON areas can be joined without GPS."""
+    by_id = {unit.id: unit for unit in all_units}
+    enriched: list[OrganisationUnitRecord] = []
+    for facility in facilities:
+        path_ids = [part for part in (facility.path or "").split("/") if part]
+        names = [
+            unit.name
+            for uid in path_ids
+            if uid != facility.id and (unit := by_id.get(uid)) is not None and unit.name
+        ]
+        enriched.append(facility.model_copy(update={"ancestor_names": names}))
+    return enriched
 
 
 def _unit_is_within(unit: OrganisationUnitRecord, root: OrganisationUnitRecord) -> bool:

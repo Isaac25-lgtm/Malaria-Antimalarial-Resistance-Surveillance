@@ -8,7 +8,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api, type Schemas } from "../../api/client";
 import { useAuth } from "../../auth/context";
-import { EmptyState, LoadingState } from "../../design-system/States";
+import { EmptyState, LoadingState, UnavailableState } from "../../design-system/States";
+import { useLiveDashboard } from "./useLiveDashboard";
 import { PeriodControl } from "../../design-system/Surveillance";
 import { monthPeriod, type PeriodSelection } from "../../design-system/period";
 
@@ -17,27 +18,16 @@ function usePeriod(): [PeriodSelection, (period: PeriodSelection) => void] {
   return [period, setPeriod];
 }
 
-function useLiveDashboard() {
-  const { user } = useAuth();
-  const liveMode = user?.source_status?.mode === "live";
-  const query = useQuery({
-    queryKey: ["live", "dashboard"],
-    queryFn: api.latestLiveDashboard,
-    enabled: liveMode,
-    retry: false,
-  });
-  return { liveMode, ...query };
-}
-
 export function SignalsListView() {
   const [period, setPeriod] = usePeriod();
-  const live = useLiveDashboard();
+  const live = useLiveDashboard(period);
   const query = useQuery({
     queryKey: ["signals", period],
     queryFn: () =>
       api.signals({ period_from: period.start, period_to: period.end, active_only: true, limit: 50 }),
     enabled: !live.liveMode,
   });
+  if (live.error || query.error) return <UnavailableState title="Signals could not be loaded" description={(live.error ?? query.error)?.message ?? "Request failed"} onRetry={live.refresh} />;
   return (
     <ListPage
       title="Signals"
@@ -74,13 +64,14 @@ export function SignalsListView() {
 
 export function CommoditiesView() {
   const [period, setPeriod] = usePeriod();
-  const live = useLiveDashboard();
+  const live = useLiveDashboard(period);
   const query = useQuery({
     queryKey: ["commodities", period],
     queryFn: () =>
       api.commodityAlerts({ period_from: period.start, period_to: period.end, limit: 50 }),
     enabled: !live.liveMode,
   });
+  if (live.error || query.error) return <UnavailableState title="Commodities could not be loaded" description={(live.error ?? query.error)?.message ?? "Request failed"} onRetry={live.refresh} />;
   return (
     <ListPage
       title="Commodities"
@@ -105,13 +96,14 @@ export function CommoditiesView() {
 
 export function AnalyticsView() {
   const [period, setPeriod] = usePeriod();
-  const live = useLiveDashboard();
+  const live = useLiveDashboard(period);
   const query = useQuery({
     queryKey: ["analytics", "testing", period],
     queryFn: () =>
       api.analyticalResults("testing", { period_from: period.start, period_to: period.end, limit: 25 }),
     enabled: !live.liveMode,
   });
+  if (live.error || query.error) return <UnavailableState title="Analytics could not be loaded" description={(live.error ?? query.error)?.message ?? "Request failed"} onRetry={live.refresh} />;
   return (
     <ListPage
       title="Analytics"
@@ -129,12 +121,13 @@ export function AnalyticsView() {
 
 export function DataQualityView() {
   const [period, setPeriod] = usePeriod();
-  const live = useLiveDashboard();
+  const live = useLiveDashboard(period);
   const query = useQuery({
     queryKey: ["provenance", period],
     queryFn: () => api.surveillanceProvenance({ period_start: period.start, period_end: period.end }),
     enabled: !live.liveMode,
   });
+  if (live.error || query.error) return <UnavailableState title="Data quality could not be loaded" description={(live.error ?? query.error)?.message ?? "Request failed"} onRetry={live.refresh} />;
   return (
     <div className="page">
       <header className="page__header">
@@ -180,10 +173,12 @@ function number(value: number | null | undefined): string {
 }
 
 export function ReportsView() {
+  const { user } = useAuth();
+  const liveMode = user?.source_status?.mode === "live";
   const [period, setPeriod] = usePeriod();
   const range = useMemo(() => period, [period]);
   const href =
-    `/api/v1/reports/national_brief/export.csv` +
+    (liveMode ? `/api/v1/live/dashboard/export.csv` : `/api/v1/reports/${user?.has_national_scope ? "national_brief" : "district_brief"}/export.csv`) +
     `?period_start=${range.start}&period_end=${range.end}`;
   return (
     <div className="page">
@@ -196,7 +191,7 @@ export function ReportsView() {
         browser would carry none of that.
       </p>
       <a className="button" href={href} download>
-        Download national brief (CSV)
+        Download {user?.has_national_scope ? "national" : "district"} brief (CSV)
       </a>
     </div>
   );

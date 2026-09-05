@@ -382,6 +382,8 @@ describe("operational overview", () => {
     expect(await screen.findByRole("heading", { name: "Pader District Map" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Refresh metadata" })).toBeInTheDocument();
     expect(api.mapContext).not.toHaveBeenCalled();
+    expect(api.mapFeatures).toHaveBeenCalledWith({ level: "district" });
+    await userEvent.selectOptions(screen.getByLabelText("Boundary layer"), "subcounty");
     expect(api.mapFeatures).toHaveBeenCalledWith({
       level: "subcounty",
       within_id: PADER,

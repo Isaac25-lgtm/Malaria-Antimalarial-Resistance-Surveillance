@@ -131,6 +131,9 @@ let accessToken: string | null = null;
 /** Non-secret CSRF value for cookie sessions. Memory only. */
 let csrfToken: string | null = null;
 
+/** Session expiry must clear every cached private view, even on a background request. */
+export const SESSION_EXPIRED_EVENT = "mars:session-expired";
+
 export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
@@ -145,6 +148,18 @@ export function setCsrfToken(token: string | null): void {
 
 export function getCsrfToken(): string | null {
   return csrfToken;
+}
+
+/** Fail visibly when an old API is still running instead of fabricating empty lists. */
+export function validateLiveSnapshot(snapshot: Schemas["LiveDashboardSnapshot"] | null) {
+  if (snapshot && (
+    !Array.isArray(snapshot.trend) || !Array.isArray(snapshot.operational_alerts) || !Array.isArray(snapshot.positive_patients) ||
+    typeof snapshot.positive_malaria_event_count !== "number"
+  )) {
+    throw new ApiError(503, null,
+      "The running API is older than this dashboard. Restart MARS with scripts/start-mars-live.ps1 -Restart, then sign in again.");
+  }
+  return snapshot;
 }
 
 interface RequestOptions {
@@ -212,6 +227,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     );
   }
 
+  if (response.status === 401 && path !== "/auth/login" && path !== "/auth/session") {
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  }
   if (response.status === 204) {
     return undefined as T;
   }
@@ -277,14 +295,15 @@ export const api = {
       { method: "POST" },
     ),
 
-  latestLiveDashboard: () =>
-    request<Schemas["LiveDashboardSnapshot"] | null>("/live/dashboard"),
+  latestLiveDashboard: (range?: { period_start: string; period_end: string }) =>
+    request<Schemas["LiveDashboardSnapshot"] | null>("/live/dashboard", { query: range })
+      .then(validateLiveSnapshot),
 
   synchronizeLiveDashboard: (body: { period_start: string; period_end: string }) =>
     request<Schemas["LiveDashboardSnapshot"]>("/live/dashboard/synchronize", {
       method: "POST",
       body,
-    }),
+    }).then((snapshot) => validateLiveSnapshot(snapshot)!),
 
   logout: () => request<void>("/auth/logout", { method: "POST" }),
 
@@ -424,6 +443,8 @@ export const api = {
     period_to?: string;
     limit?: number;
   }) => request<Schemas["PatientOfInterestSummary"][]>("/patients", { query }),
+
+  livePatientEvidence: (alias: string) => request<Schemas["LiveRepeatPositivePatient"]>(`/live/patients/${encodeURIComponent(alias)}`),
 
   patientTimeline: (patientReferenceId: string) =>
     request<Schemas["PatientTimeline"]>(

@@ -158,6 +158,11 @@ def _tracker_facilities(facilities: Any, tracker_scope: Any) -> list[dict[str, A
                     "path": str(facility.get("path")) if facility.get("path") else None,
                     "latitude": facility.get("latitude"),
                     "longitude": facility.get("longitude"),
+                    "ancestor_names": [
+                        str(name)
+                        for name in facility.get("ancestor_names", [])
+                        if isinstance(name, str)
+                    ],
                 }
             )
     return sorted(result, key=lambda item: ((item["name"] or "").casefold(), item["id"]))

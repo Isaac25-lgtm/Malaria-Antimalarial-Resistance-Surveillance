@@ -11,6 +11,7 @@ import { GeographyCanvas } from "../src/features/map/GeographyCanvas";
 import { SvgBoundaryMap } from "../src/features/map/SvgBoundaryMap";
 import {
   decorateCollection,
+  confirmedByArea,
   featurePathD,
   fillClassOf,
   overlayProps,
@@ -61,6 +62,19 @@ function collection(): MapCollection {
 }
 
 describe("decorateCollection", () => {
+  it("joins a facility without coordinates to its GeoJSON area by verified ancestor name", () => {
+    const result = confirmedByArea(collection(), [{
+      uid: "facility-1",
+      name: "Pader HC III",
+      confirmed_malaria: 7,
+      tested_for_malaria: 10,
+      aggregate_reported: true,
+      tracker_reported: true,
+      ancestor_names: ["Pader Subcounty"],
+    }]);
+    expect(result.counts.get(PADER)).toBe(7);
+    expect(result.assignedFacilities.has("facility-1")).toBe(true);
+  });
   it("keeps every district when analytics are unconfigured", () => {
     const decorated = decorateCollection(collection(), {
       signalPriorityByUnitId: new Map(),

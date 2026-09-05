@@ -7,8 +7,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { ApiError, api, getAccessToken, setAccessToken, setCsrfToken } from "../api/client";
+import { ApiError, api, getAccessToken, setAccessToken, setCsrfToken, SESSION_EXPIRED_EVENT } from "../api/client";
 import {
   AuthContext,
   SENSITIVITY_ORDER,
@@ -34,9 +35,22 @@ function profileFromSession(
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<AuthStatus>("initialising");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+
+  useEffect(() => {
+    const expire = () => {
+      setAccessToken(null);
+      setCsrfToken(null);
+      setUser(null);
+      setStatus("anonymous");
+      queryClient.clear();
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, expire);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expire);
+  }, [queryClient]);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,15 +93,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInAsDevelopmentUser = useCallback(async (username: string) => {
+    queryClient.clear();
     setError(null);
     const session = await api.developmentLogin(username);
     setAccessToken(session.access_token);
     const profile = await api.currentUser();
     setUser(profile);
     setStatus("authenticated");
-  }, []);
+  }, [queryClient]);
 
   const signInWithEregisters = useCallback(async (username: string, password: string) => {
+    queryClient.clear();
     setError(null);
     const session = await api.liveLogin(username, password);
     setCsrfToken(session.csrf_token ?? null);
@@ -97,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(profile);
     setStatus("authenticated");
-  }, []);
+  }, [queryClient]);
 
   const signOut = useCallback(async () => {
     try {
@@ -107,8 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCsrfToken(null);
       setUser(null);
       setStatus("anonymous");
+      queryClient.clear();
     }
-  }, []);
+  }, [queryClient]);
 
   const can = useCallback(
     (permission: string) => user?.permissions.includes(permission) ?? false,

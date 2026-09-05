@@ -17,11 +17,18 @@ import { PeriodControl } from "../../design-system/Surveillance";
 import { formatMoment, monthPeriod, type PeriodSelection } from "../../design-system/period";
 import { useAuth } from "../../auth/context";
 import { GeographyCanvas } from "../map/GeographyCanvas";
-import { boundsOf, decorateCollection, isInScope } from "../map/geography";
+import { boundsOf, confirmedByArea, decorateCollection, isInScope, overlayProps } from "../map/geography";
 import { PatientTable } from "../patients/PatientSurveillanceView";
 import "./command-centre.css";
 
 type Snapshot = Schemas["OverviewSnapshot"];
+
+function districtCountOverlay(districtId: string | null, snapshot: Schemas["LiveDashboardSnapshot"] | null | undefined): Map<string, number> {
+  const confirmed = snapshot?.kpis.find((kpi) => kpi.code === "ENC_CONFIRMED_MALARIA");
+  return districtId && confirmed?.status === "available" && confirmed.numerator != null
+    ? new Map<string, number>([[districtId, confirmed.numerator]])
+    : new Map<string, number>();
+}
 
 export function CommandCentreView() {
   const { user, can } = useAuth();
@@ -29,6 +36,7 @@ export function CommandCentreView() {
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState<PeriodSelection>(() => monthPeriod(-1));
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const [boundaryLevel, setBoundaryLevel] = useState<"district" | "subcounty">("district");
   const discoveryRequested = useRef(false);
   const synchronizationRequested = useRef<string | null>(null);
   const range = useMemo(
@@ -70,15 +78,16 @@ export function CommandCentreView() {
     }
   }, [discovery.data, discovery.isFetched, liveMode, runDiscovery]);
   const liveDashboard = useQuery({
-    queryKey: ["live", "dashboard"],
-    queryFn: api.latestLiveDashboard,
+    queryKey: ["live", "dashboard", range],
+    queryFn: () => api.latestLiveDashboard(range),
     enabled: liveMode,
     retry: false,
   });
   const synchronizeLive = useMutation({
     mutationFn: () => api.synchronizeLiveDashboard(range),
     onSuccess: (result) => {
-      queryClient.setQueryData(["live", "dashboard"], result);
+      queryClient.setQueryData(["live", "dashboard", range], result);
+      queryClient.setQueryData(["live", "dashboard", "latest"], result);
     },
   });
 
@@ -135,12 +144,12 @@ export function CommandCentreView() {
     queryKey: nationalMap
       ? ["map", "context", "district"]
       : singleDistrictId
-        ? ["map", "features", "subcounty", singleDistrictId]
+        ? ["map", "features", boundaryLevel, singleDistrictId]
         : ["map", "features", "district"],
     queryFn: () => {
       if (nationalMap) return api.mapContext({ level: "district" });
-      if (singleDistrictId) {
-        return api.mapFeatures({ level: "subcounty", within_id: singleDistrictId });
+      if (singleDistrictId && boundaryLevel === "subcounty") {
+        return api.mapFeatures({ level: boundaryLevel, within_id: singleDistrictId });
       }
       return api.mapFeatures({ level: "district" });
     },
@@ -160,6 +169,7 @@ export function CommandCentreView() {
   }
 
   const snap = overview.data;
+  const subcountyOverlay = confirmedByArea(features.data, liveDashboard.data?.facilities);
   const collection = features.data
     ? decorateCollection(features.data, {
         signalPriorityByUnitId: priorityByUnit(snap),
@@ -167,6 +177,10 @@ export function CommandCentreView() {
         // contains the district UUID, not every authorised descendant UUID, so
         // a second UUID-membership check would incorrectly grey every subcounty.
         inScopeUnitIds: null,
+        liveCounts: liveMode,
+        confirmedByUnitId: boundaryLevel === "subcounty"
+          ? subcountyOverlay.counts
+          : districtCountOverlay(singleDistrictId, liveDashboard.data),
       })
     : null;
 
@@ -198,10 +212,10 @@ export function CommandCentreView() {
       </header>
 
       <p className={`overview__mode overview__mode--${snap?.data_mode ?? "unavailable"}`} role="status">
-        {modeLine(snap, user, liveDashboard.data, synchronizeLive.isPending)}
+        {synchronizeLive.isError ? "Refresh failed — showing the last retrieved snapshot" : modeLine(snap, user, liveDashboard.data, synchronizeLive.isPending)}
       </p>
 
-      {liveMode && user?.data_readiness?.malaria_metadata !== "ready" ? (
+      {liveMode ? (
         <LiveDiscoveryBar
           result={discovery.data}
           loading={discovery.isPending || runDiscovery.isPending}
@@ -213,6 +227,9 @@ export function CommandCentreView() {
           onSynchronize={() => synchronizeLive.mutate()}
         />
       ) : null}
+
+      {liveDashboard.error ? <UnavailableState title="Live data could not be loaded" description={liveDashboard.error.message} /> : null}
+      {liveDashboard.data?.warnings.length ? <div className="notice notice--warning" role="status">{liveDashboard.data.warnings.join(". ")}</div> : null}
 
       <section aria-labelledby="kpi-heading">
         <h2 id="kpi-heading" className="visually-hidden">
@@ -253,6 +270,14 @@ export function CommandCentreView() {
                   : "Boundaries inside the authorised scope. Surveillance values stay scoped."}
               </p>
             </div>
+            {singleDistrictId ? (
+              <label className="label">Boundary layer
+                <select className="period-control__select" value={boundaryLevel} onChange={(event) => { setBoundaryLevel(event.target.value as "district" | "subcounty"); setSelectedUnitId(null); }}>
+                  <option value="district">District</option>
+                  <option value="subcounty">Subcounties</option>
+                </select>
+              </label>
+            ) : null}
           </div>
           <div className="overview__map-canvas">
             {features.isPending ? (
@@ -270,10 +295,10 @@ export function CommandCentreView() {
                   const feature = collection.features.find((item) => item.properties.unit_id === unitId);
                   if (!feature || !isInScope(feature)) return;
                   setSelectedUnitId(unitId);
-                  void navigate(`/workspaces/districts/${unitId}`);
+                  if (!liveMode && feature.properties.level === "district") void navigate(`/workspaces/districts/${unitId}`);
                 }}
                 onHover={() => undefined}
-                label="Uganda districts. Colour is a signal overlay on administrative geography."
+                label={liveMode ? "Authorised district and subcounty boundaries from supplied GeoJSON. Blue means reported totals; grey means no linked area total." : "Uganda districts by surveillance signal."}
                 forceSvg={liveMode}
                 facilities={liveDashboard.data?.facilities ?? []}
               />
@@ -283,11 +308,19 @@ export function CommandCentreView() {
               </div>
             )}
           </div>
+          {liveMode ? <div className="panel__body">
+            <p>Boundaries: supplied Uganda district and subcounty GeoJSON. No facility coordinates are invented.</p>
+            {boundaryLevel === "subcounty" ? <p>Facility totals are assigned only where the eRegisters ancestor label exactly matches a supplied GeoJSON subcounty. Unmatched values remain in district totals.</p> : null}
+            {liveDashboard.data ? <p>{liveDashboard.data.facilities.filter((facility) => facility.latitude == null || facility.longitude == null).length} of {liveDashboard.data.facilities.length} facilities have no usable coordinate pair. Their reported figures remain included in district totals and the facility table.</p> : null}
+            {boundaryLevel === "subcounty" && liveDashboard.data ? <p>{subcountyOverlay.assignedFacilities.size} of {liveDashboard.data.facilities.filter((facility) => facility.confirmed_malaria != null).length} reporting facilities were linked to a GeoJSON subcounty by verified hierarchy metadata.</p> : null}
+            {collection?.features.filter((feature) => feature.properties.unit_id === selectedUnitId).map((feature) => <p key={feature.properties.unit_id}><strong>{feature.properties.name}</strong>: {typeof overlayProps(feature).confirmed_count === "number" ? `${Number(overlayProps(feature).confirmed_count).toLocaleString()} reported confirmed malaria cases in the selected period.` : "No verified area-level total available."}</p>)}
+          </div> : null}
           {liveMode ? (
             <ul className="overview__legend">
               <li><span className="map-dot map-dot--reporting" /> Reporting facility</li>
               <li><span className="map-dot map-dot--stockout" /> Stock-out reported</li>
-              <li><span className="swatch swatch--none" /> Authorised Pader boundary</li>
+              <li><span className="swatch" style={{ backgroundColor: "#93c5e8" }} /> Reported area total (not a risk class)</li>
+              <li><span className="swatch swatch--insufficient" /> No linked area total</li>
             </ul>
           ) : (
             <ul className="overview__legend">
@@ -381,7 +414,7 @@ export function CommandCentreView() {
               )
             : "Not yet run"}
         </span>
-        <span>Last updated {formatMoment(snap?.provenance.analytics_refreshed_at ?? null)}</span>
+        <span>{liveMode ? `Source updated: ${liveDashboard.data?.source_updated_at ? formatMoment(liveDashboard.data.source_updated_at) : "not supplied"}` : `Last updated ${formatMoment(snap?.provenance.analytics_refreshed_at ?? null)}`}</span>
         <span className={`freshness freshness--${snap?.data_mode ?? "unavailable"}`}>
           {sourceFreshness(snap, user, liveDashboard.data)}
         </span>
@@ -657,7 +690,7 @@ function LiveFacilityPanel({ snapshot }: { snapshot: Schemas["LiveDashboardSnaps
               <th>Facility</th>
               <th>Confirmed</th>
               <th>Tested</th>
-              <th>Stock-out days</th>
+              <th>Stock-out commodity-days (sum)</th>
               <th>Tracker</th>
             </tr>
           </thead>

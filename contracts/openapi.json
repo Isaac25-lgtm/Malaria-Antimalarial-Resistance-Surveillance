@@ -3185,6 +3185,13 @@
             ],
             "title": "Al Days Out Of Stock"
           },
+          "ancestor_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ancestor Names",
+            "type": "array"
+          },
           "artesunate_days_out_of_stock": {
             "anyOf": [
               {
@@ -3417,6 +3424,13 @@
           "positive_malaria_event_count": {
             "title": "Positive Malaria Event Count",
             "type": "integer"
+          },
+          "positive_patients": {
+            "items": {
+              "$ref": "#/components/schemas/LiveRepeatPositivePatient"
+            },
+            "title": "Positive Patients",
+            "type": "array"
           },
           "repeat_positive_patients": {
             "items": {
@@ -3815,6 +3829,35 @@
         "title": "LiveOperationalAlert",
         "type": "object"
       },
+      "LivePatientTest": {
+        "properties": {
+          "facility_name": {
+            "title": "Facility Name",
+            "type": "string"
+          },
+          "occurred_on": {
+            "format": "date",
+            "title": "Occurred On",
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "positive",
+              "negative",
+              "unmapped"
+            ],
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_on",
+          "facility_name",
+          "result"
+        ],
+        "title": "LivePatientTest",
+        "type": "object"
+      },
       "LiveRepeatPositivePatient": {
         "description": "Pseudonymous evidence only; the source tracked-entity UID is excluded.",
         "properties": {
@@ -3847,6 +3890,13 @@
           "positive_encounter_count": {
             "title": "Positive Encounter Count",
             "type": "integer"
+          },
+          "tests": {
+            "items": {
+              "$ref": "#/components/schemas/LivePatientTest"
+            },
+            "title": "Tests",
+            "type": "array"
           }
         },
         "required": [
@@ -10145,6 +10195,42 @@
       "get": {
         "description": "Return only this session's last real source snapshot.",
         "operationId": "latest_live_dashboard_api_v1_live_dashboard_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period End"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -10163,6 +10249,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -10171,6 +10267,57 @@
           }
         ],
         "summary": "Latest Live Dashboard",
+        "tags": [
+          "live data"
+        ]
+      }
+    },
+    "/api/v1/live/dashboard/export.csv": {
+      "get": {
+        "operationId": "export_live_dashboard_api_v1_live_dashboard_export_csv_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Period End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Export Live Dashboard",
         "tags": [
           "live data"
         ]
@@ -10218,6 +10365,53 @@
           }
         ],
         "summary": "Synchronize Live Dashboard",
+        "tags": [
+          "live data"
+        ]
+      }
+    },
+    "/api/v1/live/patients/{patient_alias}": {
+      "get": {
+        "operationId": "live_patient_evidence_api_v1_live_patients__patient_alias__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_alias",
+            "required": true,
+            "schema": {
+              "title": "Patient Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveRepeatPositivePatient"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Live Patient Evidence",
         "tags": [
           "live data"
         ]

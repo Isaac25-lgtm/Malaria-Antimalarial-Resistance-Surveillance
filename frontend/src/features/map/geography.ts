@@ -73,6 +73,9 @@ export function decorateCollection(
     signalPriorityByUnitId: Map<string, string>;
     /** Null means national (every district is in scope unless the feature says otherwise). */
     inScopeUnitIds: Set<string> | null;
+    /** Observed counts keyed by verified local geography UUID, never by proximity. */
+    confirmedByUnitId?: Map<string, number>;
+    liveCounts?: boolean;
   },
 ): MapCollection {
   const scope = options.inScopeUnitIds;
@@ -82,11 +85,12 @@ export function decorateCollection(
       const unitId = feature.properties.unit_id;
       const outside = !isInScope(feature, scope);
       const priority = outside ? undefined : options.signalPriorityByUnitId.get(unitId);
+      const confirmed = outside ? undefined : options.confirmedByUnitId?.get(unitId);
       const fillClass: FillClass = outside
         ? "outside"
         : priority && PRIORITY_RANK.includes(priority)
           ? (priority as FillClass)
-          : "none";
+          : options.liveCounts ? "nodata" : "none";
       return {
         ...feature,
         id: unitId,
@@ -94,10 +98,44 @@ export function decorateCollection(
           ...feature.properties,
           fill_class: fillClass,
           in_scope: !outside,
+          confirmed_count: confirmed,
         } as unknown as MapCollection["features"][number]["properties"],
       };
     }),
   };
+}
+
+function canonicalAreaName(value: string): string {
+  return value
+    .toLocaleUpperCase("en")
+    .replace(/SUBCOUNTY/g, "SUB COUNTY")
+    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/ SUB COUNTY$/, "")
+    .trim();
+}
+
+/** Join facility aggregates to supplied GeoJSON by a verified DHIS2 ancestor label. */
+export function confirmedByArea(
+  collection: MapCollection | undefined,
+  facilities: Schemas["LiveDashboardFacility"][] | undefined,
+): { counts: Map<string, number>; assignedFacilities: Set<string> } {
+  const counts = new Map<string, number>();
+  const assignedFacilities = new Set<string>();
+  if (!collection || !facilities) return { counts, assignedFacilities };
+  const featuresByName = new Map(
+    collection.features.map((feature) => [canonicalAreaName(feature.properties.name), feature]),
+  );
+  for (const facility of facilities) {
+    if (facility.confirmed_malaria == null) continue;
+    const feature = (facility.ancestor_names ?? [])
+      .map((name) => featuresByName.get(canonicalAreaName(name)))
+      .find((candidate) => candidate !== undefined);
+    if (!feature) continue;
+    const unitId = feature.properties.unit_id;
+    counts.set(unitId, (counts.get(unitId) ?? 0) + facility.confirmed_malaria);
+    assignedFacilities.add(facility.uid);
+  }
+  return { counts, assignedFacilities };
 }
 
 export function overlayProps(feature: MapCollection["features"][number]): Record<string, unknown> {
@@ -163,8 +201,11 @@ export function project(
   const pad = 8;
   const innerW = width - pad * 2;
   const innerH = height - pad * 2;
-  const x = pad + ((lon - west) / dx) * innerW;
-  const y = pad + ((north - lat) / dy) * innerH;
+  // Preserve geographic proportions instead of stretching to the panel dimensions.
+  const longitudeScale = Math.cos(((south + north) / 2) * Math.PI / 180);
+  const scale = Math.min(innerW / (dx * longitudeScale), innerH / dy);
+  const x = (width - dx * longitudeScale * scale) / 2 + (lon - west) * longitudeScale * scale;
+  const y = (height - dy * scale) / 2 + (north - lat) * scale;
   return [x, y];
 }
 

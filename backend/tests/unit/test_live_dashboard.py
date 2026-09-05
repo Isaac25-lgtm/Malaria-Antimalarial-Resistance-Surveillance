@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from pathlib import Path
 
-from mars.integrations.dhis2.live_dashboard import _assemble
+from mars.core.settings import Environment, Settings
+from mars.integrations.dhis2.live_dashboard import _assemble, build_live_dashboard_runner
 from mars.integrations.ports import RemoteDataValue, RemoteEvent
 from mars.security.live_session import InMemoryCredentialHolder
-from mars.services.live_dashboard import LiveDashboardError, LiveDashboardService
+from mars.services.live_dashboard import (
+    LiveDashboardConfigurationError,
+    LiveDashboardError,
+    LiveDashboardService,
+    snapshot_csv,
+)
 
 
 def _mapping() -> dict[str, object]:
@@ -31,6 +38,25 @@ def _mapping() -> dict[str, object]:
             },
         },
     }
+
+
+def test_missing_patient_display_key_fails_before_mapping_or_remote_reads() -> None:
+    settings = Settings(
+        environment=Environment.LOCAL,
+        auth_mode="live",
+        database_url="postgresql+psycopg://mars:test@localhost:5432/mars_live",
+        dev_auth_enabled=False,
+        demo_mode_enabled=False,
+        dhis2_login_base_url="https://dhis2.example.org",
+    )
+    runner = build_live_dashboard_runner(settings, project_root=Path("unused-before-key-check"))
+
+    try:
+        runner("officer", "secret", [{"id": "facility1"}], date(2026, 8, 1), date(2026, 8, 31))
+    except LiveDashboardConfigurationError as error:
+        assert "MARS_PATIENT_DISPLAY_KEY" in str(error)
+    else:
+        raise AssertionError("missing patient display key did not fail closed")
 
 
 def test_assembles_real_values_and_never_exposes_remote_patient_uid() -> None:
@@ -174,3 +200,124 @@ def test_live_service_refuses_unbounded_or_unscoped_reads() -> None:
         assert "1 to 62 days" in str(error)
     else:  # pragma: no cover - assertion guard
         raise AssertionError("unbounded live read was accepted")
+
+
+def test_partial_tracker_cannot_claim_complete_sync_or_zero_recurrence() -> None:
+    result = _assemble(
+        _mapping(),
+        [RemoteDataValue("confirmed", "f1", "202608", "1")],
+        [
+            RemoteEvent(
+                remote_id="e1",
+                person_remote_id="p1",
+                programme_remote_id="p",
+                programme_stage_remote_id="lab",
+                organisation_unit_remote_id="f1",
+                occurred_at=datetime(2026, 8, 1, tzinfo=UTC),
+                updated_at=None,
+                status="COMPLETED",
+                data_values={"test_type": "Malaria Test RDT", "result": "Negative"},
+            )
+        ],
+        {"f1": "Facility", "f2": "Unavailable facility"},
+        date(2026, 8, 1),
+        date(2026, 8, 31),
+        b"test",
+        [],
+        ["f2"],
+    )
+    assert result["status"] == "partial"
+    assert (
+        next(k for k in result["kpis"] if k["code"] == "ENC_REPEAT_POSITIVE_INPUT")["value"] is None
+    )
+
+
+def test_two_tests_on_same_visit_are_not_repeat_positive_encounters() -> None:
+    mapping = _mapping()
+    mapping["tracker"]["parent_event_data_element_uid"] = "visit"  # type: ignore[index]
+    events = [
+        RemoteEvent(
+            remote_id=f"e{i}",
+            person_remote_id="person",
+            programme_remote_id="p",
+            programme_stage_remote_id="lab",
+            organisation_unit_remote_id="f1",
+            occurred_at=datetime(2026, 8, 2, 8 + i, tzinfo=UTC),
+            updated_at=None,
+            status="COMPLETED",
+            data_values={
+                "visit": "one-visit",
+                "test_type": "Malaria Test RDT",
+                "result": "Malaria: Positive - Plasmodium falciparum",
+            },
+        )
+        for i in range(2)
+    ]
+    result = _assemble(
+        mapping,
+        [],
+        events + events,
+        {"f1": "Facility"},
+        date(2026, 8, 1),
+        date(2026, 8, 31),
+        b"test",
+        [],
+        [],
+    )
+    assert result["positive_malaria_event_count"] == 2
+    assert result["repeat_positive_patients"] == []
+    assert len(result["positive_patients"]) == 1
+    assert len(result["positive_patients"][0]["tests"]) == 2
+    assert "one-visit" not in str(result)
+
+
+def test_zero_positivity_is_a_valid_trend_value() -> None:
+    from mars.integrations.dhis2.live_dashboard import _trend_points
+
+    result = _trend_points(
+        _mapping()["aggregate_data_elements"],
+        [  # type: ignore[arg-type]
+            RemoteDataValue("tested", "f1", "202608", "10"),
+            RemoteDataValue("confirmed", "f1", "202608", "0"),
+        ],
+    )
+    assert result[0]["positivity_rate"] == 0
+
+
+def test_snapshots_are_period_and_session_scoped_and_defensively_copied() -> None:
+    credentials = InMemoryCredentialHolder()
+    credentials.store("session", "user", "test-only")
+    service = LiveDashboardService(
+        credentials, lambda *_args: {"synthetic_data_used": False, "items": [1]}
+    )
+    result = service.synchronize(
+        "session",
+        facilities=[{"id": "f1"}],
+        period_start=date(2026, 8, 1),
+        period_end=date(2026, 8, 31),
+    )
+    result["items"].append(2)
+    assert service.latest("session")["items"] == [1]  # type: ignore[index]
+    assert (
+        service.latest("session", period_start=date(2026, 7, 1), period_end=date(2026, 7, 31))
+        is None
+    )
+    assert service.latest("other-session") is None
+    service.drop("session")
+    assert (
+        service.latest("session", period_start=date(2026, 8, 1), period_end=date(2026, 8, 31))
+        is None
+    )
+
+
+def test_export_escapes_formula_cells_and_excludes_patient_rows() -> None:
+    result = snapshot_csv(
+        {
+            "facilities": [{"name": "=malicious()", "confirmed_malaria": 5}],
+            "positive_patients": [{"mars_patient_id": "PRIVATE-ALIAS"}],
+            "warnings": ["Partial coverage"],
+        }
+    )
+    assert "'=malicious()" in result
+    assert "PRIVATE-ALIAS" not in result
+    assert "Partial coverage" in result

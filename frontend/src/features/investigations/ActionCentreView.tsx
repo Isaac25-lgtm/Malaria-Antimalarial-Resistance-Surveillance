@@ -37,8 +37,8 @@ export function ActionCentreView() {
   const liveMode = user?.source_status?.mode === "live";
   const [active, setActive] = useState<QueueName>("new");
   const live = useQuery({
-    queryKey: ["live", "dashboard"],
-    queryFn: api.latestLiveDashboard,
+    queryKey: ["live", "dashboard", "latest"],
+    queryFn: () => api.latestLiveDashboard(),
     enabled: liveMode,
     retry: false,
   });

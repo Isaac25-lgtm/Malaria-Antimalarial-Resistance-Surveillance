@@ -11,6 +11,9 @@
 secrets/
 .secrets/
 .local-secrets/
+# Windows DPAPI-protected key blobs. Machine- and account-bound; never portable,
+# never shareable, and never a repository artefact.
+*.dpapi
 
 # ===========================================================================
 # Supplied geography source files
@@ -77,6 +80,7 @@ env/
 
 # Test and type-check caches
 .pytest_cache/
+/backend/.pytest-work/
 .mypy_cache/
 .ruff_cache/
 .coverage

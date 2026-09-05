@@ -1069,6 +1069,13 @@ class LiveDashboardFacility(MarsModel):
     latitude: float | None = None
     longitude: float | None = None
     parent_remote_id: str | None = None
+    ancestor_names: list[str] = Field(default_factory=list)
+
+
+class LivePatientTest(MarsModel):
+    occurred_on: date
+    facility_name: str
+    result: Literal["positive", "negative", "unmapped"]
 
 
 class LiveRepeatPositivePatient(MarsModel):
@@ -1081,6 +1088,7 @@ class LiveRepeatPositivePatient(MarsModel):
     interval_days: int
     facility_name: str
     cross_facility: bool
+    tests: list[LivePatientTest] = Field(default_factory=list)
 
 
 class LiveCommodityAlerts(MarsModel):
@@ -1133,6 +1141,7 @@ class LiveDashboardSnapshot(MarsModel):
     trend: list[LiveDashboardTrendPoint]
     operational_alerts: list[LiveOperationalAlert]
     repeat_positive_patients: list[LiveRepeatPositivePatient]
+    positive_patients: list[LiveRepeatPositivePatient] = Field(default_factory=list)
     warnings: list[str]
     synthetic_data_used: Literal[False]
 
