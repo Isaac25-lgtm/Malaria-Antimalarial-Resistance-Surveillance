@@ -6,7 +6,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-import { api } from "../../api/client";
+import { api, type Schemas } from "../../api/client";
+import { useAuth } from "../../auth/context";
 import { EmptyState, LoadingState } from "../../design-system/States";
 import { PeriodControl } from "../../design-system/Surveillance";
 import { monthPeriod, type PeriodSelection } from "../../design-system/period";
@@ -16,24 +17,38 @@ function usePeriod(): [PeriodSelection, (period: PeriodSelection) => void] {
   return [period, setPeriod];
 }
 
+function useLiveDashboard() {
+  const { user } = useAuth();
+  const liveMode = user?.source_status?.mode === "live";
+  const query = useQuery({
+    queryKey: ["live", "dashboard"],
+    queryFn: api.latestLiveDashboard,
+    enabled: liveMode,
+    retry: false,
+  });
+  return { liveMode, ...query };
+}
+
 export function SignalsListView() {
   const [period, setPeriod] = usePeriod();
+  const live = useLiveDashboard();
   const query = useQuery({
     queryKey: ["signals", period],
     queryFn: () =>
       api.signals({ period_from: period.start, period_to: period.end, active_only: true, limit: 50 }),
+    enabled: !live.liveMode,
   });
   return (
     <ListPage
       title="Signals"
       period={period}
       onPeriod={setPeriod}
-      loading={query.isLoading}
-      empty={!query.data?.length}
+      loading={query.isLoading || live.isLoading}
+      empty={live.liveMode ? !(live.data?.operational_alerts ?? []).length : !query.data?.length}
       emptyTitle="No active signals"
       emptyDescription="An empty register is not a zero until the signal method is configured."
     >
-      <table className="table">
+      {live.liveMode && live.data ? <LiveIssueRows snapshot={live.data} /> : <table className="table">
         <thead>
           <tr>
             <th scope="col">Title</th>
@@ -52,69 +67,73 @@ export function SignalsListView() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table>}
     </ListPage>
   );
 }
 
 export function CommoditiesView() {
   const [period, setPeriod] = usePeriod();
+  const live = useLiveDashboard();
   const query = useQuery({
     queryKey: ["commodities", period],
     queryFn: () =>
       api.commodityAlerts({ period_from: period.start, period_to: period.end, limit: 50 }),
+    enabled: !live.liveMode,
   });
   return (
     <ListPage
       title="Commodities"
       period={period}
       onPeriod={setPeriod}
-      loading={query.isLoading}
-      empty={!query.data?.length}
+      loading={query.isLoading || live.isLoading}
+      empty={live.liveMode ? !(live.data?.operational_alerts ?? []).some((item) => item.kind === "commodity") : !query.data?.length}
       emptyTitle="No commodity alerts"
       emptyDescription="Commodity alerts stay separate from epidemiological signals."
     >
-      <ul>
+      {live.liveMode && live.data ? <LiveCommodityRows snapshot={live.data} /> : <ul>
         {(query.data ?? []).map((row) => (
           <li key={row.id}>
             {typeof row.details.commodity_label === "string" ? row.details.commodity_label : row.code}
             {typeof row.details.statement === "string" ? ` — ${row.details.statement}` : ""}
           </li>
         ))}
-      </ul>
+      </ul>}
     </ListPage>
   );
 }
 
 export function AnalyticsView() {
   const [period, setPeriod] = usePeriod();
+  const live = useLiveDashboard();
   const query = useQuery({
     queryKey: ["analytics", "testing", period],
     queryFn: () =>
       api.analyticalResults("testing", { period_from: period.start, period_to: period.end, limit: 25 }),
+    enabled: !live.liveMode,
   });
   return (
     <ListPage
       title="Analytics"
       period={period}
       onPeriod={setPeriod}
-      loading={query.isLoading}
-      empty={!query.data?.length}
+      loading={query.isLoading || live.isLoading}
+      empty={live.liveMode ? !(live.data?.trend ?? []).length : !query.data?.length}
       emptyTitle="No governed testing results"
       emptyDescription="This page lists server-computed records. It does not calculate rates."
     >
-      <p>
-        <Link to="/command-centre">Return to overview</Link>
-      </p>
+      {live.liveMode && live.data ? <LiveAnalyticsTable snapshot={live.data} /> : <p><Link to="/command-centre">Return to overview</Link></p>}
     </ListPage>
   );
 }
 
 export function DataQualityView() {
   const [period, setPeriod] = usePeriod();
+  const live = useLiveDashboard();
   const query = useQuery({
     queryKey: ["provenance", period],
     queryFn: () => api.surveillanceProvenance({ period_start: period.start, period_end: period.end }),
+    enabled: !live.liveMode,
   });
   return (
     <div className="page">
@@ -122,8 +141,10 @@ export function DataQualityView() {
         <h1>Data quality</h1>
         <PeriodControl period={period} onChange={setPeriod} />
       </header>
-      {query.isLoading ? <LoadingState label="Loading provenance" /> : null}
-      {query.data ? (
+      {query.isLoading || live.isLoading ? <LoadingState label="Loading provenance" /> : null}
+      {live.liveMode && live.data ? (
+        <LiveQualityDetails snapshot={live.data} />
+      ) : query.data ? (
         <dl>
           <dt>Indicators approved</dt>
           <dd>{query.data.indicators_approved}</dd>
@@ -135,6 +156,27 @@ export function DataQualityView() {
       ) : null}
     </div>
   );
+}
+
+function LiveIssueRows({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
+  return <table className="table"><thead><tr><th>Issue</th><th>Location</th><th>Status</th><th>Evidence</th></tr></thead><tbody>{(snapshot.operational_alerts ?? []).map((item) => <tr key={item.id}><th>{item.title}</th><td>{item.facility_name}</td><td>{item.status.replace("_", " ")}</td><td>{item.detail}</td></tr>)}</tbody></table>;
+}
+
+function LiveCommodityRows({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
+  const rows = (snapshot.operational_alerts ?? []).filter((item) => item.kind === "commodity");
+  return <table className="table"><thead><tr><th>Commodity condition</th><th>Facility</th><th>Reported evidence</th></tr></thead><tbody>{rows.map((item) => <tr key={item.id}><th>{item.title}</th><td>{item.facility_name}</td><td>{item.detail}</td></tr>)}</tbody></table>;
+}
+
+function LiveAnalyticsTable({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
+  return <table className="table"><thead><tr><th>Month</th><th>Encounters</th><th>Suspected</th><th>Tested</th><th>Confirmed</th><th>Positivity</th></tr></thead><tbody>{(snapshot.trend ?? []).map((row) => <tr key={row.period}><th>{row.period}</th><td>{number(row.encounters)}</td><td>{number(row.suspected_malaria)}</td><td>{number(row.tested_for_malaria)}</td><td>{number(row.confirmed_malaria)}</td><td>{row.positivity_rate == null ? "—" : `${row.positivity_rate.toFixed(1)}%`}</td></tr>)}</tbody></table>;
+}
+
+function LiveQualityDetails({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
+  return <dl><dt>HMIS reporting facilities</dt><dd>{snapshot.aggregate_reporting_facility_count} of {snapshot.facility_count}</dd><dt>Tracker reporting facilities</dt><dd>{snapshot.tracker_reporting_facility_count} of {snapshot.facility_count}</dd><dt>HMIS values read</dt><dd>{snapshot.aggregate_value_count.toLocaleString()}</dd><dt>Tracker events read</dt><dd>{snapshot.tracker_event_count.toLocaleString()}</dd><dt>Mapped malaria tests</dt><dd>{snapshot.malaria_lab_event_count.toLocaleString()}</dd><dt>Mapped positive malaria tests</dt><dd>{(snapshot.positive_malaria_event_count ?? 0).toLocaleString()}</dd><dt>Invalid aggregate values</dt><dd>{snapshot.invalid_aggregate_value_count}</dd></dl>;
+}
+
+function number(value: number | null | undefined): string {
+  return value == null ? "—" : value.toLocaleString();
 }
 
 export function ReportsView() {

@@ -1,0 +1,86 @@
+{
+  "schema_version": "2.0",
+  "status": "approved",
+  "scope": "Pader District live pilot",
+  "approved_by": "Pader live pilot data owner",
+  "approved_at": "2026-09-05T08:20:00+03:00",
+  "discovery_report_sha256": "1babc870469c234dbc213998c57f6f0f3c95fff470070b7f61cca97b726eb39b",
+  "programme_uid": "ueBhWkWll5v",
+  "datasets": {
+    "weekly_033b": "C4oUitImBPK",
+    "monthly_105_opd": "RtEYsASU7PG",
+    "monthly_105_commodities": "VDhwrW9DiC1",
+    "monthly_105_laboratory": "quMWqLxzcfO"
+  },
+  "aggregate_data_elements": {
+    "new_attendance": "sv6SeKroHPV",
+    "reattendance": "sQ4EexvvhVe",
+    "suspected_malaria": "JhvC7ZR9hUe",
+    "tested_for_malaria": "V6qtHkux6Io",
+    "confirmed_malaria": "wUDxFVBapIc",
+    "confirmed_malaria_treated": "VozjcVb9Fu8",
+    "total_malaria_treated": "QHnwKs2OUZv",
+    "microscopy_done": "jmpvzaJi5c0",
+    "microscopy_positive": "OwLbdAphoNp",
+    "rdt_done": "JfOGWtiSj1J",
+    "rdt_positive": "OOsYcFK5YbS",
+    "al_quantity_consumed": "RIBMopGoWHl",
+    "al_days_out_of_stock": "pDoc60OZDbH",
+    "al_stock_on_hand": "fy34HLoHa0x",
+    "artesunate_quantity_consumed": "FNT0AWnEok7",
+    "artesunate_days_out_of_stock": "eSjJv1tjFWu",
+    "artesunate_stock_on_hand": "O3hT4aIhzLi",
+    "rdt_quantity_consumed": "oCtCwUE7utd",
+    "rdt_days_out_of_stock": "SBbhtV3VJvj",
+    "rdt_stock_on_hand": "HhhkiZDx1vo"
+  },
+  "tracker": {
+    "tracked_entity_type_uid": "QG9qZrGHLzV",
+    "parent_event_data_element_uid": "Wx7x4sMAa62",
+    "stages": {
+      "medical_visit": "K2nxbE9ubSs",
+      "laboratory_tests": "zKGWob5AZKP",
+      "medicines_and_supplies": "DA0Yt3V16AN"
+    },
+    "data_elements": {
+      "diagnosis": "GdWHQHW4cyT",
+      "signs_and_symptoms": "ZznYqd15BxB",
+      "malaria_treated": "UzzpUXan7VU",
+      "patient_type": "lFKnsWk3TxJ",
+      "outcome": "WE19mnVVSpq",
+      "referral_out": "L6JzFSII5lg",
+      "referral_reason": "fwzt9uypedL",
+      "opd_number": "zVegIrhTquM",
+      "laboratory_test_type": "uiTFOkMMwV3",
+      "laboratory_result": "yzmgiNZEUCz",
+      "medicine_type": "ZDN18IlfOGh",
+      "medicine_quantity": "gJuWvi6vOdu"
+    },
+    "options": {
+      "diagnosis_malaria": [
+        "Malaria",
+        "Malaria in Pregnancy",
+        "Cerebral Malaria"
+      ],
+      "test_types_malaria": [
+        "Malaria Test RDT",
+        "Malaria Test Microscopy Bs",
+        "cTBHMKQ1DD7",
+        "oWR8kPNtfZP"
+      ],
+      "positive_malaria_results": [
+        "Malaria: Positive - Plasmodium falciparum",
+        "Malaria: Positive - Plasmodium vivax",
+        "Malaria: Positive - Plasmodium malariae",
+        "Malaria: Positive - Plasmodium ovale",
+        "Malaria: Positive - Mixed infection",
+        "NQwrJOiyYTm",
+        "HDDO37t4z8l",
+        "A7mflzP9j0F",
+        "zx3NLcDnbfS",
+        "cPj4TtPUfBz"
+      ],
+      "negative_result": "Negative"
+    }
+  }
+}

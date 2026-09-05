@@ -13,8 +13,10 @@ from mars.api.v1 import (
     indicators,
     integrations,
     investigations,
+    live_data,
     meta,
     organisation,
+    patients,
     reports,
     signals,
     surveillance,
@@ -40,10 +42,12 @@ def build_v1_router(settings: Settings) -> APIRouter:
     router.include_router(indicators.router)
     router.include_router(integrations.router)
     router.include_router(analytics.router)
+    router.include_router(patients.router)
     router.include_router(surveillance.router)
     router.include_router(reports.router)
     router.include_router(signals.router)
     router.include_router(investigations.router)
+    router.include_router(live_data.router)
 
     if settings.ai_assistant_enabled:
         # Imported inside the branch so that a deployment with the

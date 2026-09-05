@@ -6,8 +6,8 @@
  * tooltips and on Data Quality.
  */
 
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 
 import { ApiError, api, type Schemas } from "../../api/client";
@@ -18,15 +18,19 @@ import { formatMoment, monthPeriod, type PeriodSelection } from "../../design-sy
 import { useAuth } from "../../auth/context";
 import { GeographyCanvas } from "../map/GeographyCanvas";
 import { boundsOf, decorateCollection, isInScope } from "../map/geography";
+import { PatientTable } from "../patients/PatientSurveillanceView";
 import "./command-centre.css";
 
 type Snapshot = Schemas["OverviewSnapshot"];
 
 export function CommandCentreView() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [period, setPeriod] = useState<PeriodSelection>(() => monthPeriod(-1));
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const discoveryRequested = useRef(false);
+  const synchronizationRequested = useRef<string | null>(null);
   const range = useMemo(
     () => ({ period_start: period.start, period_end: period.end }),
     [period],
@@ -38,9 +42,87 @@ export function CommandCentreView() {
     retry: false,
   });
 
+  const liveMode = user?.source_status?.mode === "live";
+  const discovery = useQuery({
+    queryKey: ["live", "metadata-discovery"],
+    queryFn: api.latestLiveMetadataDiscovery,
+    enabled: liveMode,
+    retry: false,
+  });
+  const runDiscovery = useMutation({
+    mutationFn: api.runLiveMetadataDiscovery,
+    onSuccess: (result) => {
+      queryClient.setQueryData(["live", "metadata-discovery"], result);
+    },
+  });
+
+  useEffect(() => {
+    if (
+      liveMode &&
+      discovery.isFetched &&
+      !discovery.data &&
+      !discoveryRequested.current &&
+      !runDiscovery.isPending &&
+      !runDiscovery.isError
+    ) {
+      discoveryRequested.current = true;
+      runDiscovery.mutate();
+    }
+  }, [discovery.data, discovery.isFetched, liveMode, runDiscovery]);
+  const liveDashboard = useQuery({
+    queryKey: ["live", "dashboard"],
+    queryFn: api.latestLiveDashboard,
+    enabled: liveMode,
+    retry: false,
+  });
+  const synchronizeLive = useMutation({
+    mutationFn: () => api.synchronizeLiveDashboard(range),
+    onSuccess: (result) => {
+      queryClient.setQueryData(["live", "dashboard"], result);
+    },
+  });
+
+  useEffect(() => {
+    const synchronizationKey = `${range.period_start}:${range.period_end}:${discovery.data?.generated_at ?? "none"}`;
+    if (
+      liveMode &&
+      discovery.data &&
+      liveDashboard.isFetched &&
+      (!liveDashboard.data ||
+        liveDashboard.data.period_start !== range.period_start ||
+        liveDashboard.data.period_end !== range.period_end) &&
+      synchronizationRequested.current !== synchronizationKey &&
+      !synchronizeLive.isPending &&
+      !synchronizeLive.isError
+    ) {
+      synchronizationRequested.current = synchronizationKey;
+      synchronizeLive.mutate();
+    }
+  }, [
+    discovery.data,
+    liveDashboard.data,
+    liveDashboard.isFetched,
+    liveMode,
+    range.period_end,
+    range.period_start,
+    synchronizeLive,
+  ]);
+
   const mapMeta = useQuery({
     queryKey: ["map", "metadata"],
     queryFn: api.mapMetadata,
+    retry: false,
+  });
+
+  const patients = useQuery({
+    queryKey: ["patients", "overview", range],
+    queryFn: () =>
+      api.patientsOfInterest({
+        period_from: range.period_start,
+        period_to: range.period_end,
+        limit: 5,
+      }),
+    enabled: liveMode && can("case:view_pseudonymous_evidence"),
     retry: false,
   });
 
@@ -78,13 +160,13 @@ export function CommandCentreView() {
   }
 
   const snap = overview.data;
-  const inScopeUnitIds = user?.has_national_scope
-    ? null
-    : new Set((user?.geography_scopes ?? []).map((scope) => scope.geography_unit_id));
   const collection = features.data
     ? decorateCollection(features.data, {
         signalPriorityByUnitId: priorityByUnit(snap),
-        inScopeUnitIds,
+        // The API already applies materialised-path scope. A district principal
+        // contains the district UUID, not every authorised descendant UUID, so
+        // a second UUID-membership check would incorrectly grey every subcounty.
+        inScopeUnitIds: null,
       })
     : null;
 
@@ -116,8 +198,21 @@ export function CommandCentreView() {
       </header>
 
       <p className={`overview__mode overview__mode--${snap?.data_mode ?? "unavailable"}`} role="status">
-        {modeLine(snap, user)}
+        {modeLine(snap, user, liveDashboard.data, synchronizeLive.isPending)}
       </p>
+
+      {liveMode && user?.data_readiness?.malaria_metadata !== "ready" ? (
+        <LiveDiscoveryBar
+          result={discovery.data}
+          loading={discovery.isPending || runDiscovery.isPending}
+          error={discovery.isError || runDiscovery.isError}
+          onRun={() => runDiscovery.mutate()}
+          dashboard={liveDashboard.data}
+          synchronizing={synchronizeLive.isPending}
+          syncError={synchronizeLive.isError}
+          onSynchronize={() => synchronizeLive.mutate()}
+        />
+      ) : null}
 
       <section aria-labelledby="kpi-heading">
         <h2 id="kpi-heading" className="visually-hidden">
@@ -130,7 +225,14 @@ export function CommandCentreView() {
             ))}
           </div>
         ) : snap ? (
-          <MeasureGrid measures={executiveKpis(snap.kpis.items)} compact />
+          <MeasureGrid
+            measures={
+              liveMode && liveDashboard.data
+                ? liveMeasures(liveDashboard.data, snap)
+                : executiveKpis(snap.kpis.items)
+            }
+            compact
+          />
         ) : null}
       </section>
 
@@ -142,7 +244,7 @@ export function CommandCentreView() {
                 {nationalMap
                   ? "Uganda: active surveillance signals"
                   : singleDistrictId
-                    ? "District and subcounty geography"
+                    ? `${soleDistrict?.name.replace(/\s+district$/i, "")} District Map`
                     : "Authorised geography"}
               </h2>
               <p className="panel__lede">
@@ -172,6 +274,8 @@ export function CommandCentreView() {
                 }}
                 onHover={() => undefined}
                 label="Uganda districts. Colour is a signal overlay on administrative geography."
+                forceSvg={liveMode}
+                facilities={liveDashboard.data?.facilities ?? []}
               />
             ) : (
               <div className="overview__compact-state" role="status">
@@ -179,25 +283,37 @@ export function CommandCentreView() {
               </div>
             )}
           </div>
-          <ul className="overview__legend">
-            <li><span className="swatch swatch--urgent" /> Very high</li>
-            <li><span className="swatch swatch--high" /> High</li>
-            <li><span className="swatch swatch--attention" /> Moderate</li>
-            <li><span className="swatch swatch--info" /> Under review</li>
-            <li><span className="swatch swatch--none" /> No active signal</li>
-            <li><span className="swatch swatch--insufficient" /> No / insufficient data</li>
-            <li><span className="swatch swatch--outside" /> Outside authorised scope</li>
-          </ul>
+          {liveMode ? (
+            <ul className="overview__legend">
+              <li><span className="map-dot map-dot--reporting" /> Reporting facility</li>
+              <li><span className="map-dot map-dot--stockout" /> Stock-out reported</li>
+              <li><span className="swatch swatch--none" /> Authorised Pader boundary</li>
+            </ul>
+          ) : (
+            <ul className="overview__legend">
+              <li><span className="swatch swatch--urgent" /> Very high</li>
+              <li><span className="swatch swatch--high" /> High</li>
+              <li><span className="swatch swatch--attention" /> Moderate</li>
+              <li><span className="swatch swatch--info" /> Under review</li>
+              <li><span className="swatch swatch--none" /> No active signal</li>
+              <li><span className="swatch swatch--insufficient" /> No / insufficient data</li>
+              <li><span className="swatch swatch--outside" /> Outside authorised scope</li>
+            </ul>
+          )}
         </section>
 
         <div className="overview__side overview__side--signals">
-          <BucketPanel
-            title="Signals by priority"
-            section={snap?.signals_by_priority}
-            href="/signals"
-            linkLabel="View all signals"
-            empty="Not configured"
-          />
+          {liveMode && liveDashboard.data ? (
+            <LiveAlertSummary snapshot={liveDashboard.data} />
+          ) : (
+            <BucketPanel
+              title="Signals by priority"
+              section={snap?.signals_by_priority}
+              href="/signals"
+              linkLabel="View all signals"
+              empty="Not configured"
+            />
+          )}
           <BucketPanel
             title="Investigations"
             section={snap?.investigations_by_status}
@@ -207,38 +323,192 @@ export function CommandCentreView() {
           />
         </div>
 
-        <DistrictPanel section={snap?.districts_requiring_review} />
+        {liveMode && liveDashboard.data ? (
+          <LiveFacilityPanel snapshot={liveDashboard.data} />
+        ) : (
+          <DistrictPanel section={snap?.districts_requiring_review} />
+        )}
       </div>
 
       <div className="overview__ops">
-        <CommodityPanel section={snap?.commodity_alerts} />
-        <BucketPanel
-          title="Needs attention"
-          section={snap?.needs_attention}
-          empty="No items"
-        />
+        {liveMode && liveDashboard.data ? (
+          <LiveCommodityPanel snapshot={liveDashboard.data} />
+        ) : (
+          <CommodityPanel section={snap?.commodity_alerts} />
+        )}
+        {liveMode && liveDashboard.data ? (
+          <LiveDataQualityPanel snapshot={liveDashboard.data} />
+        ) : (
+          <BucketPanel title="Needs attention" section={snap?.needs_attention} empty="No items" />
+        )}
       </div>
 
       <div className="overview__charts">
-        <ChartPlaceholder title="Confirmed malaria vs baseline" section={snap?.confirmed_malaria_trend} />
-        <ChartPlaceholder title="Testing and positivity rate" section={snap?.testing_positivity} />
+        {liveMode && liveDashboard.data ? (
+          <>
+            <LiveTrendChart title="Confirmed malaria trend" snapshot={liveDashboard.data} metric="confirmed_malaria" />
+            <LiveTrendChart title="Testing and positivity" snapshot={liveDashboard.data} metric="tested_for_malaria" showRate />
+          </>
+        ) : (
+          <>
+            <ChartPlaceholder title="Confirmed malaria vs baseline" section={snap?.confirmed_malaria_trend} />
+            <ChartPlaceholder title="Testing and positivity rate" section={snap?.testing_positivity} />
+          </>
+        )}
       </div>
 
-      <SignalTable section={snap?.recent_signals} />
+      <div className="overview__bottom-grid">
+        {liveMode && liveDashboard.data ? (
+          <LiveIssuesTable snapshot={liveDashboard.data} />
+        ) : (
+          <SignalTable section={snap?.recent_signals} />
+        )}
+        <PatientOverviewPanel
+          enabled={liveMode && can("case:view_pseudonymous_evidence")}
+          loading={patients.isPending}
+          unavailable={patients.error instanceof ApiError && patients.error.isUnavailable}
+          patients={patients.data ?? []}
+          livePatients={liveDashboard.data?.repeat_positive_patients ?? []}
+        />
+      </div>
 
       <footer className="overview__freshness">
         <span>
           Last sync:{" "}
-          {snap?.last_successful_synchronization
-            ? formatMoment(snap.last_successful_synchronization)
+          {liveDashboard.data?.synchronized_at ?? snap?.last_successful_synchronization
+            ? formatMoment(
+                liveDashboard.data?.synchronized_at ?? snap?.last_successful_synchronization ?? null,
+              )
             : "Not yet run"}
         </span>
         <span>Last updated {formatMoment(snap?.provenance.analytics_refreshed_at ?? null)}</span>
         <span className={`freshness freshness--${snap?.data_mode ?? "unavailable"}`}>
-          {sourceFreshness(snap, user)}
+          {sourceFreshness(snap, user, liveDashboard.data)}
         </span>
       </footer>
     </div>
+  );
+}
+
+function PatientOverviewPanel({
+  enabled,
+  loading,
+  unavailable,
+  patients,
+  livePatients,
+}: {
+  enabled: boolean;
+  loading: boolean;
+  unavailable: boolean;
+  patients: Schemas["PatientOfInterestSummary"][];
+  livePatients: Schemas["LiveRepeatPositivePatient"][];
+}) {
+  if (!enabled) return null;
+  return (
+    <section className="panel" aria-labelledby="recent-patients-heading">
+      <div className="panel__header">
+        <h2 id="recent-patients-heading">Recent patients of interest</h2>
+        <Link className="overview__panel-link" to="/patients">View all →</Link>
+      </div>
+      <div className="panel__body">
+        {loading ? (
+          <p className="overview__compact-note">Loading authorised evidence…</p>
+        ) : unavailable ? (
+          <p className="overview__compact-note">Patient alias key or controlled sync not ready.</p>
+        ) : livePatients.length > 0 ? (
+          <table className="patient-table">
+            <thead>
+              <tr>
+                <th>Patient ID</th>
+                <th>First positive</th>
+                <th>Repeat positive</th>
+                <th>Interval</th>
+                <th>Facility</th>
+              </tr>
+            </thead>
+            <tbody>
+              {livePatients.slice(0, 5).map((patient) => (
+                <tr key={patient.mars_patient_id}>
+                  <td className="mono">{patient.mars_patient_id}</td>
+                  <td>{patient.first_positive_on}</td>
+                  <td>{patient.latest_positive_on}</td>
+                  <td>{patient.interval_days} days</td>
+                  <td>{patient.facility_name}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : patients.length === 0 ? (
+          <p className="overview__compact-note">
+            No validated patient evidence synchronised for this period.
+          </p>
+        ) : (
+          <PatientTable patients={patients} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function LiveDiscoveryBar({
+  result,
+  loading,
+  error,
+  onRun,
+  dashboard,
+  synchronizing,
+  syncError,
+  onSynchronize,
+}: {
+  result: Schemas["LiveMetadataDiscoverySummary"] | null | undefined;
+  loading: boolean;
+  error: boolean;
+  onRun: () => void;
+  dashboard: Schemas["LiveDashboardSnapshot"] | null | undefined;
+  synchronizing: boolean;
+  syncError: boolean;
+  onSynchronize: () => void;
+}) {
+  return (
+    <section className="overview__discovery" aria-label="Live source readiness">
+      <div>
+        <strong>{result ? "eRegisters metadata discovered" : "Live data mapping required"}</strong>
+        <span>
+          {result
+            ? ` DHIS2 ${result.dhis2_version ?? "version unavailable"} · ${result.programme_count} programmes · ${result.program_stage_count} stages · ${result.data_element_count} data elements · ${result.accessible_facility_count ?? "unknown"} accessible facilities.`
+            : " Discover the real OPD programme, malaria variables, and authorised Tracker scope before any data-bearing request."}
+        </span>
+        {dashboard ? (
+          <em>
+            Real source snapshot: {dashboard.aggregate_value_count} HMIS values and{" "}
+            {dashboard.tracker_event_count} Tracker events. No synthetic values used.
+          </em>
+        ) : result ? (
+          <em>Metadata ready. Real data synchronization is pending.</em>
+        ) : null}
+        {error ? <em>Discovery could not complete; no patient data were requested.</em> : null}
+        {syncError ? <em>Live synchronization failed; no synthetic fallback was used.</em> : null}
+      </div>
+      <div className="overview__discovery-actions">
+        <button className="button button--secondary" type="button" onClick={onRun} disabled={loading}>
+          {loading ? "Reading metadata…" : result ? "Refresh metadata" : "Discover source metadata"}
+        </button>
+        {result ? (
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={onSynchronize}
+            disabled={synchronizing}
+          >
+            {synchronizing
+              ? "Synchronizing live data…"
+              : dashboard
+                ? "Refresh live data"
+                : "Synchronize live data"}
+          </button>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
@@ -246,18 +516,303 @@ function executiveKpis(items: Schemas["SurveillanceMeasure"][]): Schemas["Survei
   return items.filter((item) => item.code !== "ACTIVE_SIGNALS").slice(0, 6);
 }
 
+function liveMeasures(
+  live: Schemas["LiveDashboardSnapshot"],
+  snap: Snapshot,
+): Schemas["SurveillanceMeasure"][] {
+  return live.kpis
+    .filter(
+      (item) =>
+        item.status === "available" &&
+        !(
+          item.unit === "percent" &&
+          item.numerator != null &&
+          item.denominator != null &&
+          item.numerator > item.denominator
+        ),
+    )
+    .map((item) => ({
+    code: item.code,
+    label: item.label,
+    value: item.value,
+    unit: item.unit,
+    numerator: item.numerator,
+    denominator: item.denominator,
+    period: { start: live.period_start, end: live.period_end },
+    geography_grain: "district",
+    geography_unit_id: snap.kpis.items[0]?.geography_unit_id ?? null,
+    facility_id: null,
+    source: item.source,
+    method_version_id: null,
+    source_freshness: live.source_updated_at ?? null,
+    comparison: null,
+    status: item.status,
+    status_detail:
+      item.status === "available"
+        ? "Real authorized DHIS2 source value"
+        : "No reported value was returned for this period and scope",
+    missing_configuration: [],
+    }));
+}
+
+function LiveCommodityPanel({
+  snapshot,
+}: {
+  snapshot: Schemas["LiveDashboardSnapshot"];
+}) {
+  const items = [
+    ["RDT stock-out", snapshot.commodity_alerts.rdt_stock_out_facilities],
+    ["AL stock-out", snapshot.commodity_alerts.al_stock_out_facilities],
+    ["Artesunate stock-out", snapshot.commodity_alerts.artesunate_stock_out_facilities],
+  ] as const;
+  return (
+    <section className="panel" aria-label="Commodity security">
+      <div className="panel__header">
+        <h2>Commodity security</h2>
+      </div>
+      <div className="panel__body">
+        <ul className="bucket-list">
+          {items.map(([label, count]) => (
+            <li className="bucket-list__row" key={label}>
+              <span className="bucket-list__label">{label}</span>
+              <span className="bucket-list__track" aria-hidden="true" />
+              <span className="bucket-list__count mono">{count}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="overview__compact-note">Reported HMIS 105 stock-out days.</p>
+      </div>
+    </section>
+  );
+}
+
+function LiveAlertSummary({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
+  const alerts = snapshot.operational_alerts ?? [];
+  const actionRequired = alerts.filter(
+    (item) => item.status === "action_required",
+  ).length;
+  const review = alerts.filter((item) => item.status === "review").length;
+  return (
+    <section className="panel" aria-label="Live issues requiring review">
+      <div className="panel__header">
+        <h2>Live issues requiring review</h2>
+      </div>
+      <div className="panel__body">
+        <ul className="bucket-list">
+          <LiveBucket label="Operational action" count={actionRequired} tone="high" />
+          <LiveBucket label="Data-quality review" count={review} tone="attention" />
+          <LiveBucket
+            label="Repeat-positive patients"
+            count={snapshot.repeat_positive_patients.length}
+            tone="informational"
+          />
+        </ul>
+        <p className="overview__compact-note">
+          Observed source conditions only; no resistance conclusion is inferred.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function LiveBucket({ label, count, tone }: { label: string; count: number; tone: string }) {
+  return (
+    <li className="bucket-list__row">
+      <span className="bucket-list__label">{label}</span>
+      <span className="bucket-list__track" aria-hidden="true">
+        <span
+          className={`bucket-list__fill bucket-list__fill--${tone}`}
+          style={{ width: count > 0 ? `${Math.min(100, 18 + count * 8)}%` : "0%" }}
+        />
+      </span>
+      <span className="bucket-list__count mono">{count}</span>
+    </li>
+  );
+}
+
+function LiveFacilityPanel({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
+  const rows = [...snapshot.facilities]
+    .sort((left, right) => {
+      const leftStock =
+        (left.rdt_days_out_of_stock ?? 0) +
+        (left.al_days_out_of_stock ?? 0) +
+        (left.artesunate_days_out_of_stock ?? 0);
+      const rightStock =
+        (right.rdt_days_out_of_stock ?? 0) +
+        (right.al_days_out_of_stock ?? 0) +
+        (right.artesunate_days_out_of_stock ?? 0);
+      return rightStock - leftStock || (right.confirmed_malaria ?? 0) - (left.confirmed_malaria ?? 0);
+    })
+    .slice(0, 8);
+  return (
+    <section className="panel overview__facility-panel" aria-labelledby="facility-review-heading">
+      <div className="panel__header">
+        <h2 id="facility-review-heading">Facility reporting overview</h2>
+        <Link className="overview__panel-link" to="/facilities">View all →</Link>
+      </div>
+      <div className="panel__body table-scroll">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Facility</th>
+              <th>Confirmed</th>
+              <th>Tested</th>
+              <th>Stock-out days</th>
+              <th>Tracker</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((facility) => (
+              <tr key={facility.uid}>
+                <th>{facility.name}</th>
+                <td>{formatCount(facility.confirmed_malaria)}</td>
+                <td>{formatCount(facility.tested_for_malaria)}</td>
+                <td>
+                  {(facility.rdt_days_out_of_stock ?? 0) +
+                    (facility.al_days_out_of_stock ?? 0) +
+                    (facility.artesunate_days_out_of_stock ?? 0)}
+                </td>
+                <td>{facility.tracker_reported ? "Reported" : "No event returned"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function LiveDataQualityPanel({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
+  const items = [
+    ["HMIS reporting facilities", `${snapshot.aggregate_reporting_facility_count}/${snapshot.facility_count}`],
+    ["Tracker reporting facilities", `${snapshot.tracker_reporting_facility_count}/${snapshot.facility_count}`],
+    ["HMIS values read", snapshot.aggregate_value_count.toLocaleString()],
+    ["Tracker events read", snapshot.tracker_event_count.toLocaleString()],
+    ["Mapped malaria lab events", snapshot.malaria_lab_event_count.toLocaleString()],
+    ["Invalid HMIS values", snapshot.invalid_aggregate_value_count.toLocaleString()],
+  ];
+  return (
+    <section className="panel" aria-label="Live data quality">
+      <div className="panel__header"><h2>Live data quality</h2></div>
+      <div className="panel__body">
+        <dl className="live-quality-list">
+          {items.map(([label, value]) => (
+            <div key={label}><dt>{label}</dt><dd className="mono">{value}</dd></div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+function LiveTrendChart({
+  title,
+  snapshot,
+  metric,
+  showRate = false,
+}: {
+  title: string;
+  snapshot: Schemas["LiveDashboardSnapshot"];
+  metric: "confirmed_malaria" | "tested_for_malaria";
+  showRate?: boolean;
+}) {
+  const points = (snapshot.trend ?? []).filter((item) => item[metric] != null);
+  const max = Math.max(1, ...points.map((item) => item[metric] ?? 0));
+  const coordinates = points.map((item, index) => {
+    const x = points.length === 1 ? 260 : 20 + (index / (points.length - 1)) * 480;
+    const y = 108 - ((item[metric] ?? 0) / max) * 88;
+    return { item, x, y };
+  });
+  return (
+    <section className="panel panel--chart" aria-label={title}>
+      <div className="panel__header"><h2>{title}</h2></div>
+      <div className="panel__body live-chart">
+        {coordinates.length === 0 ? (
+          <p className="overview__compact-note">No reported monthly values in this window.</p>
+        ) : (
+          <>
+            <svg viewBox="0 0 520 132" role="img" aria-label={`${title}, real HMIS monthly values`}>
+              {[20, 42, 64, 86, 108].map((y) => <line key={y} x1="20" x2="500" y1={y} y2={y} />)}
+              <polyline points={coordinates.map(({ x, y }) => `${x},${y}`).join(" ")} />
+              {coordinates.map(({ item, x, y }) => (
+                <g key={item.period}>
+                  <circle cx={x} cy={y} r="3.5"><title>{item.period}: {formatCount(item[metric])}</title></circle>
+                  <text x={x} y="126" textAnchor="middle">{monthLabel(item.period)}</text>
+                </g>
+              ))}
+            </svg>
+            <p className="overview__compact-note">
+              {showRate
+                ? `Latest positivity: ${formatRate(points.at(-1)?.positivity_rate)}`
+                : `Latest reported count: ${formatCount(points.at(-1)?.confirmed_malaria)}`}
+            </p>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function LiveIssuesTable({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
+  const alerts = snapshot.operational_alerts ?? [];
+  return (
+    <section className="panel" aria-labelledby="live-issues-heading">
+      <div className="panel__header"><h2 id="live-issues-heading">Current source issues</h2></div>
+      <div className="panel__body">
+        {alerts.length === 0 ? (
+          <p className="overview__compact-note">No directly observed source issue in this period.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="table">
+              <thead><tr><th>Issue</th><th>Location</th><th>Status</th><th>Evidence</th></tr></thead>
+              <tbody>
+                {alerts.slice(0, 8).map((item) => (
+                  <tr key={item.id}>
+                    <th>{item.title}</th>
+                    <td>{item.facility_name}</td>
+                    <td><span className={`chip chip--${item.status === "action_required" ? "priority" : "attention"}`}>{item.status.replace("_", " ")}</span></td>
+                    <td>{item.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function formatCount(value: number | null | undefined): string {
+  return value == null ? "—" : value.toLocaleString();
+}
+
+function formatRate(value: number | null | undefined): string {
+  return value == null ? "not derivable" : `${value.toFixed(1)}%`;
+}
+
+function monthLabel(period: string): string {
+  const month = Number(period.slice(4, 6));
+  return ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month] ?? period;
+}
+
 function modeLine(
   snap: Snapshot | undefined,
   user: ReturnType<typeof useAuth>["user"],
+  live: Schemas["LiveDashboardSnapshot"] | null | undefined,
+  synchronizing: boolean,
 ): string {
   if (user?.source_status?.mode === "live") {
     if (user.source_status.authentication !== "connected") {
       return "CONNECTION ISSUE — eRegisters unavailable";
     }
-    if (user.source_status.mapping === "pending") {
-      return "LIVE — authentication succeeded; malaria mapping pending";
+    if (synchronizing) return "LIVE — synchronizing authorised eRegisters data";
+    if (live?.status === "synchronized") return "LIVE — eRegisters data synchronized";
+    if (live?.status === "partial") return "LIVE — partial source data synchronized";
+    if (live?.status === "unavailable") {
+      return "LIVE SOURCE — no records returned for the selected period";
     }
-    return "LIVE — eRegisters connected";
+    return "CONNECTED — live data synchronization pending";
   }
   if (!snap) return "Loading source status.";
   if (snap.data_mode === "synthetic") {
@@ -270,10 +825,13 @@ function modeLine(
 function sourceFreshness(
   snap: Snapshot | undefined,
   user: ReturnType<typeof useAuth>["user"],
+  live: Schemas["LiveDashboardSnapshot"] | null | undefined,
 ): string {
   if (user?.is_synthetic || snap?.data_mode === "synthetic") {
     return "Synthetic demonstration data";
   }
+  if (live?.status === "synchronized") return "Live source synchronized";
+  if (live?.status === "partial") return "Partial live source data";
   if (snap?.last_successful_synchronization) return "Synchronised";
   return "Last sync: Not yet run";
 }

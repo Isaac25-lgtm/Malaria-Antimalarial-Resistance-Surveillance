@@ -76,7 +76,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(rendered, encoding="utf-8")
+    # Keep the tracked contract byte-stable on Windows and Linux.  Without an
+    # explicit newline policy TextIO translates every LF to CRLF on Windows,
+    # which makes every regenerated line look like trailing whitespace to Git.
+    args.output.write_text(rendered, encoding="utf-8", newline="\n")
     paths = len(document.get("paths", {}))  # type: ignore[union-attr]
     schemas = len(document.get("components", {}).get("schemas", {}))  # type: ignore[union-attr]
     print(f"wrote {args.output} ({paths} paths, {schemas} schemas)")

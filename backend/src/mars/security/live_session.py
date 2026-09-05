@@ -26,9 +26,11 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from threading import Lock
+from typing import TypeVar
 
 from mars.security.principal import AuthenticatedPrincipal
 from mars.security.remote_authorization import (
@@ -38,6 +40,7 @@ from mars.security.remote_authorization import (
 
 SESSION_ID_BYTES = 32  # 256 bits of entropy
 CSRF_TOKEN_BYTES = 32
+_T = TypeVar("_T")
 
 
 def _utc_now() -> datetime:
@@ -106,6 +109,26 @@ class InMemoryCredentialHolder:
     def has(self, session_id: str) -> bool:
         with self._lock:
             return session_id in self._items
+
+    def invoke(self, session_id: str, operation: Callable[[str, str], _T]) -> _T:
+        """Run one server-side operation with a session's upstream credentials.
+
+        The tuple is copied while holding the lock and is never returned to the
+        caller.  This is the only escape hatch needed by live source adapters:
+        routes and services receive the operation result, never the username or
+        password.  The network operation deliberately runs outside the lock so
+        logout and unrelated sessions are not blocked by a slow upstream call.
+        """
+        with self._lock:
+            credentials = self._items.get(session_id)
+        if credentials is None:
+            raise KeyError("No live upstream credentials exist for this session")
+        username, password = credentials
+        try:
+            return operation(username, password)
+        finally:
+            username = ""
+            password = ""
 
     def transfer(self, old_session_id: str, new_session_id: str) -> None:
         """Move credentials to a rotated session id and drop the old key."""

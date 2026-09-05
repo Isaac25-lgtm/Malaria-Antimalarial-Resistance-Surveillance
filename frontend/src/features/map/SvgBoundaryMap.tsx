@@ -6,7 +6,7 @@
  */
 
 import type { MapCollection } from "./geography";
-import { FILL_COLOURS, boundsOf, featurePathD, fillClassOf, isInScope } from "./geography";
+import { FILL_COLOURS, boundsOf, featurePathD, fillClassOf, isInScope, project } from "./geography";
 import type { Schemas } from "../../api/client";
 
 const WIDTH = 640;
@@ -19,6 +19,7 @@ interface SvgBoundaryMapProps {
   selectedUnitId: string | null;
   onSelect: (unitId: string) => void;
   label: string;
+  facilities?: Schemas["LiveDashboardFacility"][];
 }
 
 export function SvgBoundaryMap({
@@ -28,6 +29,7 @@ export function SvgBoundaryMap({
   selectedUnitId,
   onSelect,
   label,
+  facilities = [],
 }: SvgBoundaryMapProps) {
   const extent = bounds ?? boundsOf(collection, metadata) ?? [29.5, -1.5, 35.0, 4.2];
 
@@ -72,6 +74,31 @@ export function SvgBoundaryMap({
               }
             }}
           />
+        );
+      })}
+      {facilities.map((facility) => {
+        if (facility.latitude == null || facility.longitude == null) return null;
+        const [x, y] = project(facility.longitude, facility.latitude, extent, WIDTH, HEIGHT);
+        const stockOut =
+          (facility.rdt_days_out_of_stock ?? 0) > 0 ||
+          (facility.al_days_out_of_stock ?? 0) > 0 ||
+          (facility.artesunate_days_out_of_stock ?? 0) > 0;
+        return (
+          <g key={facility.uid} aria-label={facility.name}>
+            <circle
+              cx={x}
+              cy={y}
+              r={stockOut ? 6 : 4.5}
+              fill={stockOut ? "#dc2626" : "#1976b9"}
+              stroke="#ffffff"
+              strokeWidth={1.8}
+            >
+              <title>
+                {facility.name}
+                {stockOut ? " — stock-out reported" : " — reporting facility"}
+              </title>
+            </circle>
+          </g>
         );
       })}
     </svg>

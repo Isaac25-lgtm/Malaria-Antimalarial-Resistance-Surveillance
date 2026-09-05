@@ -44,6 +44,8 @@ class OrganisationUnitRecord(BaseModel):
     path: str | None = None
     leaf: bool | None = None
     parent_id: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     group_names: list[str] = Field(default_factory=list)
     classification: Literal[
         "pader_candidate",

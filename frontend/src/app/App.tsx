@@ -42,6 +42,7 @@ import {
 } from "../features/reference/ReferenceViews";
 import { NationalMapView } from "../features/map/NationalMapView";
 import { SystemStatusView } from "../features/status/SystemStatusView";
+import { PatientSurveillanceView } from "../features/patients/PatientSurveillanceView";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -239,6 +240,22 @@ function AppRoutes() {
           element={
             <RequireAuth permissions={["surveillance:view_aggregate"]}>
               <AnalyticsView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="patients"
+          element={
+            <RequireAuth permissions={["case:view_pseudonymous_evidence"]}>
+              <PatientSurveillanceView />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="patients/:patientReferenceId"
+          element={
+            <RequireAuth permissions={["case:view_pseudonymous_evidence"]}>
+              <PatientSurveillanceView />
             </RequireAuth>
           }
         />

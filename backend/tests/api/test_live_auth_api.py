@@ -31,6 +31,7 @@ from mars.integrations.dhis2.login.models import LoginSnapshot, RemoteOrgUnit, R
 from mars.main import create_app
 from mars.security.principal import AuthenticatedPrincipal, GeographyScope
 from mars.security.source_login import AuthenticationProvider
+from mars.services.live_discovery import LiveMetadataDiscoveryService
 from mars.services.live_scope import StaticGeographyLookup
 from mars.services.overview import OverviewService
 from mars.services.surveillance_summary import SurveillanceSummaryService
@@ -305,6 +306,50 @@ class TestLiveLoginApi:
         assert raw and holder.has(raw)
         dumped = json.dumps([str(item) for item in live_app[2].added])
         assert SENTINEL not in dumped
+
+    def test_metadata_discovery_uses_session_credential_and_returns_no_patient_data(
+        self, live_client: TestClient, live_app
+    ) -> None:
+        login = _login(live_client)
+        assert login.status_code == 200
+        observed: list[tuple[str, str]] = []
+
+        def runner(username: str, password: str) -> dict[str, Any]:
+            observed.append((username, password))
+            return {
+                "stop_before_patient_data": True,
+                "generated_at": "2026-09-04T12:00:00Z",
+                "system": {"version": "2.40"},
+                "api_generation": "modern_tracker_preferred_legacy_deprecated",
+                "programmes": [{"id": "program-1"}],
+                "program_stages": [{"id": "stage-1"}],
+                "data_elements": [{"id": "element-1"}],
+                "accessible_facilities": [{"id": "facility-1"}],
+                "tracker_search_organisation_units": [{"id": TRACKER_UID}],
+                "candidate_mappings": [{"remote_id": "element-1"}],
+                "report_files": {"json": "safe.json", "markdown": "safe.md"},
+            }
+
+        application = live_app[0]
+        application.state.live_metadata_discovery = LiveMetadataDiscoveryService(
+            application.state.live_credential_holder,
+            runner,
+        )
+        response = live_client.post(
+            "/api/v1/auth/live/metadata-discovery",
+            headers={"Origin": ORIGIN, "X-CSRF-Token": login.json()["csrf_token"]},
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["patient_data_retrieved"] is False
+        assert body["dhis2_version"] == "2.40"
+        assert body["programme_count"] == 1
+        assert observed == [("officer", SENTINEL)]
+        assert SENTINEL not in response.text
+        latest = live_client.get("/api/v1/auth/live/metadata-discovery")
+        assert latest.status_code == 200
+        assert latest.json() == body
 
     def test_invalid_credentials_are_generic(self, live_client: TestClient, live_app) -> None:
         live_app[1].error = LoginAdapterError(

@@ -30,9 +30,9 @@ export function LiveRemoteWorkspaceView() {
     }
   }
 
-  const place = workspace.name?.trim() || "Authorized";
+  const place = workspacePlace(workspace.name, workspace.scope_type);
   const placeKind = workspaceKindLabel(workspace.scope_type);
-  const title = `${place} Live Pilot`;
+  const title = `${place} Overview`;
   const mappingPending = user.mapping?.status !== "resolved";
   const syncPending = user.data_readiness?.aggregate_sync !== "ready";
 
@@ -40,7 +40,10 @@ export function LiveRemoteWorkspaceView() {
     <div className="page overview live-workspace">
       <header className="overview__header">
         <div>
-          <h1>{title}</h1>
+          <div className="live-workspace__title-row">
+            <h1>{title}</h1>
+            <span className="chip chip--attention">Live pilot</span>
+          </div>
           <p className="page__lede">
             {user.display_name}
             {place ? ` · ${place} ${placeKind}` : ""}
@@ -97,6 +100,13 @@ function workspaceKindLabel(scopeType: string): string {
   if (scopeType === "national") return "National";
   if (scopeType === "multi_district") return "Authorized scope";
   return "";
+}
+
+function workspacePlace(name: string | null | undefined, scopeType: string): string {
+  const value = name?.trim() || "Authorized";
+  if (scopeType === "district") return value.replace(/\s+district$/i, "").trim();
+  if (scopeType === "facility") return value.replace(/\s+facility$/i, "").trim();
+  return value;
 }
 
 function statusLine(mappingPending: boolean, syncPending: boolean): string {

@@ -15,6 +15,12 @@
   align-self: flex-start;
 }
 
+.live-workspace__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
 .live-workspace__status {
   display: grid;
   gap: 0.65rem;

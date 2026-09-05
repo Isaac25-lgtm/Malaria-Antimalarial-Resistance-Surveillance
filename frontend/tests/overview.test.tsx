@@ -241,6 +241,24 @@ function stubApis(snapshot: Schemas["OverviewSnapshot"] = SNAPSHOT) {
   vi.spyOn(api, "mapMetadata").mockResolvedValue(MAP_META);
   vi.spyOn(api, "mapContext").mockResolvedValue(FEATURES);
   vi.spyOn(api, "mapFeatures").mockResolvedValue(FEATURES);
+  vi.spyOn(api, "latestLiveMetadataDiscovery").mockResolvedValue(null);
+  vi.spyOn(api, "runLiveMetadataDiscovery").mockResolvedValue({
+    status: "completed",
+    generated_at: "2026-09-04T12:00:00Z",
+    dhis2_version: "2.40",
+    api_generation: "modern_tracker_preferred_legacy_deprecated",
+    programme_count: 1,
+    program_stage_count: 2,
+    data_element_count: 30,
+    candidate_mapping_count: 4,
+    accessible_facility_count: 12,
+    tracker_scope_root_count: 1,
+    unresolved_questions: [],
+    errors: [],
+    json_report: "safe.json",
+    markdown_report: "safe.md",
+    patient_data_retrieved: false,
+  });
 }
 
 afterEach(() => {
@@ -359,9 +377,10 @@ describe("operational overview", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Pader Overview" })).toBeInTheDocument();
-    expect(screen.getByText("LIVE — eRegisters connected")).toBeInTheDocument();
+    expect(screen.getByText("CONNECTED — live data synchronization pending")).toBeInTheDocument();
     expect(screen.getAllByText(/Last sync:\s*Not yet run/).length).toBeGreaterThan(0);
-    expect(await screen.findByRole("heading", { name: "District and subcounty geography" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Pader District Map" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Refresh metadata" })).toBeInTheDocument();
     expect(api.mapContext).not.toHaveBeenCalled();
     expect(api.mapFeatures).toHaveBeenCalledWith({
       level: "subcounty",

@@ -199,6 +199,35 @@ class LiveLoginRequest(MarsModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+class LiveTrackerFacilitySummary(MarsModel):
+    """A facility UID proven inside the authenticated Tracker-search scope."""
+
+    id: str
+    name: str | None = None
+    code: str | None = None
+
+
+class LiveMetadataDiscoverySummary(MarsModel):
+    """Sanitized result of the current user's metadata-only source discovery."""
+
+    status: str
+    generated_at: datetime | None = None
+    dhis2_version: str | None = None
+    api_generation: str
+    programme_count: int = 0
+    program_stage_count: int = 0
+    data_element_count: int = 0
+    candidate_mapping_count: int = 0
+    accessible_facility_count: int | None = None
+    tracker_scope_root_count: int = 0
+    tracker_facilities: list[LiveTrackerFacilitySummary] = Field(default_factory=list)
+    unresolved_questions: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    json_report: str | None = None
+    markdown_report: str | None = None
+    patient_data_retrieved: bool = False
+
+
 class DevelopmentLoginRequest(MarsModel):
     """Request a synthetic development token. Non-production only."""
 
@@ -935,6 +964,177 @@ class GeneratedReport(MarsModel):
     rows: list[ReportRow]
     interpretation_limit: str
     provenance: SurveillanceProvenance
+
+
+class PatientOfInterestSummary(MarsModel):
+    """One pseudonymous positive-encounter history; never direct identity."""
+
+    patient_reference_id: uuid.UUID
+    mars_patient_id: str
+    sex: str
+    age_value: int | None
+    age_unit: str | None
+    first_positive_on: date
+    latest_positive_on: date
+    positive_encounter_count: int
+    interval_days: int | None
+    facility_id: uuid.UUID
+    facility_name: str
+    classification: Literal["positive_encounter", "repeat_positive_input"]
+
+
+class PatientEncounterSummary(MarsModel):
+    """Clinical facts from one encounter in a pseudonymous timeline."""
+
+    encounter_id: uuid.UUID
+    encounter_date: date
+    facility_id: uuid.UUID
+    facility_name: str
+    sex: str
+    age_value: int | None
+    age_unit: str | None
+    fever_present: str
+    attendance_type: str
+    tests: list[dict[str, str]]
+    diagnoses: list[str]
+    treatments: list[str]
+    source_system: str
+
+
+class PatientTimeline(MarsModel):
+    """Pseudonymous longitudinal evidence inside the caller's facility scope."""
+
+    patient_reference_id: uuid.UUID
+    mars_patient_id: str
+    identity_available: bool
+    identity_detail: str
+    encounters: list[PatientEncounterSummary]
+
+
+class ControlledTrackerPreviewRequest(MarsModel):
+    """One deliberately small patient-bearing source validation request."""
+
+    facility_uid: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9]{10}$")
+    period_start: date
+    period_end: date
+
+
+class ControlledTrackerPreviewSummary(MarsModel):
+    """Validation counts only; no patient row or source identifier is returned."""
+
+    status: str
+    facility_uid: str
+    period_start: date
+    period_end: date
+    retrieved_event_count: int
+    unique_patient_count: int
+    loadable_event_count: int
+    invalid_event_count: int
+    positive_event_count: int
+    field_coverage: dict[str, int]
+    mapping_schema_version: str
+    patient_data_retrieved: Literal[True]
+    patient_rows_returned: Literal[False]
+    persisted: Literal[False]
+
+
+class LiveDashboardSyncRequest(MarsModel):
+    """Explicit reporting window for a real, scoped DHIS2 read."""
+
+    period_start: date
+    period_end: date
+
+
+class LiveDashboardKpi(MarsModel):
+    code: str
+    label: str
+    value: str | None
+    numerator: int | None
+    denominator: int | None
+    unit: str
+    source: str
+    status: Literal["available", "unavailable"]
+
+
+class LiveDashboardFacility(MarsModel):
+    uid: str
+    name: str
+    confirmed_malaria: int | None = None
+    tested_for_malaria: int | None = None
+    rdt_days_out_of_stock: int | None = None
+    al_days_out_of_stock: int | None = None
+    artesunate_days_out_of_stock: int | None = None
+    aggregate_reported: bool
+    tracker_reported: bool
+    latitude: float | None = None
+    longitude: float | None = None
+    parent_remote_id: str | None = None
+
+
+class LiveRepeatPositivePatient(MarsModel):
+    """Pseudonymous evidence only; the source tracked-entity UID is excluded."""
+
+    mars_patient_id: str
+    first_positive_on: date
+    latest_positive_on: date
+    positive_encounter_count: int
+    interval_days: int
+    facility_name: str
+    cross_facility: bool
+
+
+class LiveCommodityAlerts(MarsModel):
+    rdt_stock_out_facilities: int
+    al_stock_out_facilities: int
+    artesunate_stock_out_facilities: int
+
+
+class LiveDashboardTrendPoint(MarsModel):
+    period: str
+    encounters: int | None = None
+    suspected_malaria: int | None = None
+    tested_for_malaria: int | None = None
+    confirmed_malaria: int | None = None
+    positivity_rate: float | None = None
+
+
+class LiveOperationalAlert(MarsModel):
+    id: str
+    kind: Literal["commodity", "data_quality"]
+    title: str
+    facility_uid: str | None = None
+    facility_name: str
+    status: Literal["action_required", "review"]
+    detail: str
+
+
+class LiveDashboardSnapshot(MarsModel):
+    """A real DHIS2 snapshot; it can never contain synthetic fallback values."""
+
+    status: Literal["synchronized", "partial", "unavailable"]
+    scope: Literal["Pader District"]
+    period_start: date
+    period_end: date
+    synchronized_at: datetime
+    source_updated_at: datetime | None = None
+    facility_count: int
+    aggregate_reporting_facility_count: int
+    tracker_reporting_facility_count: int
+    tracker_failed_facility_count: int
+    aggregate_value_count: int
+    tracker_event_count: int
+    malaria_lab_event_count: int
+    positive_malaria_event_count: int
+    unique_positive_patient_count: int
+    invalid_aggregate_value_count: int
+    kpis: list[LiveDashboardKpi]
+    commodity_alerts: LiveCommodityAlerts
+    facilities: list[LiveDashboardFacility]
+    trend: list[LiveDashboardTrendPoint]
+    operational_alerts: list[LiveOperationalAlert]
+    repeat_positive_patients: list[LiveRepeatPositivePatient]
+    warnings: list[str]
+    synthetic_data_used: Literal[False]
 
 
 # ---------------------------------------------------------------------------

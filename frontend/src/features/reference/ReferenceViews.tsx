@@ -10,6 +10,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { ApiError, api } from "../../api/client";
+import { useAuth } from "../../auth/context";
 import {
   ForbiddenState,
   LoadingState,
@@ -188,9 +189,18 @@ export function OrganisationView() {
 }
 
 export function FacilitiesView() {
+  const { user } = useAuth();
+  const liveMode = user?.source_status?.mode === "live";
+  const live = useQuery({
+    queryKey: ["live", "dashboard"],
+    queryFn: api.latestLiveDashboard,
+    enabled: liveMode,
+    retry: false,
+  });
   const facilities = useQuery({
     queryKey: ["facilities"],
     queryFn: () => api.facilities({ limit: 50 }),
+    enabled: !liveMode,
     retry: false,
   });
 
@@ -212,7 +222,26 @@ export function FacilitiesView() {
           <h2>Facility list</h2>
         </div>
         <div className="panel__body">
-          {facilities.isPending ? (
+          {liveMode && live.isPending ? (
+            <LoadingState label="live facilities" rows={4} />
+          ) : liveMode && live.data ? (
+            <div className="table-scroll">
+              <table className="table">
+                <caption className="visually-hidden">Authorised eRegisters facilities</caption>
+                <thead><tr><th>Facility</th><th>Confirmed malaria</th><th>Tested</th><th>HMIS</th><th>Tracker</th><th>Map point</th></tr></thead>
+                <tbody>{live.data.facilities.map((facility) => (
+                  <tr key={facility.uid}>
+                    <th>{facility.name}</th>
+                    <td>{facility.confirmed_malaria?.toLocaleString() ?? "—"}</td>
+                    <td>{facility.tested_for_malaria?.toLocaleString() ?? "—"}</td>
+                    <td>{facility.aggregate_reported ? "Reported" : "No value returned"}</td>
+                    <td>{facility.tracker_reported ? "Reported" : "No event returned"}</td>
+                    <td>{facility.latitude != null && facility.longitude != null ? "Available" : "Not published"}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          ) : facilities.isPending ? (
             <LoadingState label="facilities" rows={4} />
           ) : facilities.isError ? (
             renderError(facilities.error, () => void facilities.refetch())

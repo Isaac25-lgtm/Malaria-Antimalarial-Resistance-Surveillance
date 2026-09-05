@@ -156,7 +156,8 @@ describe("pending live workspace", () => {
         </AuthContext.Provider>
       </MemoryRouter>,
     );
-    expect(screen.getByRole("heading", { name: "Pader Live Pilot" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pader Overview" })).toBeInTheDocument();
+    expect(screen.getByText("Live pilot")).toBeInTheDocument();
     expect(screen.getByText("ISAAC OMODING · Pader District")).toBeInTheDocument();
     expect(screen.getByText("Pader authorization confirmed")).toBeInTheDocument();
     expect(screen.getByText("Geography mapping pending")).toBeInTheDocument();

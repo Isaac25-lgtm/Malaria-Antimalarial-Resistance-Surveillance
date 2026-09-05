@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -96,11 +97,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     if settings.is_live_auth_active:
+        from mars.integrations.dhis2.discovery.live import build_live_discovery_runner
+        from mars.integrations.dhis2.live_dashboard import build_live_dashboard_runner
         from mars.integrations.dhis2.login.provider import Dhis2BasicAuthProvider
         from mars.integrations.dhis2.mapping import Dhis2Crosswalk
+        from mars.integrations.dhis2.tracker.live import build_live_tracker_preview_runner
         from mars.security.live_session import InMemoryCredentialHolder, InMemorySessionStore
         from mars.security.login_throttle import LoginThrottle
+        from mars.services.live_dashboard import LiveDashboardService
+        from mars.services.live_discovery import LiveMetadataDiscoveryService
         from mars.services.live_scope import SqlAlchemyGeographyLookup
+        from mars.services.live_tracker import LiveTrackerPreviewService
 
         app.state.live_session_store = InMemorySessionStore(
             idle_seconds=settings.session_idle_seconds,
@@ -113,6 +120,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             secret=settings.login_throttle_secret,
         )
         app.state.dhis2_login_provider = Dhis2BasicAuthProvider(settings)
+        discovery_output = Path(__file__).resolve().parents[3] / "data" / "discovery"
+        app.state.live_metadata_discovery = LiveMetadataDiscoveryService(
+            app.state.live_credential_holder,
+            build_live_discovery_runner(settings, output_dir=discovery_output),
+        )
+        app.state.live_tracker_preview = LiveTrackerPreviewService(
+            app.state.live_credential_holder,
+            build_live_tracker_preview_runner(
+                settings,
+                project_root=Path(__file__).resolve().parents[3],
+            ),
+        )
+        app.state.live_dashboard = LiveDashboardService(
+            app.state.live_credential_holder,
+            build_live_dashboard_runner(
+                settings,
+                project_root=Path(__file__).resolve().parents[3],
+            ),
+        )
         app.state.live_geography_lookup_factory = lambda session: SqlAlchemyGeographyLookup(
             session, Dhis2Crosswalk(session)
         )

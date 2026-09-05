@@ -16,6 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
+import { useAuth } from "../../auth/context";
 import { QueryRegion } from "../../design-system/QueryRegion";
 import { NoDataState } from "../../design-system/States";
 import "./action-centre.css";
@@ -32,7 +33,15 @@ const QUEUES = [
 type QueueName = (typeof QUEUES)[number]["name"];
 
 export function ActionCentreView() {
+  const { user } = useAuth();
+  const liveMode = user?.source_status?.mode === "live";
   const [active, setActive] = useState<QueueName>("new");
+  const live = useQuery({
+    queryKey: ["live", "dashboard"],
+    queryFn: api.latestLiveDashboard,
+    enabled: liveMode,
+    retry: false,
+  });
 
   const catalogue = useQuery({
     queryKey: ["investigations", "queues"],
@@ -60,12 +69,26 @@ export function ActionCentreView() {
         </div>
       </header>
 
-      {overdue && !overdue.available ? (
+      {!liveMode && overdue && !overdue.available ? (
         <NoDataState
           title="No overdue queue"
           description={overdue.detail ?? ""}
           awaiting={overdue.missing_configuration.join(", ")}
         />
+      ) : null}
+
+      {liveMode && live.data && (live.data.operational_alerts ?? []).length > 0 ? (
+        <section className="panel" aria-labelledby="untriaged-live-heading">
+          <div className="panel__header"><h2 id="untriaged-live-heading">Untriaged live source issues</h2></div>
+          <div className="panel__body table-scroll">
+            <table className="table">
+              <thead><tr><th>Issue</th><th>Location</th><th>State</th><th>Evidence</th></tr></thead>
+              <tbody>{(live.data.operational_alerts ?? []).map((item) => (
+                <tr key={item.id}><th>{item.title}</th><td>{item.facility_name}</td><td>Awaiting triage</td><td>{item.detail}</td></tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </section>
       ) : null}
 
       <nav className="action-centre__tabs" aria-label="Investigation queues">

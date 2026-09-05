@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from mars.security.live_session import (
     SESSION_ID_BYTES,
     InMemoryCredentialHolder,
@@ -22,6 +24,10 @@ from mars.security.remote_authorization import (
     LiveAuthorizationState,
     RemoteAuthorizationContext,
     RemoteWorkspaceScope,
+)
+from mars.services.live_discovery import (
+    LiveDiscoveryUnavailableError,
+    LiveMetadataDiscoveryService,
 )
 
 
@@ -136,6 +142,72 @@ class TestOpaqueSessionStore:
         holder = InMemoryCredentialHolder()
         holder.store("sid", "officer", "sentinel-session-secret")
         assert "sentinel-session-secret" not in repr(holder)
+
+    def test_credential_holder_invokes_without_returning_credentials(self) -> None:
+        holder = InMemoryCredentialHolder()
+        holder.store("sid", "officer", "sentinel-session-secret")
+        observed: list[tuple[str, str]] = []
+
+        result = holder.invoke(
+            "sid", lambda username, password: observed.append((username, password))
+        )
+
+        assert result is None
+        assert observed == [("officer", "sentinel-session-secret")]
+        assert holder.has("sid")
+
+    def test_live_discovery_retains_only_a_sanitized_summary(self) -> None:
+        holder = InMemoryCredentialHolder()
+        holder.store("sid", "officer", "sentinel-session-secret")
+        service = LiveMetadataDiscoveryService(
+            holder,
+            lambda _username, _password: {
+                "stop_before_patient_data": True,
+                "generated_at": "2026-09-04T12:00:00Z",
+                "system": {"version": "2.40"},
+                "api_generation": "modern_tracker_preferred_legacy_deprecated",
+                "programmes": [{"id": "program-1"}],
+                "program_stages": [{"id": "stage-1"}],
+                "data_elements": [{"id": "element-1"}],
+                "accessible_facilities": [
+                    {"id": "facility-1", "name": "Pader HC III", "path": "/ug/root-1/facility-1"}
+                ],
+                "tracker_search_organisation_units": [{"id": "root-1", "path": "/ug/root-1"}],
+                "candidate_mappings": [{"remote_id": "element-1"}],
+                "report_files": {"json": "safe.json", "markdown": "safe.md"},
+            },
+        )
+
+        result = service.discover("sid")
+
+        assert result["patient_data_retrieved"] is False
+        assert result["dhis2_version"] == "2.40"
+        assert result["accessible_facility_count"] == 1
+        assert result["tracker_facilities"] == [
+            {
+                "id": "facility-1",
+                "name": "Pader HC III",
+                "code": None,
+                "parent_id": None,
+                "path": "/ug/root-1/facility-1",
+                "latitude": None,
+                "longitude": None,
+            }
+        ]
+        assert service.tracker_facility_uids("sid") == frozenset({"facility-1"})
+        assert "programmes" not in result
+        assert "sentinel-session-secret" not in repr(result)
+        assert service.latest("sid") == result
+        service.drop("sid")
+        assert service.latest("sid") is None
+
+    def test_live_discovery_requires_an_active_upstream_credential(self) -> None:
+        service = LiveMetadataDiscoveryService(
+            InMemoryCredentialHolder(),
+            lambda _username, _password: {"stop_before_patient_data": True},
+        )
+        with pytest.raises(LiveDiscoveryUnavailableError):
+            service.discover("missing")
 
     def test_authorization_context_has_no_password_field(self) -> None:
         state = _authorization()

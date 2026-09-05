@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
 from mars.api.dependencies import (
@@ -25,6 +25,7 @@ from mars.api.dependencies import (
     SettingsDep,
     get_live_auth_service,
     get_token_verifier,
+    require_permissions,
 )
 from mars.api.v1.schemas import (
     AuthorisedDistrictSummary,
@@ -35,6 +36,7 @@ from mars.api.v1.schemas import (
     DevelopmentUserSummary,
     GeographyScopeSummary,
     LiveLoginRequest,
+    LiveMetadataDiscoverySummary,
     LocalMappingSummary,
     RemoteWorkspaceSummary,
     SessionScopeSummary,
@@ -46,12 +48,14 @@ from mars.core.errors import (
     CsrfRejectedError,
     FeatureDisabledError,
     UnauthenticatedError,
+    UpstreamUnavailableError,
     ValidationFailedError,
 )
 from mars.core.logging import get_logger
 from mars.core.settings import Settings
 from mars.domain.enums import AuditAction, AuditOutcome
 from mars.security.origin import assert_approved_origin
+from mars.security.permissions import Permission
 from mars.security.principal import AuthenticatedPrincipal
 from mars.security.providers import DevelopmentTokenVerifier
 from mars.security.remote_authorization import LiveAuthorizationState
@@ -119,6 +123,72 @@ def current_user(request: Request, principal: PrincipalDep) -> CurrentUserRespon
         principal,
         authorization=getattr(live, "authorization", None),
     )
+
+
+@router.get(
+    "/auth/live/metadata-discovery",
+    response_model=LiveMetadataDiscoverySummary | None,
+    summary="Latest patient-free live metadata discovery for this session",
+    dependencies=[Depends(require_permissions(Permission.GEOGRAPHY_VIEW))],
+)
+def latest_live_metadata_discovery(
+    request: Request,
+    settings: SettingsDep,
+    principal: PrincipalDep,
+) -> LiveMetadataDiscoverySummary | None:
+    if not settings.is_live_auth_active:
+        raise FeatureDisabledError("Live eRegisters authentication is not enabled")
+    raw_id = request.cookies.get(settings.session_cookie_name)
+    service = getattr(request.app.state, "live_metadata_discovery", None)
+    if not raw_id or service is None:
+        return None
+    result = service.latest(raw_id)
+    return LiveMetadataDiscoverySummary.model_validate(result) if result is not None else None
+
+
+@router.post(
+    "/auth/live/metadata-discovery",
+    response_model=LiveMetadataDiscoverySummary,
+    summary="Discover live source metadata without retrieving patient rows",
+    dependencies=[Depends(require_permissions(Permission.GEOGRAPHY_VIEW))],
+)
+def run_live_metadata_discovery(
+    request: Request,
+    settings: SettingsDep,
+    audit: AuditDep,
+    principal: PrincipalDep,
+) -> LiveMetadataDiscoverySummary:
+    """Run the existing GET-only, allowlisted metadata discovery utility.
+
+    The browser supplies no upstream credential. The server applies the
+    credential already attached to this opaque session, writes sanitized JSON
+    and Markdown reports, and stops before every patient/data-value route.
+    """
+    if not settings.is_live_auth_active:
+        raise FeatureDisabledError("Live eRegisters authentication is not enabled")
+    raw_id = request.cookies.get(settings.session_cookie_name)
+    service = getattr(request.app.state, "live_metadata_discovery", None)
+    if not raw_id or service is None:
+        raise UnauthenticatedError("A live session is required")
+    try:
+        result = service.discover(raw_id)
+    except Exception as error:
+        logger.info("live_metadata_discovery_failed", error_type=type(error).__name__)
+        raise UpstreamUnavailableError(
+            "eRegisters metadata discovery could not complete. No patient data were requested."
+        ) from error
+    audit.record(
+        action=AuditAction.DATA_IMPORTED,
+        principal=principal,
+        object_type="source_metadata_discovery",
+        object_id="eregisters",
+        context={
+            "patient_data_retrieved": False,
+            "programme_count": result.get("programme_count", 0),
+            "data_element_count": result.get("data_element_count", 0),
+        },
+    )
+    return LiveMetadataDiscoverySummary.model_validate(result)
 
 
 @router.post(
@@ -228,6 +298,15 @@ def logout(
             store.invalidate(raw_id)
         if holder is not None and raw_id:
             holder.drop(raw_id)
+        discovery = getattr(request.app.state, "live_metadata_discovery", None)
+        if discovery is not None and raw_id:
+            discovery.drop(raw_id)
+        tracker_preview = getattr(request.app.state, "live_tracker_preview", None)
+        if tracker_preview is not None and raw_id:
+            tracker_preview.drop(raw_id)
+        dashboard = getattr(request.app.state, "live_dashboard", None)
+        if dashboard is not None and raw_id:
+            dashboard.drop(raw_id)
         clear_session_cookies(response, settings)
     if principal is not None:
         audit.record(

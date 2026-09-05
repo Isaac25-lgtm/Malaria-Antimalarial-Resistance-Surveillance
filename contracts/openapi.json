@@ -660,6 +660,120 @@
         "title": "ConfigurationKeySummary",
         "type": "object"
       },
+      "ControlledTrackerPreviewRequest": {
+        "description": "One deliberately small patient-bearing source validation request.",
+        "properties": {
+          "facility_uid": {
+            "pattern": "^[A-Za-z][A-Za-z0-9]{10}$",
+            "title": "Facility Uid",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "facility_uid",
+          "period_start",
+          "period_end"
+        ],
+        "title": "ControlledTrackerPreviewRequest",
+        "type": "object"
+      },
+      "ControlledTrackerPreviewSummary": {
+        "description": "Validation counts only; no patient row or source identifier is returned.",
+        "properties": {
+          "facility_uid": {
+            "title": "Facility Uid",
+            "type": "string"
+          },
+          "field_coverage": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Field Coverage",
+            "type": "object"
+          },
+          "invalid_event_count": {
+            "title": "Invalid Event Count",
+            "type": "integer"
+          },
+          "loadable_event_count": {
+            "title": "Loadable Event Count",
+            "type": "integer"
+          },
+          "mapping_schema_version": {
+            "title": "Mapping Schema Version",
+            "type": "string"
+          },
+          "patient_data_retrieved": {
+            "const": true,
+            "title": "Patient Data Retrieved",
+            "type": "boolean"
+          },
+          "patient_rows_returned": {
+            "const": false,
+            "title": "Patient Rows Returned",
+            "type": "boolean"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "persisted": {
+            "const": false,
+            "title": "Persisted",
+            "type": "boolean"
+          },
+          "positive_event_count": {
+            "title": "Positive Event Count",
+            "type": "integer"
+          },
+          "retrieved_event_count": {
+            "title": "Retrieved Event Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "unique_patient_count": {
+            "title": "Unique Patient Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "facility_uid",
+          "period_start",
+          "period_end",
+          "retrieved_event_count",
+          "unique_patient_count",
+          "loadable_event_count",
+          "invalid_event_count",
+          "positive_event_count",
+          "field_coverage",
+          "mapping_schema_version",
+          "patient_data_retrieved",
+          "patient_rows_returned",
+          "persisted"
+        ],
+        "title": "ControlledTrackerPreviewSummary",
+        "type": "object"
+      },
       "CountBucket": {
         "properties": {
           "code": {
@@ -3031,6 +3145,470 @@
         "title": "InvestigationQueueEntry",
         "type": "object"
       },
+      "LiveCommodityAlerts": {
+        "properties": {
+          "al_stock_out_facilities": {
+            "title": "Al Stock Out Facilities",
+            "type": "integer"
+          },
+          "artesunate_stock_out_facilities": {
+            "title": "Artesunate Stock Out Facilities",
+            "type": "integer"
+          },
+          "rdt_stock_out_facilities": {
+            "title": "Rdt Stock Out Facilities",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rdt_stock_out_facilities",
+          "al_stock_out_facilities",
+          "artesunate_stock_out_facilities"
+        ],
+        "title": "LiveCommodityAlerts",
+        "type": "object"
+      },
+      "LiveDashboardFacility": {
+        "properties": {
+          "aggregate_reported": {
+            "title": "Aggregate Reported",
+            "type": "boolean"
+          },
+          "al_days_out_of_stock": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Al Days Out Of Stock"
+          },
+          "artesunate_days_out_of_stock": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artesunate Days Out Of Stock"
+          },
+          "confirmed_malaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Malaria"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_remote_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Remote Id"
+          },
+          "rdt_days_out_of_stock": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rdt Days Out Of Stock"
+          },
+          "tested_for_malaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tested For Malaria"
+          },
+          "tracker_reported": {
+            "title": "Tracker Reported",
+            "type": "boolean"
+          },
+          "uid": {
+            "title": "Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid",
+          "name",
+          "aggregate_reported",
+          "tracker_reported"
+        ],
+        "title": "LiveDashboardFacility",
+        "type": "object"
+      },
+      "LiveDashboardKpi": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "denominator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denominator"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "numerator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numerator"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "value",
+          "numerator",
+          "denominator",
+          "unit",
+          "source",
+          "status"
+        ],
+        "title": "LiveDashboardKpi",
+        "type": "object"
+      },
+      "LiveDashboardSnapshot": {
+        "description": "A real DHIS2 snapshot; it can never contain synthetic fallback values.",
+        "properties": {
+          "aggregate_reporting_facility_count": {
+            "title": "Aggregate Reporting Facility Count",
+            "type": "integer"
+          },
+          "aggregate_value_count": {
+            "title": "Aggregate Value Count",
+            "type": "integer"
+          },
+          "commodity_alerts": {
+            "$ref": "#/components/schemas/LiveCommodityAlerts"
+          },
+          "facilities": {
+            "items": {
+              "$ref": "#/components/schemas/LiveDashboardFacility"
+            },
+            "title": "Facilities",
+            "type": "array"
+          },
+          "facility_count": {
+            "title": "Facility Count",
+            "type": "integer"
+          },
+          "invalid_aggregate_value_count": {
+            "title": "Invalid Aggregate Value Count",
+            "type": "integer"
+          },
+          "kpis": {
+            "items": {
+              "$ref": "#/components/schemas/LiveDashboardKpi"
+            },
+            "title": "Kpis",
+            "type": "array"
+          },
+          "malaria_lab_event_count": {
+            "title": "Malaria Lab Event Count",
+            "type": "integer"
+          },
+          "operational_alerts": {
+            "items": {
+              "$ref": "#/components/schemas/LiveOperationalAlert"
+            },
+            "title": "Operational Alerts",
+            "type": "array"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "positive_malaria_event_count": {
+            "title": "Positive Malaria Event Count",
+            "type": "integer"
+          },
+          "repeat_positive_patients": {
+            "items": {
+              "$ref": "#/components/schemas/LiveRepeatPositivePatient"
+            },
+            "title": "Repeat Positive Patients",
+            "type": "array"
+          },
+          "scope": {
+            "const": "Pader District",
+            "title": "Scope",
+            "type": "string"
+          },
+          "source_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Updated At"
+          },
+          "status": {
+            "enum": [
+              "synchronized",
+              "partial",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "synchronized_at": {
+            "format": "date-time",
+            "title": "Synchronized At",
+            "type": "string"
+          },
+          "synthetic_data_used": {
+            "const": false,
+            "title": "Synthetic Data Used",
+            "type": "boolean"
+          },
+          "tracker_event_count": {
+            "title": "Tracker Event Count",
+            "type": "integer"
+          },
+          "tracker_failed_facility_count": {
+            "title": "Tracker Failed Facility Count",
+            "type": "integer"
+          },
+          "tracker_reporting_facility_count": {
+            "title": "Tracker Reporting Facility Count",
+            "type": "integer"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/LiveDashboardTrendPoint"
+            },
+            "title": "Trend",
+            "type": "array"
+          },
+          "unique_positive_patient_count": {
+            "title": "Unique Positive Patient Count",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "scope",
+          "period_start",
+          "period_end",
+          "synchronized_at",
+          "facility_count",
+          "aggregate_reporting_facility_count",
+          "tracker_reporting_facility_count",
+          "tracker_failed_facility_count",
+          "aggregate_value_count",
+          "tracker_event_count",
+          "malaria_lab_event_count",
+          "positive_malaria_event_count",
+          "unique_positive_patient_count",
+          "invalid_aggregate_value_count",
+          "kpis",
+          "commodity_alerts",
+          "facilities",
+          "trend",
+          "operational_alerts",
+          "repeat_positive_patients",
+          "warnings",
+          "synthetic_data_used"
+        ],
+        "title": "LiveDashboardSnapshot",
+        "type": "object"
+      },
+      "LiveDashboardSyncRequest": {
+        "description": "Explicit reporting window for a real, scoped DHIS2 read.",
+        "properties": {
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end"
+        ],
+        "title": "LiveDashboardSyncRequest",
+        "type": "object"
+      },
+      "LiveDashboardTrendPoint": {
+        "properties": {
+          "confirmed_malaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Malaria"
+          },
+          "encounters": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encounters"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "positivity_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positivity Rate"
+          },
+          "suspected_malaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspected Malaria"
+          },
+          "tested_for_malaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tested For Malaria"
+          }
+        },
+        "required": [
+          "period"
+        ],
+        "title": "LiveDashboardTrendPoint",
+        "type": "object"
+      },
       "LiveLoginRequest": {
         "description": "eRegisters username and password, posted only to MARS.",
         "properties": {
@@ -3052,6 +3630,271 @@
           "password"
         ],
         "title": "LiveLoginRequest",
+        "type": "object"
+      },
+      "LiveMetadataDiscoverySummary": {
+        "description": "Sanitized result of the current user's metadata-only source discovery.",
+        "properties": {
+          "accessible_facility_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessible Facility Count"
+          },
+          "api_generation": {
+            "title": "Api Generation",
+            "type": "string"
+          },
+          "candidate_mapping_count": {
+            "default": 0,
+            "title": "Candidate Mapping Count",
+            "type": "integer"
+          },
+          "data_element_count": {
+            "default": 0,
+            "title": "Data Element Count",
+            "type": "integer"
+          },
+          "dhis2_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dhis2 Version"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "json_report": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Json Report"
+          },
+          "markdown_report": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown Report"
+          },
+          "patient_data_retrieved": {
+            "default": false,
+            "title": "Patient Data Retrieved",
+            "type": "boolean"
+          },
+          "program_stage_count": {
+            "default": 0,
+            "title": "Program Stage Count",
+            "type": "integer"
+          },
+          "programme_count": {
+            "default": 0,
+            "title": "Programme Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tracker_facilities": {
+            "items": {
+              "$ref": "#/components/schemas/LiveTrackerFacilitySummary"
+            },
+            "title": "Tracker Facilities",
+            "type": "array"
+          },
+          "tracker_scope_root_count": {
+            "default": 0,
+            "title": "Tracker Scope Root Count",
+            "type": "integer"
+          },
+          "unresolved_questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unresolved Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "api_generation"
+        ],
+        "title": "LiveMetadataDiscoverySummary",
+        "type": "object"
+      },
+      "LiveOperationalAlert": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "facility_name": {
+            "title": "Facility Name",
+            "type": "string"
+          },
+          "facility_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Uid"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "commodity",
+              "data_quality"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "action_required",
+              "review"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "facility_name",
+          "status",
+          "detail"
+        ],
+        "title": "LiveOperationalAlert",
+        "type": "object"
+      },
+      "LiveRepeatPositivePatient": {
+        "description": "Pseudonymous evidence only; the source tracked-entity UID is excluded.",
+        "properties": {
+          "cross_facility": {
+            "title": "Cross Facility",
+            "type": "boolean"
+          },
+          "facility_name": {
+            "title": "Facility Name",
+            "type": "string"
+          },
+          "first_positive_on": {
+            "format": "date",
+            "title": "First Positive On",
+            "type": "string"
+          },
+          "interval_days": {
+            "title": "Interval Days",
+            "type": "integer"
+          },
+          "latest_positive_on": {
+            "format": "date",
+            "title": "Latest Positive On",
+            "type": "string"
+          },
+          "mars_patient_id": {
+            "title": "Mars Patient Id",
+            "type": "string"
+          },
+          "positive_encounter_count": {
+            "title": "Positive Encounter Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mars_patient_id",
+          "first_positive_on",
+          "latest_positive_on",
+          "positive_encounter_count",
+          "interval_days",
+          "facility_name",
+          "cross_facility"
+        ],
+        "title": "LiveRepeatPositivePatient",
+        "type": "object"
+      },
+      "LiveTrackerFacilitySummary": {
+        "description": "A facility UID proven inside the authenticated Tracker-search scope.",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "LiveTrackerFacilitySummary",
         "type": "object"
       },
       "LivenessResponse": {
@@ -4368,6 +5211,245 @@
           "offset"
         ],
         "title": "Page[OrganisationUnitSummary]",
+        "type": "object"
+      },
+      "PatientEncounterSummary": {
+        "description": "Clinical facts from one encounter in a pseudonymous timeline.",
+        "properties": {
+          "age_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Unit"
+          },
+          "age_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Value"
+          },
+          "attendance_type": {
+            "title": "Attendance Type",
+            "type": "string"
+          },
+          "diagnoses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Diagnoses",
+            "type": "array"
+          },
+          "encounter_date": {
+            "format": "date",
+            "title": "Encounter Date",
+            "type": "string"
+          },
+          "encounter_id": {
+            "format": "uuid",
+            "title": "Encounter Id",
+            "type": "string"
+          },
+          "facility_id": {
+            "format": "uuid",
+            "title": "Facility Id",
+            "type": "string"
+          },
+          "facility_name": {
+            "title": "Facility Name",
+            "type": "string"
+          },
+          "fever_present": {
+            "title": "Fever Present",
+            "type": "string"
+          },
+          "sex": {
+            "title": "Sex",
+            "type": "string"
+          },
+          "source_system": {
+            "title": "Source System",
+            "type": "string"
+          },
+          "tests": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Tests",
+            "type": "array"
+          },
+          "treatments": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Treatments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "encounter_id",
+          "encounter_date",
+          "facility_id",
+          "facility_name",
+          "sex",
+          "age_value",
+          "age_unit",
+          "fever_present",
+          "attendance_type",
+          "tests",
+          "diagnoses",
+          "treatments",
+          "source_system"
+        ],
+        "title": "PatientEncounterSummary",
+        "type": "object"
+      },
+      "PatientOfInterestSummary": {
+        "description": "One pseudonymous positive-encounter history; never direct identity.",
+        "properties": {
+          "age_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Unit"
+          },
+          "age_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Value"
+          },
+          "classification": {
+            "enum": [
+              "positive_encounter",
+              "repeat_positive_input"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "facility_id": {
+            "format": "uuid",
+            "title": "Facility Id",
+            "type": "string"
+          },
+          "facility_name": {
+            "title": "Facility Name",
+            "type": "string"
+          },
+          "first_positive_on": {
+            "format": "date",
+            "title": "First Positive On",
+            "type": "string"
+          },
+          "interval_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Days"
+          },
+          "latest_positive_on": {
+            "format": "date",
+            "title": "Latest Positive On",
+            "type": "string"
+          },
+          "mars_patient_id": {
+            "title": "Mars Patient Id",
+            "type": "string"
+          },
+          "patient_reference_id": {
+            "format": "uuid",
+            "title": "Patient Reference Id",
+            "type": "string"
+          },
+          "positive_encounter_count": {
+            "title": "Positive Encounter Count",
+            "type": "integer"
+          },
+          "sex": {
+            "title": "Sex",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_reference_id",
+          "mars_patient_id",
+          "sex",
+          "age_value",
+          "age_unit",
+          "first_positive_on",
+          "latest_positive_on",
+          "positive_encounter_count",
+          "interval_days",
+          "facility_id",
+          "facility_name",
+          "classification"
+        ],
+        "title": "PatientOfInterestSummary",
+        "type": "object"
+      },
+      "PatientTimeline": {
+        "description": "Pseudonymous longitudinal evidence inside the caller's facility scope.",
+        "properties": {
+          "encounters": {
+            "items": {
+              "$ref": "#/components/schemas/PatientEncounterSummary"
+            },
+            "title": "Encounters",
+            "type": "array"
+          },
+          "identity_available": {
+            "title": "Identity Available",
+            "type": "boolean"
+          },
+          "identity_detail": {
+            "title": "Identity Detail",
+            "type": "string"
+          },
+          "mars_patient_id": {
+            "title": "Mars Patient Id",
+            "type": "string"
+          },
+          "patient_reference_id": {
+            "format": "uuid",
+            "title": "Patient Reference Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_reference_id",
+          "mars_patient_id",
+          "identity_available",
+          "identity_detail",
+          "encounters"
+        ],
+        "title": "PatientTimeline",
         "type": "object"
       },
       "PeriodWindow": {
@@ -6445,6 +7527,65 @@
         "tags": [
           "auth",
           "development"
+        ]
+      }
+    },
+    "/api/v1/auth/live/metadata-discovery": {
+      "get": {
+        "operationId": "latest_live_metadata_discovery_api_v1_auth_live_metadata_discovery_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveMetadataDiscoverySummary"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Latest Live Metadata Discovery Api V1 Auth Live Metadata Discovery Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Latest patient-free live metadata discovery for this session",
+        "tags": [
+          "auth"
+        ]
+      },
+      "post": {
+        "description": "Run the existing GET-only, allowlisted metadata discovery utility.\n\nThe browser supplies no upstream credential. The server applies the\ncredential already attached to this opaque session, writes sanitized JSON\nand Markdown reports, and stops before every patient/data-value route.",
+        "operationId": "run_live_metadata_discovery_api_v1_auth_live_metadata_discovery_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveMetadataDiscoverySummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Discover live source metadata without retrieving patient rows",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -9000,6 +10141,167 @@
         ]
       }
     },
+    "/api/v1/live/dashboard": {
+      "get": {
+        "description": "Return only this session's last real source snapshot.",
+        "operationId": "latest_live_dashboard_api_v1_live_dashboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveDashboardSnapshot"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Latest Live Dashboard Api V1 Live Dashboard Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Latest Live Dashboard",
+        "tags": [
+          "live data"
+        ]
+      }
+    },
+    "/api/v1/live/dashboard/synchronize": {
+      "post": {
+        "description": "Read scoped HMIS values and pseudonymous Tracker evidence server-to-server.",
+        "operationId": "synchronize_live_dashboard_api_v1_live_dashboard_synchronize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveDashboardSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveDashboardSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Synchronize Live Dashboard",
+        "tags": [
+          "live data"
+        ]
+      }
+    },
+    "/api/v1/live/tracker/preview": {
+      "get": {
+        "operationId": "latest_tracker_preview_api_v1_live_tracker_preview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ControlledTrackerPreviewSummary"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Latest Tracker Preview Api V1 Live Tracker Preview Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Latest Tracker Preview",
+        "tags": [
+          "live data"
+        ]
+      },
+      "post": {
+        "description": "Validate one facility and at most fourteen days; persist no patient row.",
+        "operationId": "run_tracker_preview_api_v1_live_tracker_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ControlledTrackerPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ControlledTrackerPreviewSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Run Tracker Preview",
+        "tags": [
+          "live data"
+        ]
+      }
+    },
     "/api/v1/meta/assistant": {
       "get": {
         "description": "Whether Ask MARS can answer on this deployment.\n\nLives in ``meta`` rather than in the assistant's own router, and reads\nnothing but the feature flag. ADR 0008 requires ``mars.ai`` to be a leaf\nthat a deployment can disable entirely, so the endpoint a client uses to\ndiscover the assistant must not itself import it - otherwise asking\nwhether AI is available would load AI.\n\nWhen the flag is off the assistant's own routes are not registered at all.\nThat is the honest contract: MARS does not advertise an endpoint it will\nnot answer.",
@@ -9244,6 +10546,144 @@
         "summary": "One organisation unit, with its ancestor chain",
         "tags": [
           "organisation"
+        ]
+      }
+    },
+    "/api/v1/patients": {
+      "get": {
+        "description": "Positive encounter histories under stable MARS aliases.",
+        "operationId": "patients_of_interest_api_v1_patients_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PatientOfInterestSummary"
+                  },
+                  "title": "Response Patients Of Interest Api V1 Patients Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Patients Of Interest",
+        "tags": [
+          "patient surveillance"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_reference_id}": {
+      "get": {
+        "description": "An authorised longitudinal encounter timeline, still pseudonymous.",
+        "operationId": "patient_timeline_api_v1_patients__patient_reference_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_reference_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Patient Reference Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientTimeline"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Patient Timeline",
+        "tags": [
+          "patient surveillance"
         ]
       }
     },

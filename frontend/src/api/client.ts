@@ -266,6 +266,26 @@ export const api = {
       body: { username, password },
     }),
 
+  latestLiveMetadataDiscovery: () =>
+    request<Schemas["LiveMetadataDiscoverySummary"] | null>(
+      "/auth/live/metadata-discovery",
+    ),
+
+  runLiveMetadataDiscovery: () =>
+    request<Schemas["LiveMetadataDiscoverySummary"]>(
+      "/auth/live/metadata-discovery",
+      { method: "POST" },
+    ),
+
+  latestLiveDashboard: () =>
+    request<Schemas["LiveDashboardSnapshot"] | null>("/live/dashboard"),
+
+  synchronizeLiveDashboard: (body: { period_start: string; period_end: string }) =>
+    request<Schemas["LiveDashboardSnapshot"]>("/live/dashboard/synchronize", {
+      method: "POST",
+      body,
+    }),
+
   logout: () => request<void>("/auth/logout", { method: "POST" }),
 
   developmentUsers: () =>
@@ -398,6 +418,17 @@ export const api = {
 
   commodityAlerts: (query: { period_from?: string; period_to?: string; limit?: number }) =>
     request<Schemas["AnalyticalRecordSummary"][]>("/analytics/commodity-alerts", { query }),
+
+  patientsOfInterest: (query: {
+    period_from?: string;
+    period_to?: string;
+    limit?: number;
+  }) => request<Schemas["PatientOfInterestSummary"][]>("/patients", { query }),
+
+  patientTimeline: (patientReferenceId: string) =>
+    request<Schemas["PatientTimeline"]>(
+      `/patients/${encodeURIComponent(patientReferenceId)}`,
+    ),
 
   signals: (query: {
     period_from?: string;

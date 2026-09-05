@@ -42,6 +42,7 @@ def compact_unit(raw: dict[str, Any]) -> OrganisationUnitRecord:
         for group in groups:
             if isinstance(group, dict) and isinstance(group.get("name"), str):
                 names.append(group["name"])
+    latitude, longitude = _point(raw.get("geometry"))
     record = OrganisationUnitRecord(
         id=str(raw.get("id") or ""),
         name=raw.get("name") if isinstance(raw.get("name"), str) else None,
@@ -50,9 +51,26 @@ def compact_unit(raw: dict[str, Any]) -> OrganisationUnitRecord:
         path=raw.get("path") if isinstance(raw.get("path"), str) else None,
         leaf=raw.get("leaf") if isinstance(raw.get("leaf"), bool) else None,
         parent_id=parent.get("id") if isinstance(parent.get("id"), str) else None,
+        latitude=latitude,
+        longitude=longitude,
         group_names=names,
     )
     return record.model_copy(update={"classification": classify_unit(record)})
+
+
+def _point(raw: Any) -> tuple[float | None, float | None]:
+    if not isinstance(raw, dict) or raw.get("type") != "Point":
+        return None, None
+    coordinates = raw.get("coordinates")
+    if not isinstance(coordinates, list) or len(coordinates) != 2:
+        return None, None
+    try:
+        longitude, latitude = float(coordinates[0]), float(coordinates[1])
+    except (TypeError, ValueError):
+        return None, None
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return None, None
+    return latitude, longitude
 
 
 def classify_unit(

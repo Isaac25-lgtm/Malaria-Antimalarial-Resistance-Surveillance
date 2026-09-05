@@ -122,6 +122,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/live/metadata-discovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest patient-free live metadata discovery for this session */
+        get: operations["latest_live_metadata_discovery_api_v1_auth_live_metadata_discovery_get"];
+        put?: never;
+        /**
+         * Discover live source metadata without retrieving patient rows
+         * @description Run the existing GET-only, allowlisted metadata discovery utility.
+         *
+         *     The browser supplies no upstream credential. The server applies the
+         *     credential already attached to this opaque session, writes sanitized JSON
+         *     and Markdown reports, and stops before every patient/data-value route.
+         */
+        post: operations["run_live_metadata_discovery_api_v1_auth_live_metadata_discovery_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -1080,6 +1105,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/live/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Latest Live Dashboard
+         * @description Return only this session's last real source snapshot.
+         */
+        get: operations["latest_live_dashboard_api_v1_live_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live/dashboard/synchronize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Synchronize Live Dashboard
+         * @description Read scoped HMIS values and pseudonymous Tracker evidence server-to-server.
+         */
+        post: operations["synchronize_live_dashboard_api_v1_live_dashboard_synchronize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live/tracker/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest Tracker Preview */
+        get: operations["latest_tracker_preview_api_v1_live_tracker_preview_get"];
+        put?: never;
+        /**
+         * Run Tracker Preview
+         * @description Validate one facility and at most fourteen days; persist no patient row.
+         */
+        post: operations["run_tracker_preview_api_v1_live_tracker_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta/assistant": {
         parameters: {
             query?: never;
@@ -1213,6 +1299,46 @@ export interface paths {
         };
         /** One organisation unit, with its ancestor chain */
         get: operations["get_organisation_unit_api_v1_organisation_units__unit_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Patients Of Interest
+         * @description Positive encounter histories under stable MARS aliases.
+         */
+        get: operations["patients_of_interest_api_v1_patients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_reference_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Patient Timeline
+         * @description An authorised longitudinal encounter timeline, still pseudonymous.
+         */
+        get: operations["patient_timeline_api_v1_patients__patient_reference_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1669,6 +1795,75 @@ export interface components {
             label: string;
             /** Requires Programme Approval */
             requires_programme_approval: boolean;
+        };
+        /**
+         * ControlledTrackerPreviewRequest
+         * @description One deliberately small patient-bearing source validation request.
+         */
+        ControlledTrackerPreviewRequest: {
+            /** Facility Uid */
+            facility_uid: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+        };
+        /**
+         * ControlledTrackerPreviewSummary
+         * @description Validation counts only; no patient row or source identifier is returned.
+         */
+        ControlledTrackerPreviewSummary: {
+            /** Facility Uid */
+            facility_uid: string;
+            /** Field Coverage */
+            field_coverage: {
+                [key: string]: number;
+            };
+            /** Invalid Event Count */
+            invalid_event_count: number;
+            /** Loadable Event Count */
+            loadable_event_count: number;
+            /** Mapping Schema Version */
+            mapping_schema_version: string;
+            /**
+             * Patient Data Retrieved
+             * @constant
+             */
+            patient_data_retrieved: true;
+            /**
+             * Patient Rows Returned
+             * @constant
+             */
+            patient_rows_returned: false;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Persisted
+             * @constant
+             */
+            persisted: false;
+            /** Positive Event Count */
+            positive_event_count: number;
+            /** Retrieved Event Count */
+            retrieved_event_count: number;
+            /** Status */
+            status: string;
+            /** Unique Patient Count */
+            unique_patient_count: number;
         };
         /** CountBucket */
         CountBucket: {
@@ -2573,6 +2768,166 @@ export interface components {
              */
             signal_id: string;
         };
+        /** LiveCommodityAlerts */
+        LiveCommodityAlerts: {
+            /** Al Stock Out Facilities */
+            al_stock_out_facilities: number;
+            /** Artesunate Stock Out Facilities */
+            artesunate_stock_out_facilities: number;
+            /** Rdt Stock Out Facilities */
+            rdt_stock_out_facilities: number;
+        };
+        /** LiveDashboardFacility */
+        LiveDashboardFacility: {
+            /** Aggregate Reported */
+            aggregate_reported: boolean;
+            /** Al Days Out Of Stock */
+            al_days_out_of_stock?: number | null;
+            /** Artesunate Days Out Of Stock */
+            artesunate_days_out_of_stock?: number | null;
+            /** Confirmed Malaria */
+            confirmed_malaria?: number | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+            /** Name */
+            name: string;
+            /** Parent Remote Id */
+            parent_remote_id?: string | null;
+            /** Rdt Days Out Of Stock */
+            rdt_days_out_of_stock?: number | null;
+            /** Tested For Malaria */
+            tested_for_malaria?: number | null;
+            /** Tracker Reported */
+            tracker_reported: boolean;
+            /** Uid */
+            uid: string;
+        };
+        /** LiveDashboardKpi */
+        LiveDashboardKpi: {
+            /** Code */
+            code: string;
+            /** Denominator */
+            denominator: number | null;
+            /** Label */
+            label: string;
+            /** Numerator */
+            numerator: number | null;
+            /** Source */
+            source: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "unavailable";
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: string | null;
+        };
+        /**
+         * LiveDashboardSnapshot
+         * @description A real DHIS2 snapshot; it can never contain synthetic fallback values.
+         */
+        LiveDashboardSnapshot: {
+            /** Aggregate Reporting Facility Count */
+            aggregate_reporting_facility_count: number;
+            /** Aggregate Value Count */
+            aggregate_value_count: number;
+            commodity_alerts: components["schemas"]["LiveCommodityAlerts"];
+            /** Facilities */
+            facilities: components["schemas"]["LiveDashboardFacility"][];
+            /** Facility Count */
+            facility_count: number;
+            /** Invalid Aggregate Value Count */
+            invalid_aggregate_value_count: number;
+            /** Kpis */
+            kpis: components["schemas"]["LiveDashboardKpi"][];
+            /** Malaria Lab Event Count */
+            malaria_lab_event_count: number;
+            /** Operational Alerts */
+            operational_alerts: components["schemas"]["LiveOperationalAlert"][];
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Positive Malaria Event Count */
+            positive_malaria_event_count: number;
+            /** Repeat Positive Patients */
+            repeat_positive_patients: components["schemas"]["LiveRepeatPositivePatient"][];
+            /**
+             * Scope
+             * @constant
+             */
+            scope: "Pader District";
+            /** Source Updated At */
+            source_updated_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "synchronized" | "partial" | "unavailable";
+            /**
+             * Synchronized At
+             * Format: date-time
+             */
+            synchronized_at: string;
+            /**
+             * Synthetic Data Used
+             * @constant
+             */
+            synthetic_data_used: false;
+            /** Tracker Event Count */
+            tracker_event_count: number;
+            /** Tracker Failed Facility Count */
+            tracker_failed_facility_count: number;
+            /** Tracker Reporting Facility Count */
+            tracker_reporting_facility_count: number;
+            /** Trend */
+            trend: components["schemas"]["LiveDashboardTrendPoint"][];
+            /** Unique Positive Patient Count */
+            unique_positive_patient_count: number;
+            /** Warnings */
+            warnings: string[];
+        };
+        /**
+         * LiveDashboardSyncRequest
+         * @description Explicit reporting window for a real, scoped DHIS2 read.
+         */
+        LiveDashboardSyncRequest: {
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+        };
+        /** LiveDashboardTrendPoint */
+        LiveDashboardTrendPoint: {
+            /** Confirmed Malaria */
+            confirmed_malaria?: number | null;
+            /** Encounters */
+            encounters?: number | null;
+            /** Period */
+            period: string;
+            /** Positivity Rate */
+            positivity_rate?: number | null;
+            /** Suspected Malaria */
+            suspected_malaria?: number | null;
+            /** Tested For Malaria */
+            tested_for_malaria?: number | null;
+        };
         /**
          * LiveLoginRequest
          * @description eRegisters username and password, posted only to MARS.
@@ -2582,6 +2937,123 @@ export interface components {
             password: string;
             /** Username */
             username: string;
+        };
+        /**
+         * LiveMetadataDiscoverySummary
+         * @description Sanitized result of the current user's metadata-only source discovery.
+         */
+        LiveMetadataDiscoverySummary: {
+            /** Accessible Facility Count */
+            accessible_facility_count?: number | null;
+            /** Api Generation */
+            api_generation: string;
+            /**
+             * Candidate Mapping Count
+             * @default 0
+             */
+            candidate_mapping_count: number;
+            /**
+             * Data Element Count
+             * @default 0
+             */
+            data_element_count: number;
+            /** Dhis2 Version */
+            dhis2_version?: string | null;
+            /** Errors */
+            errors?: string[];
+            /** Generated At */
+            generated_at?: string | null;
+            /** Json Report */
+            json_report?: string | null;
+            /** Markdown Report */
+            markdown_report?: string | null;
+            /**
+             * Patient Data Retrieved
+             * @default false
+             */
+            patient_data_retrieved: boolean;
+            /**
+             * Program Stage Count
+             * @default 0
+             */
+            program_stage_count: number;
+            /**
+             * Programme Count
+             * @default 0
+             */
+            programme_count: number;
+            /** Status */
+            status: string;
+            /** Tracker Facilities */
+            tracker_facilities?: components["schemas"]["LiveTrackerFacilitySummary"][];
+            /**
+             * Tracker Scope Root Count
+             * @default 0
+             */
+            tracker_scope_root_count: number;
+            /** Unresolved Questions */
+            unresolved_questions?: string[];
+        };
+        /** LiveOperationalAlert */
+        LiveOperationalAlert: {
+            /** Detail */
+            detail: string;
+            /** Facility Name */
+            facility_name: string;
+            /** Facility Uid */
+            facility_uid?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "commodity" | "data_quality";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "action_required" | "review";
+            /** Title */
+            title: string;
+        };
+        /**
+         * LiveRepeatPositivePatient
+         * @description Pseudonymous evidence only; the source tracked-entity UID is excluded.
+         */
+        LiveRepeatPositivePatient: {
+            /** Cross Facility */
+            cross_facility: boolean;
+            /** Facility Name */
+            facility_name: string;
+            /**
+             * First Positive On
+             * Format: date
+             */
+            first_positive_on: string;
+            /** Interval Days */
+            interval_days: number;
+            /**
+             * Latest Positive On
+             * Format: date
+             */
+            latest_positive_on: string;
+            /** Mars Patient Id */
+            mars_patient_id: string;
+            /** Positive Encounter Count */
+            positive_encounter_count: number;
+        };
+        /**
+         * LiveTrackerFacilitySummary
+         * @description A facility UID proven inside the authenticated Tracker-search scope.
+         */
+        LiveTrackerFacilitySummary: {
+            /** Code */
+            code?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name?: string | null;
         };
         /** LivenessResponse */
         LivenessResponse: {
@@ -3062,6 +3534,113 @@ export interface components {
              * @description Omitted when counting would be costly.
              */
             total?: number | null;
+        };
+        /**
+         * PatientEncounterSummary
+         * @description Clinical facts from one encounter in a pseudonymous timeline.
+         */
+        PatientEncounterSummary: {
+            /** Age Unit */
+            age_unit: string | null;
+            /** Age Value */
+            age_value: number | null;
+            /** Attendance Type */
+            attendance_type: string;
+            /** Diagnoses */
+            diagnoses: string[];
+            /**
+             * Encounter Date
+             * Format: date
+             */
+            encounter_date: string;
+            /**
+             * Encounter Id
+             * Format: uuid
+             */
+            encounter_id: string;
+            /**
+             * Facility Id
+             * Format: uuid
+             */
+            facility_id: string;
+            /** Facility Name */
+            facility_name: string;
+            /** Fever Present */
+            fever_present: string;
+            /** Sex */
+            sex: string;
+            /** Source System */
+            source_system: string;
+            /** Tests */
+            tests: {
+                [key: string]: string;
+            }[];
+            /** Treatments */
+            treatments: string[];
+        };
+        /**
+         * PatientOfInterestSummary
+         * @description One pseudonymous positive-encounter history; never direct identity.
+         */
+        PatientOfInterestSummary: {
+            /** Age Unit */
+            age_unit: string | null;
+            /** Age Value */
+            age_value: number | null;
+            /**
+             * Classification
+             * @enum {string}
+             */
+            classification: "positive_encounter" | "repeat_positive_input";
+            /**
+             * Facility Id
+             * Format: uuid
+             */
+            facility_id: string;
+            /** Facility Name */
+            facility_name: string;
+            /**
+             * First Positive On
+             * Format: date
+             */
+            first_positive_on: string;
+            /** Interval Days */
+            interval_days: number | null;
+            /**
+             * Latest Positive On
+             * Format: date
+             */
+            latest_positive_on: string;
+            /** Mars Patient Id */
+            mars_patient_id: string;
+            /**
+             * Patient Reference Id
+             * Format: uuid
+             */
+            patient_reference_id: string;
+            /** Positive Encounter Count */
+            positive_encounter_count: number;
+            /** Sex */
+            sex: string;
+        };
+        /**
+         * PatientTimeline
+         * @description Pseudonymous longitudinal evidence inside the caller's facility scope.
+         */
+        PatientTimeline: {
+            /** Encounters */
+            encounters: components["schemas"]["PatientEncounterSummary"][];
+            /** Identity Available */
+            identity_available: boolean;
+            /** Identity Detail */
+            identity_detail: string;
+            /** Mars Patient Id */
+            mars_patient_id: string;
+            /**
+             * Patient Reference Id
+             * Format: uuid
+             */
+            patient_reference_id: string;
         };
         /**
          * PeriodWindow
@@ -3860,6 +4439,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DevelopmentUserSummary"][];
+                };
+            };
+        };
+    };
+    latest_live_metadata_discovery_api_v1_auth_live_metadata_discovery_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveMetadataDiscoverySummary"] | null;
+                };
+            };
+        };
+    };
+    run_live_metadata_discovery_api_v1_auth_live_metadata_discovery_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveMetadataDiscoverySummary"];
                 };
             };
         };
@@ -5356,6 +5975,112 @@ export interface operations {
             };
         };
     };
+    latest_live_dashboard_api_v1_live_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveDashboardSnapshot"] | null;
+                };
+            };
+        };
+    };
+    synchronize_live_dashboard_api_v1_live_dashboard_synchronize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveDashboardSyncRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveDashboardSnapshot"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_tracker_preview_api_v1_live_tracker_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlledTrackerPreviewSummary"] | null;
+                };
+            };
+        };
+    };
+    run_tracker_preview_api_v1_live_tracker_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ControlledTrackerPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ControlledTrackerPreviewSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     assistant_availability_api_v1_meta_assistant_get: {
         parameters: {
             query?: never;
@@ -5495,6 +6220,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganisationUnitDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patients_of_interest_api_v1_patients_get: {
+        parameters: {
+            query?: {
+                period_from?: string | null;
+                period_to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientOfInterestSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patient_timeline_api_v1_patients__patient_reference_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_reference_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientTimeline"];
                 };
             };
             /** @description Validation Error */

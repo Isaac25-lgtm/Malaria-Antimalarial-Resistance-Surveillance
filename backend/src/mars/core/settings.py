@@ -119,6 +119,13 @@ class Settings(BaseSettings):
     #: Recorded on every token so rotation does not orphan existing links.
     identity_linkage_key_version: str = Field(default="v1", min_length=1, max_length=16)
 
+    #: Independent HMAC key for short patient aliases shown in MARS. It is not
+    #: the linkage key: disclosing a display alias must not give an attacker a
+    #: token they can test against the identity vault. There is deliberately no
+    #: default; patient rows remain unavailable until the deployment supplies it.
+    patient_display_key: SecretStr | None = Field(default=None)
+    patient_display_key_version: str = Field(default="v1", min_length=1, max_length=16)
+
     #: Retired keys, as "version:secret" entries, so a token derived under an
     #: earlier version can still be recomputed while rotation is in progress.
     identity_linkage_retired_keys: SecretStr | None = Field(
@@ -265,6 +272,14 @@ class Settings(BaseSettings):
     dhis2_discovery_max_response_bytes: int = Field(default=8 * 1024 * 1024, ge=1024)
     dhis2_discovery_verify_tls: bool = True
     dhis2_discovery_output_dir: str = "data/discovery"
+
+    #: Human-approved Tracker mapping. The path may be configured before the
+    #: file exists; every patient-bearing request refuses until the document is
+    #: present, structurally valid and status=approved.
+    dhis2_tracker_mapping_path: str | None = None
+    dhis2_tracker_preview_page_size: int = Field(default=50, ge=1, le=100)
+    dhis2_tracker_preview_max_records: int = Field(default=200, ge=1, le=500)
+    dhis2_tracker_max_response_bytes: int = Field(default=4 * 1024 * 1024, ge=1024)
 
     @field_validator("database_url")
     @classmethod

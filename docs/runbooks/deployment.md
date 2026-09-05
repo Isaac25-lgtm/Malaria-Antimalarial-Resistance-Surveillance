@@ -118,7 +118,7 @@ A worker can be restarted mid-run without corrupting a result.
 
 ```bash
 curl -fsS https://mars.example.org/api/v1/health/ready
-curl -fsS https://mars.example.org/api/v1/health/schema      # expect head 0024_investigation_hardening
+curl -fsS https://mars.example.org/api/v1/health/schema      # expect head 0025_runtime_role_grants
 curl -fsS https://mars.example.org/api/v1/meta/version
 curl -fsSI https://mars.example.org/api/v1/health/live | grep -i x-frame-options
 ```

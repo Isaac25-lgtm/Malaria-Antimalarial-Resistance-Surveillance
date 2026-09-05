@@ -86,7 +86,7 @@ phrasing.
 | `mars_governance` | Configuration versions, method registry | Values, not just flags |
 | `mars_analytics` | Derived results | Rebuildable, immutable |
 
-71 tables at migration head `0024_investigation_hardening`.
+71 tables at migration head `0025_runtime_role_grants`.
 
 ## Properties the architecture enforces
 

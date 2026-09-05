@@ -222,6 +222,6 @@ describe("live source status", () => {
         last_sync: null,
       },
     });
-    expect(screen.getByText("AUTHORIZED — DATA SYNC PENDING")).toBeInTheDocument();
+    expect(screen.getByText("LIVE — PADER AUTHORIZED")).toBeInTheDocument();
   });
 });

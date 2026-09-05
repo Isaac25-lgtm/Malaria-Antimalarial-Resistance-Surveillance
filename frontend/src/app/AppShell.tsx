@@ -26,6 +26,7 @@ const PRIMARY_NAVIGATION: NavigationItem[] = [
   { to: "/signals", label: "Signals", icon: "signals", permission: "surveillance:view_aggregate", badge: "signals" },
   { to: "/action-centre", label: "Investigations", icon: "investigations", permission: "surveillance:view_aggregate" },
   { to: "/national", label: "Map Explorer", icon: "map", permission: "geography:view" },
+  { to: "/patients", label: "Patient Surveillance", icon: "patients", permission: "case:view_pseudonymous_evidence" },
   { to: "/analytics", label: "Analytics", icon: "analytics", permission: "surveillance:view_aggregate" },
   { to: "/commodities", label: "Commodities", icon: "commodities", permission: "surveillance:view_aggregate" },
   { to: "/data-quality", label: "Data Quality", icon: "quality", permission: "surveillance:view_aggregate" },
@@ -172,7 +173,7 @@ function SourceStatusChip({
     return <span className="chip chip--attention">AUTHORIZED — MAPPING PENDING</span>;
   }
   if (readiness?.aggregate_sync !== "ready") {
-    return <span className="chip chip--attention">AUTHORIZED — DATA SYNC PENDING</span>;
+    return <span className="chip">LIVE — PADER AUTHORIZED</span>;
   }
   return <span className="chip">AUTHORIZED — LIVE DATA AVAILABLE</span>;
 }
@@ -196,6 +197,7 @@ function formatScope(user: {
   workspace?: { name?: string | null; scope_type?: string; authorization_status?: string } | null;
 }): string {
   if (user.workspace?.authorization_status === "resolved" && user.workspace.name) {
+    const rawName = user.workspace.name.trim();
     const kind =
       user.workspace.scope_type === "district"
         ? "District"
@@ -204,7 +206,8 @@ function formatScope(user: {
           : user.workspace.scope_type === "national"
             ? "National"
             : "";
-    return kind ? `${user.workspace.name} ${kind}` : user.workspace.name;
+    const name = kind ? rawName.replace(new RegExp(`\\s+${kind}$`, "i"), "").trim() : rawName;
+    return kind ? `${name} ${kind}` : name;
   }
   if (user.facility_scope_ids.length > 0) {
     const count = user.facility_scope_ids.length;
@@ -233,6 +236,8 @@ function iconPath(name: string) {
       return <path d="M6.5 2h3l.5 2H14v10H2V4h4l.5-2zM8 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" />;
     case "map":
       return <path d="M2 3.5 6 2l4 1.5L14 2v11.5L10 15 6 13.5 2 15z" />;
+    case "patients":
+      return <path d="M8 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM3 14c.3-3 2-4.5 5-4.5s4.7 1.5 5 4.5z" />;
     case "analytics":
       return <path d="M2 13h12v1H2zm1-3h2v3H3zm4-4h2v7H7zm4-3h2v10h-2z" />;
     case "commodities":

@@ -37,6 +37,7 @@ from mars.services.integration_status import IntegrationStatusService
 from mars.services.live_auth import LiveAuthService
 from mars.services.organisation_service import FacilityService, OrganisationService
 from mars.services.overview import OverviewService
+from mars.services.patient_surveillance import PatientSurveillanceService
 from mars.services.report_service import ReportService
 from mars.services.signal_query import SignalQueryService
 from mars.services.surveillance_summary import SurveillanceSummaryService
@@ -113,6 +114,12 @@ def get_overview_service(session: SessionDep, settings: SettingsDep) -> Overview
     return OverviewService(session, settings)
 
 
+def get_patient_surveillance_service(
+    session: SessionDep, settings: SettingsDep
+) -> PatientSurveillanceService:
+    return PatientSurveillanceService(session, settings)
+
+
 def get_report_service(session: SessionDep, audit: AuditDep) -> ReportService:
     return ReportService(session, audit)
 
@@ -149,6 +156,9 @@ SurveillanceSummaryDep = Annotated[
     SurveillanceSummaryService, Depends(get_surveillance_summary_service)
 ]
 OverviewServiceDep = Annotated[OverviewService, Depends(get_overview_service)]
+PatientSurveillanceDep = Annotated[
+    PatientSurveillanceService, Depends(get_patient_surveillance_service)
+]
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
 InvestigationServiceDep = Annotated[InvestigationService, Depends(get_investigation_service)]
 IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integration_status_service)]

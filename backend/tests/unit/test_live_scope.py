@@ -13,7 +13,7 @@ from mars.integrations.dhis2.login.models import (
     RemoteOrgUnit,
     RemoteOrgUnitLevel,
 )
-from mars.security.permissions import Permission
+from mars.security.permissions import Permission, SensitivityLevel
 from mars.security.principal import GeographyScope
 from mars.security.remote_authorization import is_dhis2_uid
 from mars.services.live_scope import (
@@ -276,6 +276,18 @@ class TestLiveScopeResolver:
             scope.remote_authorization.tracker_search_scope[0].uid != scope.workspace.external_uid
         )
         assert all(unit.uid != TRACKER_UID for unit in scope.remote_authorization.data_view_scope)
+        principal = build_live_principal(
+            _snapshot(
+                username="officer",
+                data_view=(_ou(PADER_UID, level=3, name="Pader"),),
+                tracker=(_ou(TRACKER_UID, level=4, name="Pader HC III"),),
+            ),
+            scope,
+            session_reference="sid",
+        )
+        assert Permission.CASE_EVIDENCE_VIEW in principal.permissions
+        assert principal.max_sensitivity is SensitivityLevel.PSEUDONYMOUS_CASE
+        assert Permission.PATIENT_REIDENTIFY not in principal.permissions
 
     def test_no_usable_remote_authorization(self) -> None:
         scope = resolve_live_scope(_snapshot(username="empty"), EMPTY_LOOKUP)

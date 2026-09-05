@@ -688,6 +688,12 @@ def permissions_for_scope(scope: ResolvedLiveScope) -> frozenset[Permission]:
     granted = set(LIVE_BASE_PERMISSIONS)
     if scope.workspace.scope_type in {"national", "district", "multi_district"}:
         granted.update(LIVE_INVESTIGATION_PERMISSIONS)
+    # Patient evidence is a separate grant derived only from the source's
+    # Tracker-search scope. Aggregate data-view access never implies it. The
+    # eventual request is still constrained to these remote roots and remains
+    # subject to the source API's own authorization response.
+    if scope.remote_authorization.tracker_search_scope:
+        granted.add(Permission.CASE_EVIDENCE_VIEW)
     return frozenset(granted)
 
 
@@ -699,14 +705,19 @@ def build_live_principal(
 ) -> AuthenticatedPrincipal:
     subject = f"dhis2:{snapshot.remote_user_id}"
     user_id = uuid.uuid5(DHIS2_SUBJECT_NAMESPACE, subject)
+    permissions = permissions_for_scope(scope)
     return AuthenticatedPrincipal(
         user_id=user_id,
         subject=subject,
         username=snapshot.username,
         display_name=snapshot.display_name,
         roles=frozenset(),
-        permissions=permissions_for_scope(scope),
-        max_sensitivity=SensitivityLevel.AGGREGATE,
+        permissions=permissions,
+        max_sensitivity=(
+            SensitivityLevel.PSEUDONYMOUS_CASE
+            if Permission.CASE_EVIDENCE_VIEW in permissions
+            else SensitivityLevel.AGGREGATE
+        ),
         geography_scopes=scope.geography_scopes,
         facility_scopes=scope.facility_scopes,
         session_reference=session_reference,

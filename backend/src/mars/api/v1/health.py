@@ -125,8 +125,12 @@ def schema_state(response: Response) -> dict[str, object]:
             rows = (
                 connection.execute(
                     text(
-                        "SELECT schema_name FROM information_schema.schemata "
-                        "WHERE schema_name = ANY(:names)"
+                        # information_schema deliberately hides schemas on
+                        # which the caller has no USAGE privilege.  The normal
+                        # application role must not have USAGE on
+                        # mars_identity, but the deployment check must still
+                        # distinguish "present and protected" from "missing".
+                        "SELECT nspname FROM pg_catalog.pg_namespace WHERE nspname = ANY(:names)"
                     ),
                     {"names": list(ALL_SCHEMAS)},
                 )

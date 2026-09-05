@@ -26,6 +26,7 @@ interface GeographyCanvasProps {
   onHover: (unitId: string | null) => void;
   label: string;
   forceSvg?: boolean;
+  facilities?: Schemas["LiveDashboardFacility"][];
 }
 
 export function GeographyCanvas({
@@ -38,6 +39,7 @@ export function GeographyCanvas({
   onHover,
   label,
   forceSvg = false,
+  facilities = [],
 }: GeographyCanvasProps) {
   const [engine, setEngine] = useState<"maplibre" | "svg">(() =>
     forceSvg || !canUseWebGL() ? "svg" : "maplibre",
@@ -60,6 +62,7 @@ export function GeographyCanvas({
       selectedUnitId={selectedUnitId}
       onSelect={onSelect}
       label={label}
+      facilities={facilities}
     />
   );
 

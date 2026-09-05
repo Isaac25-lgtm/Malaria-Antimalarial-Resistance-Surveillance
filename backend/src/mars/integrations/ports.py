@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Protocol
 
 
@@ -74,6 +74,27 @@ class RemoteDataValue:
     stored_by: str | None = None
     last_updated: str | None = None
     comment: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RemoteEvent:
+    """One individual-level event in source-system coordinates.
+
+    This is intentionally a clinical event envelope, not a patient profile.
+    Only stable source references, timing, location and explicitly requested
+    data values cross the adapter boundary. Names, telephone numbers, addresses
+    and other tracked-entity attributes are not members of this type.
+    """
+
+    remote_id: str
+    person_remote_id: str
+    programme_remote_id: str
+    programme_stage_remote_id: str
+    organisation_unit_remote_id: str
+    occurred_at: datetime
+    updated_at: datetime | None
+    status: str | None
+    data_values: dict[str, str | None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,11 +165,10 @@ class AnalyticsPort(Protocol):
 class EventPort(Protocol):
     """Individual-level events, when a source can supply them.
 
-    Declared and **not implemented**. No tracker or event source has been
-    supplied, so an implementation would be a guess at fields nobody has seen.
-    The port exists so that later work has a named seam to fill rather than a
-    reason to widen the aggregate one; anything calling it today gets an
-    explicit refusal, not an empty list that looks like "no events".
+    An adapter may implement this only against an explicitly approved metadata
+    mapping. The port itself remains source-neutral and exposes no identity
+    attributes; stable person references are consumed by MARS's linkage
+    boundary rather than displayed or logged.
     """
 
     def fetch_events(self, scope: RemoteScope, cursor: str | None = None) -> RemotePage: ...
@@ -181,6 +201,7 @@ __all__ = [
     "MetadataPort",
     "RemoteDataElement",
     "RemoteDataValue",
+    "RemoteEvent",
     "RemoteOrganisationUnit",
     "RemotePage",
     "RemoteScope",

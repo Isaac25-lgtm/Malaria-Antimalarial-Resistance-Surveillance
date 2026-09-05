@@ -62,6 +62,7 @@ ORGANISATION_UNIT_FIELDS: Final[str] = ",".join(
         "openingDate",
         "closedDate",
         "parent[id]",
+        "geometry",
         "organisationUnitGroups[id,name,code]",
     )
 )
@@ -194,6 +195,7 @@ ORGANISATION_UNIT_ITEM_KEYS: Final[frozenset[str]] = frozenset(
         "openingDate",
         "closedDate",
         "parent",
+        "geometry",
         "organisationUnitGroups",
     }
 )
