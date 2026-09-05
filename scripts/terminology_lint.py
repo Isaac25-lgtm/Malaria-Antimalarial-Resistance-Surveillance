@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -132,19 +133,27 @@ RULES: tuple[Rule, ...] = (
         "signal', or route the statement through the confirmed-evidence lane.",
     ),
     Rule(
-        re.compile(r"\bresistance\s+(?:is\s+)?(?:confirmed|detected|proven|established)\b", re.I),
+        re.compile(
+            r"\bresistance\s+(?:is\s+)?(?:confirmed|detected|proven|established)\b",
+            re.I,
+        ),
         "resistance detected or confirmed",
         "Say what was observed - a repeat-positive pattern, an unusual recurrence - "
         "not what it proves.",
     ),
     Rule(
-        re.compile(r"\bresistan(?:t|ce)\s+(?:strain|parasite|case)s?\s+(?:found|identified)\b", re.I),
+        re.compile(
+            r"\bresistan(?:t|ce)\s+(?:strain|parasite|case)s?\s+(?:found|identified)\b",
+            re.I,
+        ),
         "resistant organism identified",
         "Identifying a resistant organism requires molecular or therapeutic efficacy "
         "evidence, which routine data do not contain.",
     ),
     Rule(
-        re.compile(r"\b(?:diagnos\w+|prove[ns]?|verif\w+)\s+(?:drug\s+)?resistance\b", re.I),
+        re.compile(
+            r"\b(?:diagnos\w+|prove[ns]?|verif\w+)\s+(?:drug\s+)?resistance\b", re.I
+        ),
         "resistance diagnosed or proven",
         "MARS produces signals for investigation. Diagnosis and proof are outcomes of "
         "programme investigation, not of the analytics.",
@@ -235,9 +244,45 @@ def scan_file(path: Path) -> list[Finding]:
     return findings
 
 
+def candidate_files(root: Path) -> list[Path]:
+    """Every file the repository actually contains, ignored artefacts excluded.
+
+    ``SKIP_DIRECTORIES`` is a hand-maintained list, and it drifted: seven local
+    DHIS2 discovery reports under ``data/discovery/`` failed this gate with 56
+    findings, all of them genuine DHIS2 option names for *rifampicin*
+    resistance — tuberculosis metadata, in a file ``.gitignore`` excludes
+    precisely because it is evidence of a run rather than a repository fact.
+
+    Asking Git which files are repository content keeps the gate bound to what
+    a clone would receive, so a new ignored directory cannot fail the build for
+    text nobody will ever publish. The walk remains as a fallback for a source
+    tree extracted without ``.git``, where scanning everything is the safe
+    default.
+    """
+    try:
+        completed = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "ls-files",
+                "-z",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+            ],
+            capture_output=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return sorted(root.rglob("*"))
+    names = completed.stdout.decode("utf-8", errors="surrogateescape").split(chr(0))
+    return sorted(root / name for name in names if name)
+
+
 def scan(root: Path) -> list[Finding]:
     findings: list[Finding] = []
-    for path in sorted(root.rglob("*")):
+    for path in candidate_files(root):
         if not path.is_file() or not is_scanned(path, root):
             continue
         if is_confirmed_lane(path):
@@ -256,14 +301,20 @@ def explain() -> None:
     print("Exempt paths:")
     for path in sorted(EXEMPT_PATHS):
         print(f"  {path}")
-    print(f"\nExempt directories: any path containing a '{CONFIRMED_LANE_MARKER}' segment")
-    print("Inline exemption: add 'mars-lint: confirmed-evidence-lane - <reason>' to the line")
+    print(
+        f"\nExempt directories: any path containing a '{CONFIRMED_LANE_MARKER}' segment"
+    )
+    print(
+        "Inline exemption: add 'mars-lint: confirmed-evidence-lane - <reason>' to the line"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="MARS terminology lint")
     parser.add_argument("--root", type=Path, default=REPO_ROOT)
-    parser.add_argument("--explain", action="store_true", help="Describe the rules and exit")
+    parser.add_argument(
+        "--explain", action="store_true", help="Describe the rules and exit"
+    )
     args = parser.parse_args(argv)
 
     if args.explain:
@@ -276,10 +327,15 @@ def main(argv: list[str] | None = None) -> int:
         print("terminology lint: no prohibited resistance claims found")
         return 0
 
-    print(f"terminology lint: {len(findings)} prohibited claim(s) found\n", file=sys.stderr)
+    print(
+        f"terminology lint: {len(findings)} prohibited claim(s) found\n",
+        file=sys.stderr,
+    )
     for finding in findings:
         relative = finding.path.relative_to(args.root).as_posix()
-        print(f"{relative}:{finding.line_number}: {finding.rule.label}", file=sys.stderr)
+        print(
+            f"{relative}:{finding.line_number}: {finding.rule.label}", file=sys.stderr
+        )
         print(f"    {finding.line[:160]}", file=sys.stderr)
         print(f"    -> {finding.rule.guidance}\n", file=sys.stderr)
 
