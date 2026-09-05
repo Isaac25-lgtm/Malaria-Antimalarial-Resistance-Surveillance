@@ -99,9 +99,7 @@ class TestRepositoryContentIsStillScanned:
 
         assert [f.path.name for f in lint.scan(repository)] == ["new.md"]
 
-    def test_a_clean_repository_reports_nothing(
-        self, lint: ModuleType, repository: Path
-    ) -> None:
+    def test_a_clean_repository_reports_nothing(self, lint: ModuleType, repository: Path) -> None:
         (repository / "fine.md").write_text(
             "A repeat-positive pattern worth investigating.\n", encoding="utf-8"
         )
