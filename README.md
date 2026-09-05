@@ -1,332 +1,432 @@
+<div align="center">
+
 # MARS
 
-**Malaria Antimalarial Resistance Surveillance**
+### Malaria Antimalarial Resistance Surveillance
 
-MARS converts routine malaria data — patient-level outpatient encounters, weekly
-surveillance, monthly reporting and administrative geography — into explainable
-surveillance signals that a named person is accountable for investigating.
+**Routine health-system data becomes governed, explainable surveillance signals —
+each one traceable to its evidence, and none of them claiming more than the data can bear.**
 
-> **Scientific boundary.** Signals produced from routine e-register and HMIS data
-> indicate patterns requiring investigation. **They do not confirm antimalarial
-> resistance.** Routine data cannot distinguish recrudescence from reinfection,
-> prove drug exposure or adherence, identify parasite genotype, or confirm
-> molecular markers. Externally confirmed findings — therapeutic efficacy studies
-> and molecular results — are handled in a separate, separately governed lane.
-> See [ADR 0005](docs/adr/0005-scientific-terminology-and-evidence-lanes.md).
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL + PostGIS](https://img.shields.io/badge/PostgreSQL_16-PostGIS-4169E1?logo=postgresql&logoColor=white)](https://postgis.net/)
+[![DHIS2 Web API](https://img.shields.io/badge/DHIS2-2.42_Web_API-1A5632)](https://dhis2.org/)
+
+</div>
 
 ---
 
-## What exists today
+> ### ⚠️ Interpretation boundary
+>
+> **MARS signals identify patterns requiring investigation. They do not, by
+> themselves, confirm antimalarial resistance.**
+>
+> Routine e-register and HMIS data cannot distinguish recrudescence from
+> reinfection, prove drug exposure or adherence, identify parasite genotype, or
+> confirm molecular markers. Confirming resistance requires a reference
+> laboratory and a study design. That evidence reaches MARS through a separately
+> governed lane it cannot write into.
+>
+> A repository-wide terminology lint enforces this in CI and fails the build on
+> prohibited phrasing. See [ADR 0005](docs/adr/0005-scientific-terminology-and-evidence-lanes.md).
 
-This build covers the repository foundation through **Prompt 29: performance,
-accessibility, testing and visual polish**.
+---
 
-| Delivered | Detail |
+## Product status
+
+MARS runs in two clearly separated modes. They never share a process or a database.
+
+| Environment | What it is | Data |
+| --- | --- | --- |
+| **Pader Live Pilot** | Real, authorised DHIS2/eRegisters integration against a single district | Live synchronised HMIS and Tracker data |
+| **National Overview** | Synthetic demonstration environment for national-scale product development | Deterministic synthetic data, visibly labelled |
+| **National live deployment** | **Not claimed.** No national environment has been provisioned | — |
+
+The live mode refuses the demonstration database at startup, and the API
+response schema for a live snapshot is typed `synthetic_data_used: Literal[False]`
+— the contract itself cannot carry a synthetic figure.
+
+---
+
+## Why MARS exists
+
+Malaria programme information arrives in pieces that rarely meet:
+
+- **aggregate reporting** — HMIS 033b weekly, HMIS 105 monthly
+- **patient encounters** — the OPD e-register, one row per visit
+- **laboratory results** — RDT and microscopy, recorded separately
+- **treatment and commodity data** — what was given, what was in stock
+
+A district officer asking *"is something wrong here?"* has to reconcile those by
+hand, usually too late. And the pattern that most often prompts the question —
+patients returning still positive after treatment — has many explanations before
+drug resistance: reinfection in a high-transmission season, an incomplete course,
+a stock-out that changed what was prescribed, or a facility that simply started
+reporting more carefully.
+
+MARS exists to make that pattern **visible early, attributable to its evidence,
+and honestly bounded**. It tells you where to look. It does not tell you what you
+will find.
+
+---
+
+## What MARS does
+
+| Capability | Detail |
 | --- | --- |
-| Repository and runtime foundation | Monorepo, Docker Compose, CI, quality gates |
-| Database foundation | Six schemas, 71 mapped tables, migrations through `0023`, audit trail, governance registries |
-| Authentication and authorisation | OIDC-ready, three authorisation axes, permission matrix |
-| Geography and maps | Versioned Uganda boundaries, PostGIS import, scoped map API and national map workspace |
-| OPD/e-register | HMIS OPD 002 canonical encounters, strict JSONL ingestion, quarantine and lineage |
-| Protected identity | Pseudonymous analytical records; encrypted identity vault behind a separate database role |
-| Demonstration data | Deterministic synthetic data loaded through the real ingestion path |
-| Governed analytics | Indicator registry, episodes, recurrence, testing/treatment/commodity surveillance, baselines, temporal anomalies, spatial aggregation, hotspots and clustering |
-| Signals and explanations | Governed composite signals with typed evidence, and deterministic structured explanations |
-| Surveillance interface | National command centre, district and facility workspaces, signal evidence workspace |
-| Reports | Governed national and district briefs with audited CSV export |
-| Investigations | Validated state machine, append-only timeline, evidence requests, action centre queues |
-| Optional assistant | Ask MARS, switched off and with no model provider registered |
-| Routine HMIS | HMIS 033b/105 aggregate submissions, immutable revisions and reported-versus-derived reconciliation |
-| Interoperability | Disabled-by-default DHIS2 adapter, resumable exchange runs and governed mapping proposals |
-| Governed analytics | Indicator registry, materialisation, episode and recurrence engines, testing/treatment/commodity surveillance |
-| Temporal and spatial surveillance | Historical baselines, anomaly persistence, recomputed geographic summaries, hotspots, adjacency and clustering |
-| Surveillance signals | Versioned rule-based scoring, typed supporting/counter/context evidence and safe supersession |
-| Explainability | Deterministic why/evidence/counter-evidence/data-quality/uncertainty/action snapshots; no LLM dependency |
+| **DHIS2/eRegisters authentication** | One login; organisation-unit scope resolved from the authenticated account |
+| **HMIS ingestion** | 033b and 105, strict contract, quarantine, lineage, checksum, reconciliation |
+| **Encounter and episode construction** | Canonical OPD encounters grouped into governed malaria episodes |
+| **Recurrence surveillance** | Repeat-positive intervals against approved bands |
+| **Testing and positivity monitoring** | Testing rate, positivity, RDT and microscopy split |
+| **Treatment monitoring** | Treatment patterns against confirmed diagnosis |
+| **Commodity surveillance** | Stock on hand, days out of stock, consumption — kept as *operational* alerts |
+| **Data-quality diagnostics** | Completeness, timeliness, internal consistency, denominator validity |
+| **Spatial analysis** | Geographic aggregation, hotspots and clustering under a privacy policy |
+| **Signal prioritisation** | Governed rules, typed evidence, both supporting and counter-evidence |
+| **Investigations** | Queues, transitions and an append-only timeline that never mutates the signal |
+| **Reporting and explainability** | Deterministic explanations, governed exports, full audit trail |
 
-**Not built yet, and deliberately absent rather than stubbed:** investigations,
-action-centre workflows, the complete national/district/facility dashboard and
-the optional AI assistant. On a fresh deployment analytical methods and
-thresholds are intentionally unapproved, so engines record `not_configured`
-rather than inventing a value or presenting an empty map as good news.
+Every threshold, window, weight, privacy minimum, priority band and SLA is
+**configuration under governance**. MARS implements the mechanisms and ships no
+values. Each engine that lacks an approved method reports `not_configured` and
+names the key it is waiting for — it does not fall back to a default and it does
+not show zeroes.
+
+> A country of zeroes would look finished, and it would be wrong. The difference
+> between *no malaria* and *no analysis* is the difference this system is built
+> around.
+
+---
+
+## Live Pader pilot
+
+The pilot authenticates a real, authorised eRegisters user and reads only what
+that account may see.
+
+| Verified | Value |
+| --- | --- |
+| DHIS2 version | 2.42.5.1 |
+| Accessible programmes | 1 |
+| Programme stages | 4 |
+| Data elements discovered | 5,330 |
+| Facilities under the account | 27 |
+
+Approved mapping: [`config/dhis2/pader-live-v1.json`](config/dhis2/pader-live-v1.json)
+— DHIS2 metadata UIDs only, carrying a SHA-256 of the discovery report it was
+derived from.
+
+**What the pilot does**
+
+- authenticates the user server-to-server, then resolves their actual
+  organisation-unit scope
+- reads mapped aggregate HMIS values for authorised facilities
+- performs bounded Tracker event reads for repeat-positive evidence
+- builds a 12-month real HMIS trend and district KPIs
+- derives data-quality diagnostics and operational commodity conditions
+- withholds mathematically invalid ratios rather than publishing them
+
+**What it never does**
+
+- substitute a demonstration figure into live mode
+- request tracked-entity attributes
+- return a DHIS2 tracked-entity UID to the browser
+- invent a facility coordinate for the map
+- describe a Pader snapshot as national
+
+> **On scope naming.** The verified pilot account resolves to Pader District. The
+> interface calls this the **Pader Overview**. National, district and facility
+> routing is driven by the account's real remote scope, never by a hardcoded
+> username.
+
+### Withheld ratios, and why
+
+An earlier build displayed a testing rate of **249.7%** — the mapped "tested"
+numerator exceeded the "suspected" denominator. The fix was not to clamp the
+number. A ratio whose numerator and denominator are incompatible is withheld
+entirely: value, numerator and denominator are all dropped, the measure reports
+`unavailable`, and a data-quality alert states plainly that reported tests exceed
+suspected reports and that no testing rate is published.
+
+A wrong percentage is worse than an absent one, because someone will act on it.
 
 ---
 
 ## Architecture
 
-```
- SOURCES          OPD 002 · HMIS 033b · HMIS 105 · boundary GeoJSON
-                                    |
- INGESTION        receive → checksum → validate → quarantine → canonical
-                                    |
-        +---------------------------+---------------------------+
-        |                                                       |
- IDENTITY VAULT                                         CANONICAL STORE
- mars_identity                                          mars_core
- separate DB role                    person_key         no direct identifiers
- encrypted + separate role          ------------>       geography · encounters
-                                                        aggregates · facilities
-        |                                                       |
-                                                        ANALYTICS
-                                                        indicators Â· episodes
-                                                        temporal Â· spatial
-                                                                |
-                                                        SIGNAL + EXPLAINABILITY
-                                                                |
- API  FastAPI /api/v1 — every endpoint declares a permission and geography scope
-                                                                |
- WEB  React + TypeScript + Vite + TanStack Query + MapLibre
+```mermaid
+flowchart TB
+    subgraph Source["Ministry source systems"]
+        ER["eRegisters / DHIS2<br/>Web API 2.42"]
+    end
 
- LANE B — confirmed evidence (TES · molecular · CPHL), separately governed.
- Never fed by routine data. The only lane permitted confirmatory language.
+    subgraph Backend["MARS backend"]
+        INT["Integration adapter<br/>GET-only · allowlisted routes"]
+        VAL["Validation · mapping<br/>bounded synchronisation"]
+    end
+
+    subgraph Store["Persistence"]
+        PG[("PostgreSQL 16 + PostGIS<br/>six schemas · 71 tables")]
+        VAULT[("mars_identity<br/>encrypted · separate role")]
+    end
+
+    subgraph Analytics["Governed analytics"]
+        IND["Indicators · episodes<br/>recurrence · baselines"]
+        SIG["Anomalies · hotspots<br/>prioritised signals"]
+        EXP["Deterministic<br/>explanations"]
+    end
+
+    API["FastAPI<br/>permission + sensitivity per route"]
+    UI["React dashboard<br/>renders, never computes"]
+
+    ER --> INT --> VAL --> PG
+    VAL -.->|pseudonymous reference only| VAULT
+    PG --> IND --> SIG --> EXP --> API --> UI
+
+    style VAULT fill:#3d1f1f,stroke:#a33,color:#fff
+    style Source fill:#1f2d3d,stroke:#47c,color:#fff
 ```
 
-- [ADR index](docs/adr/) — eight decisions recorded
-- [Database architecture](docs/architecture/database.md)
-- [Geography import](docs/architecture/geography-import.md)
-- [Geographic API and the national map](docs/architecture/geography-map.md)
-- [Historical boundary versioning](docs/architecture/geography-versioning.md)
-- [Authorisation model](docs/security/authorisation.md)
-- [Geography audit](docs/data-dictionary/geography-audit.md) — generated, not written
+**Authentication and scope resolution**
+
+```mermaid
+flowchart LR
+    A["MARS login<br/>(browser → MARS only)"] --> B["MARS backend"]
+    B -->|server-to-server| C["DHIS2 authentication"]
+    C --> D["Authenticated user"]
+    D --> E["Actual organisation-unit scope"]
+    E --> F1["National view"]
+    E --> F2["District view<br/>(Pader pilot)"]
+    E --> F3["Facility view"]
+
+    style A fill:#1f2d3d,stroke:#47c,color:#fff
+    style C fill:#1f3d2d,stroke:#4a4,color:#fff
+```
+
+The browser sends credentials to the MARS backend and nowhere else. DHIS2
+credentials and tokens never reach browser JavaScript.
 
 ---
 
-## Prerequisites
+## Privacy and security
 
-| Tool | Version | Required for |
-| --- | --- | --- |
-| Python | 3.12+ | Backend, scripts |
-| Node.js | 20+ (22 recommended) | Frontend |
-| Docker Desktop | Any current | Full stack, PostGIS, integration tests |
-| Git | 2.40+ | Everything |
-
-Docker is needed for the database. Everything else — lint, types, unit tests,
-API tests, the frontend build, the geography audit — runs without it.
-
----
-
-## Getting started
-
-### With Docker
-
-```bash
-cp .env.example .env
-docker compose up --build -d
-docker compose run --rm api alembic upgrade head
-```
-
-| Service | Address |
+| Control | Implementation |
 | --- | --- |
-| API docs | http://localhost:8000/docs |
-| Web application | http://localhost:5173 |
-| PostgreSQL | `localhost:5433` (loopback only) |
-| Redis | `localhost:6380` (loopback only) |
+| **Server-to-server only** | The browser never contacts DHIS2; credentials never reach React |
+| **Credentials never persisted** | Held in process memory, keyed by session, injected into one operation and never returned to a caller |
+| **Opaque sessions** | HttpOnly cookies; the store holds a hash, never the raw identifier |
+| **Least-privilege scope** | Organisation-unit scope comes from the authenticated DHIS2 account |
+| **Scope enforced in SQL** | Never by filtering results afterwards. A facility's district membership does not grant the district-wide picture |
+| **Identity separation** | `mars_identity` is a separate schema on a separate database role; migration `0025` revokes it from the application role |
+| **Pseudonymous references** | Patient aliases are keyed HMAC with domain separation — never a truncated source identifier, and no fallback key exists |
+| **No probabilistic matching** | No linkage on names, phone numbers, villages or addresses |
+| **Sanitised errors** | Upstream failures report an exception *type*; no URL, credential or record content reaches a log or a response |
+| **Audit trail** | Append-only, with no update or delete path |
+| **No synthetic fallback** | Live mode fails closed and says so |
 
-Non-default database and cache ports avoid colliding with anything already
-running on the host.
+Out-of-scope reads return **404**, not 403 — a 403 would confirm that something
+exists there.
 
-### Without Docker
+---
 
-Everything except the database and the integration tests still runs.
+## Technology
+
+| Layer | Stack |
+| --- | --- |
+| **API** | Python 3.12, FastAPI 0.115, Pydantic v2 |
+| **Data** | SQLAlchemy 2, Alembic, psycopg 3, PostgreSQL 16, PostGIS, GeoAlchemy2 |
+| **Frontend** | React 18, TypeScript 5.7, Vite 6, TanStack Query 5, MapLibre GL |
+| **Integration** | DHIS2 Web API 2.42 (GET-only, host/route/query allowlists) |
+| **Quality** | Ruff, mypy (strict), pytest, Vitest, Testing Library, Playwright |
+| **Contract** | OpenAPI generated from the API; TypeScript types generated from it; CI fails on drift |
+
+The frontend computes **no analytical value**. Every figure arrives as a record
+carrying its period, scope, source, method version and availability status, so
+there is no KPI formula in the browser to disagree with the server about.
+
+---
+
+## Repository structure
+
+```
+backend/
+  src/mars/
+    api/            FastAPI routers — no queries, no ORM models
+    domain/         SQLAlchemy models across six schemas
+    analytics/      Indicators, episodes, baselines, anomalies, spatial
+    signals/        Governed prioritisation
+    explainability/ Deterministic explanations
+    investigations/ Workflow and append-only history
+    integrations/   DHIS2 adapters — discovery, login, tracker, live dashboard
+    identity/       Encrypted vault, linkage, never imported by analytics
+    services/       Scope-applying read models
+  migrations/       Alembic revisions 0001 → 0025
+  tests/            unit · api · security · integration
+frontend/
+  src/features/     command-centre, signals, investigations, patients, map, …
+  src/design-system/
+  tests/
+config/dhis2/       Approved mapping (metadata UIDs only)
+contracts/          Generated OpenAPI document
+docs/               ADRs, architecture, runbooks, data dictionary, security
+scripts/            Launchers, lints, audits, backup/restore
+infra/              Compose topology
+```
+
+Architectural rules are enforced by tests, not convention: routers hold no
+queries, analytics never imports an adapter or the identity package, and
+`mars.ai` is a leaf that a disabled deployment never loads.
+
+---
+
+## Local development
+
+**Prerequisites** — Python 3.12+, Node 20+, PostgreSQL 16 with PostGIS 3.4+.
 
 ```bash
 # Backend
 cd backend
 python -m venv .venv
-.venv/Scripts/python.exe -m pip install -e ".[dev]"   # Windows
-# .venv/bin/python -m pip install -e ".[dev]"          # macOS / Linux
-
-.venv/Scripts/ruff.exe format --check .
-.venv/Scripts/ruff.exe check .
-.venv/Scripts/mypy.exe
-.venv/Scripts/pytest.exe -q          # integration tests skip, and say so
-
-# Migrations render as SQL with no database
-MARS_DATABASE_URL=postgresql+psycopg://mars:offline@localhost:5432/mars \
-  .venv/Scripts/alembic.exe upgrade head --sql
+.venv/Scripts/pip install -e ".[dev]"      # POSIX: .venv/bin/pip
 
 # Frontend
-cd ../frontend
-npm ci
-npm run lint && npm run typecheck && npm run test && npx vite build
-
-# Repository-wide gates
-cd ..
-python scripts/terminology_lint.py
-python scripts/geography_audit.py --verify-only
+npm --prefix frontend install
 ```
 
-The API starts without a database and reports itself unready, which is the
-intended behaviour: a transient outage must not prevent the service from
-starting and explaining itself.
+Configuration arrives through the environment. Copy `.env.example` and fill in
+your own values — **placeholders below, never real credentials**:
 
 ```bash
-cd backend && .venv/Scripts/python.exe -m uvicorn mars.main:app --reload
-curl http://localhost:8000/api/v1/health/ready   # 503, naming what is missing
+MARS_ENVIRONMENT=development
+MARS_DATABASE_URL=postgresql+psycopg://USER@HOST:5432/mars_local
+MARS_IDENTITY_DATABASE_URL=postgresql+psycopg://IDENTITY_USER@HOST:5432/mars_local
+MARS_IDENTITY_ENCRYPTION_KEY=<64 hex characters>
+MARS_IDENTITY_LINKAGE_KEY=<64 hex characters>
+```
+
+Passwords are supplied through `PGPASSWORD`, a `.pgpass` file or the
+orchestrator's secret store — never in a URL that appears in a process list.
+
+```bash
+# Migrations, then geography, then the demonstration dataset
+cd backend && .venv/Scripts/alembic upgrade head
+.venv/Scripts/python -m mars.ingestion.geography.cli --data-dir <repo root>
+python scripts/seed_development.py
+.venv/Scripts/python -m mars.demo.cli generate --out-dir ./demo
+.venv/Scripts/python -m mars.demo.cli register --out-dir ./demo
+
+# Run
+.venv/Scripts/uvicorn mars.main:app --reload --port 8000
+npm --prefix frontend run dev          # http://127.0.0.1:5173
 ```
 
 ---
 
-## Migrations
+## Live pilot startup
 
-```bash
-docker compose run --rm api alembic upgrade head       # apply
-docker compose run --rm api alembic downgrade -1       # roll back one
-docker compose run --rm api alembic revision --autogenerate -m "add signal table"
+```powershell
+./scripts/start-mars-live.ps1            # start
+./scripts/start-mars-live.ps1 -Restart   # replace existing MARS listeners
 ```
 
-Every migration must be reversible. `downgrade` is written and tested, not
-stubbed — a migration that cannot be reversed cannot safely be applied to a
-production surveillance database, and a test fails any that is empty.
+The launcher applies migrations to the `mars_live` database, starts the API on
+**port 8000** and the UI on **port 5173**.
+
+- The database password is read with a **hidden prompt** (`Read-Host -AsSecureString`)
+  and the plaintext buffer is zeroed immediately after use.
+- Local pilot keys are stored under `.local-secrets/` encrypted with Windows
+  DPAPI. That directory is gitignored; **no key material is ever committed**.
+- If a previously generated DPAPI blob cannot be decrypted — a different Windows
+  identity, or a restored profile — the script can fall back to process-only keys
+  for the session.
+- `-Restart` refuses to stop a process that is not the expected Python or Node
+  listener on that port.
+- Credentials are never printed.
+
+A separate `./scripts/start-mars-demo.ps1` runs the synthetic environment. The two
+launchers are isolated and the settings layer refuses to start live mode against
+the demonstration database.
 
 ---
 
-## Tests
+## Quality and verification
 
-```bash
-cd backend && .venv/Scripts/pytest.exe -q                  # all; integration skips
-cd backend && .venv/Scripts/pytest.exe -m integration -q   # needs a database
-cd frontend && npm run test
-```
+Every figure below was produced by re-running the command in this repository.
 
-Integration tests require `MARS_TEST_DATABASE_URL`. Without it they **skip and
-report the skip** — an absent database never produces a false pass.
-
-```bash
-export MARS_TEST_DATABASE_URL=postgresql+psycopg://mars:mars_local_development@localhost:5433/mars
-```
-
----
-
-## The geography files
-
-Four supplied boundary files totalling 226 MB, at the repository root. They are
-**excluded from Git by size**, with SHA-256 checksums tracked in
-`data/manifests/geography.sha256.json`, so provenance survives a clone even
-though the payload does not.
-
-```bash
-python scripts/geography_audit.py --verify-only   # confirm bytes are unchanged
-python scripts/geography_audit.py                 # full audit report
-```
-
-They are never modified. `scripts/geography_audit.py` opens them read-only and
-regenerates every figure in
-[the audit document](docs/data-dictionary/geography-audit.md) from the files
-themselves — no number in that document is a hard-coded constant.
-
-See [ADR 0004](docs/adr/0004-geography-source-handling.md) for what the audit
-found and which file plays which role.
-
----
-
-## Quality gates
-
-| Gate | Command | Enforces |
+| Check | Command | Result |
 | --- | --- | --- |
-| Terminology | `python scripts/terminology_lint.py` | No claim that routine data confirm resistance |
-| Backend format | `ruff format --check .` | Consistent formatting |
-| Backend lint | `ruff check .` | Style and common defects |
-| Backend types | `mypy` | Strict typing, no untyped defs |
-| Backend tests | `pytest` | Unit, API, security, integration |
-| Frontend lint | `npm run lint` | Style, hooks, accessibility |
-| Frontend types | `npm run typecheck` | Strict TypeScript |
-| Frontend tests | `npm run test` | Component and behaviour |
-| Frontend build | `npx vite build` | Production build succeeds |
-| Contract drift | `python scripts/export_openapi.py --check` | API and client agree |
-| Geography | `python scripts/geography_audit.py --verify-only` | Sources unchanged |
+| Ruff format | `ruff format --check .` | 260 files clean |
+| Ruff lint | `ruff check .` | clean |
+| Type checking | `mypy` | clean, 189 source files |
+| Backend tests | `pytest tests -m "not integration"` | **1,099 passed** |
+| Frontend lint | `npm run lint` | clean |
+| Frontend types | `npm run typecheck` | clean |
+| Frontend tests | `vitest --run` | **111 passed** (11 files) |
+| Production build | `npm run build` | succeeds; MapLibre split into its own chunk |
+| OpenAPI contract | `export_openapi.py --check` | up to date |
+| Terminology lint | `terminology_lint.py` | no prohibited claims |
+| Geography audit | `geography_audit.py --verify-only` | PASS — all four sources unchanged |
+| Migrations | `alembic heads`, offline render | single head `0025`, 71 tables, both directions render, no identifier over 63 characters |
+| PowerShell | AST parse | 4 scripts, no errors |
 
-All run in CI. The terminology lint runs **first**: a change claiming routine
-data confirm resistance should fail before anything else is spent on it.
-
-### After changing the API
-
-```bash
-python scripts/export_openapi.py
-cd frontend && npm run generate:api
-```
-
-CI fails if these are stale. The TypeScript client is generated from the
-backend, so a field rename breaks the build rather than the running interface.
-
----
-
-## Repository layout
-
-```
-backend/          FastAPI application, domain model, services, migrations
-  src/mars/
-    api/          Routers and dependencies. No queries, no authorisation logic
-    core/         Settings, logging, errors, time, request context
-    db/           Engine, session, base, schema constants
-    domain/       ORM models and enumerations
-    services/     Business logic and repositories
-    security/     Permissions, principal, auth providers
-    geo/          FScode parsing, name normalisation
-    analytics/      Versioned indicator, episode, temporal and spatial engines
-    signals/        Governed taxonomy, scoring and evidence composition
-    explainability/ Deterministic explanation snapshots
-    investigations/ Empty until its owning phase
-frontend/         React application
-  src/
-    api/          Generated types and typed client
-    app/          Shell, router, error boundary
-    auth/         Context, provider, route guards
-    design-system/ Tokens and the four data states
-    features/     One directory per workspace
-contracts/        openapi.json — the frontend contract
-data/manifests/   Geography checksums
-docs/             ADRs, architecture, security, data dictionary
-infra/            Dockerfiles
-scripts/          Geography audit, terminology lint, contract export
-```
+Integration tests and the live `alembic check` drift gate require a PostgreSQL
+cluster; see [the release checklist](docs/runbooks/release-checklist.md).
 
 ---
 
 ## Current limitations
 
-**Environment**
+Stated rather than discovered.
 
-- Docker is not installed on the development machine, so the **Compose stack has
-  not been started** and the images have not been built. `docker compose config`
-  has therefore not validated the Compose file; its YAML parses with the
-  expected five services, two volumes, health checks and dependency ordering,
-  which is a structural check rather than validation.
-- Database-backed work through Prompt 10 was verified against an isolated
-  PostgreSQL 16 + PostGIS cluster. Prompt 11 migration `0010` was separately
-  upgrade/downgrade tested and its 32 live integration assertions passed on an
-  isolated local test database. Test databases were removed afterwards; the
-  user's existing databases were not modified.
-- Migration `0003_phase2_hardening` installs the PostGIS geometry contract and
-  therefore requires an extension-capable PostgreSQL server. Readiness reports
-  an absent extension as `not_installed` and returns HTTP 503.
-
-**Data**
-
-- No facility master, facility coordinates or Health Sub-District list has been
-  supplied. The schema supports all three; none is populated, and none is
-  invented.
-- No parish or village boundaries exist. Those levels are in the schema and stay
-  empty.
-- No population denominators. Until they arrive, spatial output can only be
-  counts and proportions — never incidence.
-- HMIS OPD 002, HMIS 033b and HMIS 105 are available locally and recorded by checksum in
-  `data/manifests/hmis-reference-documents.sha256.json`; the large PDFs are
-  intentionally excluded from Git. HMIS 105 has no useful text layer, so field
-  analysis uses visual inspection/OCR. Their implemented canonical subsets are
-  documented in `docs/data-dictionary/`.
-
-**Governance**
-
-- No surveillance window, threshold, minimum count or signal weight has been
-  supplied by the malaria programme. The registries ship empty, and
-  `/api/v1/meta/version` reports them as empty rather than defaulting.
+- **No national deployment.** No environment has been provisioned. MARS is not
+  running at any public URL, and nothing here claims otherwise.
+- **Pilot scope is one district.** The verified account resolves to Pader.
+- **Population denominators are unavailable.** No incidence per head of
+  population is computed; every rate takes its denominator from reported data.
+- **Parish and village geography is empty.** No boundary data was supplied and
+  MARS does not fabricate geography.
+- **Secondary suppression is not implemented.** Single small cells are
+  suppressed; differencing attacks are not defended.
+- **Rate limiting belongs at the proxy**, not in the application.
+- **Notifications are not delivered.** Closing an investigation notifies nobody.
+- **EWMA and CUSUM** detection methods are not implemented.
+- **No screenshots are published yet.** Producing one requires a live session,
+  and no image has been captured that is verified free of account and patient
+  detail. A fabricated one would misrepresent the product.
+- **Licensing is not yet specified.** No licence file exists in this repository,
+  so no licence is claimed or implied.
 
 ---
 
-## Licence and data handling
+## Documentation
 
-Proprietary. Not for public distribution.
+| Document | Contents |
+| --- | --- |
+| [Architecture and data flow](docs/architecture/data-flow.md) | The two evidence lanes, the pipeline, enforced properties |
+| [Deployment runbook](docs/runbooks/deployment.md) | Requirements, environment, startup order, health checks |
+| [Operations runbook](docs/runbooks/operations.md) | Data refresh, DHIS2, governance activation, monitoring |
+| [Release checklist](docs/runbooks/release-checklist.md) | Every gate, in order |
+| [Backup and recovery](docs/runbooks/backup-and-recovery.md) | Backup, restore, tested drill |
+| [Permission matrix](docs/security/permission-matrix.md) | Every route's permission and sensitivity tier |
+| [ADRs](docs/adr/) | The architectural decisions and the tests enforcing them |
 
-Contains no real patient data. Every account, facility and record in this build
-is synthetic and marked as such. Real health data must not be loaded into a
-development or staging environment.
+---
+
+## Author
+
+**Isaac Omoding** — [@Isaac25-lgtm](https://github.com/Isaac25-lgtm)
+
+Designer and developer of MARS.
+
+---
+
+<div align="center">
+
+*Routine data can tell you where to look. It cannot tell you that a drug has
+stopped working.*
+
+*Everything here is the first half, done honestly, so the second half is worth doing.*
+
+</div>
