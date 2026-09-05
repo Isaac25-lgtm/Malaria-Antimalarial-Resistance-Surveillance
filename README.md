@@ -36,17 +36,27 @@ each one traceable to its evidence, and none of them claiming more than the data
 
 ## Product status
 
-MARS runs in two clearly separated modes. They never share a process or a database.
+MARS is a **national malaria surveillance platform for Uganda**. It carries the
+country's full administrative geography — 146 districts, 2,653 administrative
+units — and routes national, district and facility views from the authenticated
+user's real organisation-unit scope.
 
-| Environment | What it is | Data |
+It runs in two clearly separated modes. They never share a process or a database.
+
+| Mode | What it is | Data |
 | --- | --- | --- |
-| **Pader Live Pilot** | Real, authorised DHIS2/eRegisters integration against a single district | Live synchronised HMIS and Tracker data |
-| **National Overview** | Synthetic demonstration environment for national-scale product development | Deterministic synthetic data, visibly labelled |
-| **National live deployment** | **Not claimed.** No national environment has been provisioned | — |
+| **Live** | Authorised DHIS2/eRegisters integration. Scope is whatever the authenticated account actually holds | Live synchronised HMIS and Tracker data |
+| **Demonstration** | Synthetic environment for development and presentation, visibly labelled on every screen | Deterministic synthetic data |
 
 The live mode refuses the demonstration database at startup, and the API
 response schema for a live snapshot is typed `synthetic_data_used: Literal[False]`
 — the contract itself cannot carry a synthetic figure.
+
+**Deployment status.** No national environment has been provisioned and MARS is
+not running at any public URL. The live integration is verified end to end
+against an authorised eRegisters account; that account's DHIS2 scope currently
+resolves to one district, so that is the extent of the live data read so far.
+Nothing here claims otherwise.
 
 ---
 
@@ -101,30 +111,34 @@ not show zeroes.
 
 ---
 
-## Live Pader pilot
+## Live DHIS2 / eRegisters integration
 
-The pilot authenticates a real, authorised eRegisters user and reads only what
-that account may see.
+MARS authenticates a real, authorised eRegisters user and reads only what that
+account may see. Nothing about the integration is tied to one district: the
+scope is whatever DHIS2 says the account holds, so a national account produces a
+national view and a facility account produces a facility view.
 
-| Verified | Value |
+**Verified against the live instance**
+
+| | |
 | --- | --- |
 | DHIS2 version | 2.42.5.1 |
 | Accessible programmes | 1 |
 | Programme stages | 4 |
 | Data elements discovered | 5,330 |
-| Facilities under the account | 27 |
+| Facilities under the verified account | 27 |
 
 Approved mapping: [`config/dhis2/pader-live-v1.json`](config/dhis2/pader-live-v1.json)
 — DHIS2 metadata UIDs only, carrying a SHA-256 of the discovery report it was
 derived from.
 
-**What the pilot does**
+**What it does**
 
 - authenticates the user server-to-server, then resolves their actual
   organisation-unit scope
-- reads mapped aggregate HMIS values for authorised facilities
+- reads mapped aggregate HMIS values for every authorised facility
 - performs bounded Tracker event reads for repeat-positive evidence
-- builds a 12-month real HMIS trend and district KPIs
+- builds a 12-month real HMIS trend and scope-level KPIs
 - derives data-quality diagnostics and operational commodity conditions
 - withholds mathematically invalid ratios rather than publishing them
 
@@ -134,12 +148,12 @@ derived from.
 - request tracked-entity attributes
 - return a DHIS2 tracked-entity UID to the browser
 - invent a facility coordinate for the map
-- describe a Pader snapshot as national
+- present a district-scoped figure as a national one
 
-> **On scope naming.** The verified pilot account resolves to Pader District. The
-> interface calls this the **Pader Overview**. National, district and facility
-> routing is driven by the account's real remote scope, never by a hardcoded
-> username.
+> **Scope is data-driven, never hardcoded.** National, district and facility
+> routing comes from the account's real remote scope — no username is special-cased.
+> The interface names the scope it is actually showing, so a figure covering one
+> district is labelled as that district and never as the country. A test enforces it.
 
 ### Withheld ratios, and why
 
@@ -198,7 +212,7 @@ flowchart LR
     C --> D["Authenticated user"]
     D --> E["Actual organisation-unit scope"]
     E --> F1["National view"]
-    E --> F2["District view<br/>(Pader pilot)"]
+    E --> F2["District view"]
     E --> F3["Facility view"]
 
     style A fill:#1f2d3d,stroke:#47c,color:#fff
@@ -324,7 +338,7 @@ npm --prefix frontend run dev          # http://127.0.0.1:5173
 
 ---
 
-## Live pilot startup
+## Live mode startup
 
 ```powershell
 ./scripts/start-mars-live.ps1            # start
@@ -336,7 +350,7 @@ The launcher applies migrations to the `mars_live` database, starts the API on
 
 - The database password is read with a **hidden prompt** (`Read-Host -AsSecureString`)
   and the plaintext buffer is zeroed immediately after use.
-- Local pilot keys are stored under `.local-secrets/` encrypted with Windows
+- Local keys are stored under `.local-secrets/` encrypted with Windows
   DPAPI. That directory is gitignored; **no key material is ever committed**.
 - If a previously generated DPAPI blob cannot be decrypted — a different Windows
   identity, or a restored profile — the script can fall back to process-only keys
@@ -382,7 +396,10 @@ Stated rather than discovered.
 
 - **No national deployment.** No environment has been provisioned. MARS is not
   running at any public URL, and nothing here claims otherwise.
-- **Pilot scope is one district.** The verified account resolves to Pader.
+- **Live data so far covers one district.** The system is national in scope and
+  routing; the authorised account available for verification holds a single
+  district, so that is the extent of the live read to date. A wider-scope
+  account needs no code change.
 - **Population denominators are unavailable.** No incidence per head of
   population is computed; every rate takes its denominator from reported data.
 - **Parish and village geography is empty.** No boundary data was supplied and
@@ -416,9 +433,24 @@ Stated rather than discovered.
 
 ## Author
 
-**Isaac Omoding** — [@Isaac25-lgtm](https://github.com/Isaac25-lgtm)
+<div align="center">
 
-Designer and developer of MARS.
+### Isaac Omoding
+
+**Data Scientist · AI & Machine Learning Specialist**
+
+[![GitHub](https://img.shields.io/badge/GitHub-Isaac25--lgtm-181717?logo=github&logoColor=white)](https://github.com/Isaac25-lgtm)
+
+</div>
+
+Architect, designer and developer of MARS — the data model, the governed
+analytics, the DHIS2 integration, the API and the interface.
+
+The engineering position this project takes is that a surveillance system's
+hardest problem is not detection but **restraint**: knowing what the data cannot
+support, and building a system that refuses to say it anyway. Every threshold is
+configuration, every figure carries its provenance, and every absence is
+distinguished from a zero.
 
 ---
 
