@@ -19,6 +19,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as ClientModule from "../src/api/client";
 import { ApiError, type Schemas } from "../src/api/client";
+import { AuthContext, type AuthContextValue } from "../src/auth/context";
 
 // -- The map canvas stub -----------------------------------------------------
 const mapProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
@@ -115,10 +116,23 @@ function renderView() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
+  const auth: AuthContextValue = {
+    status: "authenticated",
+    user: null,
+    error: null,
+    signInAsDevelopmentUser: () => Promise.resolve(),
+    signInWithEregisters: () => Promise.resolve(),
+    signOut: () => Promise.resolve(),
+    can: () => false,
+    canAccessSensitivity: () => false,
+    landingPath: "/command-centre",
+  };
   return render(
-    <QueryClientProvider client={client}>
-      <NationalMapView />
-    </QueryClientProvider>,
+    <AuthContext.Provider value={auth}>
+      <QueryClientProvider client={client}>
+        <NationalMapView />
+      </QueryClientProvider>
+    </AuthContext.Provider>,
   );
 }
 

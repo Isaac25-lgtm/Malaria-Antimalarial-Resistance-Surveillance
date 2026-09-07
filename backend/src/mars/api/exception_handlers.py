@@ -54,7 +54,12 @@ async def handle_mars_error(request: Request, exc: Exception) -> JSONResponse:
         logger.error("mars_error", code=exc.code, status=problem.status, detail=exc.detail)
     else:
         logger.info("mars_error", code=exc.code, status=problem.status)
-    return _respond(problem)
+    response = _respond(problem)
+    if exc.status_code == 429:
+        # A bounded worker or login throttle is explicitly retryable.  A stable
+        # conservative value keeps browsers and API clients from hot-looping.
+        response.headers["Retry-After"] = "60"
+    return response
 
 
 async def handle_validation_error(request: Request, exc: Exception) -> JSONResponse:

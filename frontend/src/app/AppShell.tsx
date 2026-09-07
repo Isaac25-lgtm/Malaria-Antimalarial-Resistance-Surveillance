@@ -45,7 +45,9 @@ export function AppShell() {
   const overview = useQuery({
     queryKey: ["surveillance", "overview", range],
     queryFn: () => api.overview(range),
-    enabled: can("surveillance:view_aggregate"),
+    // Live navigation must never consult the legacy analytical snapshot. Its
+    // badge stays absent until a governed live signal method exists.
+    enabled: can("surveillance:view_aggregate") && user?.source_status?.mode !== "live",
     retry: false,
   });
 
@@ -64,7 +66,9 @@ export function AppShell() {
         ]
       : PRIMARY_NAVIGATION
   ).filter((item) => !item.permission || (user?.permissions.includes(item.permission) ?? false));
-  const signalCount = highPrioritySignalCount(overview.data?.signals_by_priority);
+  const signalCount = user?.source_status?.mode === "live"
+    ? null
+    : highPrioritySignalCount(overview.data?.signals_by_priority);
 
   return (
     <div className="shell">

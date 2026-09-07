@@ -14,11 +14,14 @@ import { ApiError, api, type Schemas } from "../../api/client";
 import { MeasureGrid } from "../../design-system/Measure";
 import { ForbiddenState, UnavailableState } from "../../design-system/States";
 import { PeriodControl } from "../../design-system/Surveillance";
-import { formatMoment, monthPeriod, type PeriodSelection } from "../../design-system/period";
+import { formatMoment } from "../../design-system/period";
 import { useAuth } from "../../auth/context";
 import { GeographyCanvas } from "../map/GeographyCanvas";
 import { boundsOf, confirmedByArea, decorateCollection, isInScope, overlayProps } from "../map/geography";
 import { PatientTable } from "../patients/PatientSurveillanceView";
+import { useLiveDashboard } from "../operations/useLiveDashboard";
+import { useReportingPeriod } from "../operations/useReportingPeriod";
+import { LiveSnapshotStatus } from "../operations/LiveSnapshotStatus";
 import "./command-centre.css";
 
 type Snapshot = Schemas["OverviewSnapshot"];
@@ -32,13 +35,13 @@ function districtCountOverlay(districtId: string | null, snapshot: Schemas["Live
 
 export function CommandCentreView() {
   const { user, can } = useAuth();
+  const liveMode = user?.source_status?.mode === "live";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [period, setPeriod] = useState<PeriodSelection>(() => monthPeriod(-1));
+  const [period, setPeriod] = useReportingPeriod();
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [boundaryLevel, setBoundaryLevel] = useState<"district" | "subcounty">("district");
   const discoveryRequested = useRef(false);
-  const synchronizationRequested = useRef<string | null>(null);
   const range = useMemo(
     () => ({ period_start: period.start, period_end: period.end }),
     [period],
@@ -47,10 +50,10 @@ export function CommandCentreView() {
   const overview = useQuery({
     queryKey: ["surveillance", "overview", range],
     queryFn: () => api.overview(range),
+    enabled: !liveMode,
     retry: false,
   });
 
-  const liveMode = user?.source_status?.mode === "live";
   const discovery = useQuery({
     queryKey: ["live", "metadata-discovery"],
     queryFn: api.latestLiveMetadataDiscovery,
@@ -77,45 +80,8 @@ export function CommandCentreView() {
       runDiscovery.mutate();
     }
   }, [discovery.data, discovery.isFetched, liveMode, runDiscovery]);
-  const liveDashboard = useQuery({
-    queryKey: ["live", "dashboard", range],
-    queryFn: () => api.latestLiveDashboard(range),
-    enabled: liveMode,
-    retry: false,
-  });
-  const synchronizeLive = useMutation({
-    mutationFn: () => api.synchronizeLiveDashboard(range),
-    onSuccess: (result) => {
-      queryClient.setQueryData(["live", "dashboard", range], result);
-      queryClient.setQueryData(["live", "dashboard", "latest"], result);
-    },
-  });
-
-  useEffect(() => {
-    const synchronizationKey = `${range.period_start}:${range.period_end}:${discovery.data?.generated_at ?? "none"}`;
-    if (
-      liveMode &&
-      discovery.data &&
-      liveDashboard.isFetched &&
-      (!liveDashboard.data ||
-        liveDashboard.data.period_start !== range.period_start ||
-        liveDashboard.data.period_end !== range.period_end) &&
-      synchronizationRequested.current !== synchronizationKey &&
-      !synchronizeLive.isPending &&
-      !synchronizeLive.isError
-    ) {
-      synchronizationRequested.current = synchronizationKey;
-      synchronizeLive.mutate();
-    }
-  }, [
-    discovery.data,
-    liveDashboard.data,
-    liveDashboard.isFetched,
-    liveMode,
-    range.period_end,
-    range.period_start,
-    synchronizeLive,
-  ]);
+  const liveDashboard = useLiveDashboard(period, Boolean(discovery.data), true);
+  const synchronizeLive = liveDashboard.synchronization;
 
   const mapMeta = useQuery({
     queryKey: ["map", "metadata"],
@@ -131,7 +97,7 @@ export function CommandCentreView() {
         period_to: range.period_end,
         limit: 5,
       }),
-    enabled: liveMode && can("case:view_pseudonymous_evidence"),
+    enabled: !liveMode && can("case:view_pseudonymous_evidence"),
     retry: false,
   });
 
@@ -188,7 +154,7 @@ export function CommandCentreView() {
     <div className="page overview">
       <header className="overview__header">
         <div>
-          <h1>{snap?.title ?? "Overview"}</h1>
+          <h1>{liveMode ? `${user?.geography_scopes[0]?.name ?? "Pader"} Overview` : (snap?.title ?? "Overview")}</h1>
           <p className="page__lede">
             {snap?.subtitle ?? "Malaria surveillance from routine health information systems"}
           </p>
@@ -201,11 +167,11 @@ export function CommandCentreView() {
           <select
             id="geographic-level"
             className="period-control__select"
-            value={snap?.requested_scope ?? "national"}
+            value={liveMode ? "assigned" : (snap?.requested_scope ?? "national")}
             disabled
           >
-            <option value={snap?.requested_scope ?? "national"}>
-              {scopeLabel(snap, user?.has_national_scope ?? false)}
+            <option value={liveMode ? "assigned" : (snap?.requested_scope ?? "national")}>
+              {liveMode ? (user?.geography_scopes[0]?.name ?? "Assigned scope") : scopeLabel(snap, user?.has_national_scope ?? false)}
             </option>
           </select>
         </div>
@@ -229,6 +195,7 @@ export function CommandCentreView() {
       ) : null}
 
       {liveDashboard.error ? <UnavailableState title="Live data could not be loaded" description={liveDashboard.error.message} /> : null}
+      <LiveSnapshotStatus live={liveDashboard} />
       {liveDashboard.data?.warnings.length ? <div className="notice notice--warning" role="status">{liveDashboard.data.warnings.join(". ")}</div> : null}
 
       <section aria-labelledby="kpi-heading">
@@ -697,7 +664,7 @@ function LiveFacilityPanel({ snapshot }: { snapshot: Schemas["LiveDashboardSnaps
           <tbody>
             {rows.map((facility) => (
               <tr key={facility.uid}>
-                <th>{facility.name}</th>
+                <th><Link to={`/facility/${facility.uid}`}>{facility.name}</Link></th>
                 <td>{formatCount(facility.confirmed_malaria)}</td>
                 <td>{formatCount(facility.tested_for_malaria)}</td>
                 <td>

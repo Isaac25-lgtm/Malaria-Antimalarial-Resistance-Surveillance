@@ -90,7 +90,11 @@ export function decorateCollection(
         ? "outside"
         : priority && PRIORITY_RANK.includes(priority)
           ? (priority as FillClass)
-          : options.liveCounts ? "nodata" : "none";
+          : options.liveCounts
+            ? confirmed !== undefined
+              ? "informational"
+              : "nodata"
+            : "none";
       return {
         ...feature,
         id: unitId,

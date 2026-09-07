@@ -149,6 +149,10 @@ derived from.
 - reads mapped aggregate HMIS values for every authorised facility
 - performs bounded Tracker event reads for repeat-positive evidence
 - builds a 12-month real HMIS trend and scope-level KPIs
+- runs retrieval as a **durable background job**: bounded workers, fenced
+  leases, resumable checkpoints and AES-GCM-encrypted snapshots held per scope,
+  so a browser can navigate away mid-run and a failed attempt cannot destroy the
+  last complete snapshot
 - assembles pseudonymous patient-level surveillance — repeat-positive evidence
   under a keyed HMAC alias, with no direct identifier in any list view
 - derives data-quality diagnostics and operational commodity conditions
@@ -292,7 +296,7 @@ backend/
     integrations/   DHIS2 adapters — discovery, login, tracker, live dashboard
     identity/       Encrypted vault, linkage, never imported by analytics
     services/       Scope-applying read models
-  migrations/       Alembic revisions 0001 → 0026
+  migrations/       Alembic revisions 0001 → 0027
   tests/            unit · api · security · integration
 frontend/
   src/features/     command-centre, signals, investigations, patients, map, …
@@ -365,7 +369,7 @@ npm --prefix frontend run dev          # http://127.0.0.1:5173
 
 The launcher validates the `mars_app_login` and `mars_identity_login` roles,
 optionally provisions missing restricted local roles, applies migrations through
-`0026_reapply_runtime_role_grants`, asserts the schema privilege boundary, starts
+`0027_live_sync`, asserts the schema privilege boundary, starts
 the API on **port 8000**, waits for its OpenAPI contract to satisfy the dashboard
 schema, and only then starts the UI on **port 5173**.
 
@@ -398,15 +402,15 @@ Every figure below was produced by re-running the command in this repository.
 | Ruff format | `ruff format --check .` | 260 files clean |
 | Ruff lint | `ruff check .` | clean |
 | Type checking | `mypy` | clean, 189 source files |
-| Backend tests | `pytest tests -m "not integration"` | **1,105 passed** |
+| Backend tests | `pytest tests -m "not integration"` | **1,124 passed** |
 | Frontend lint | `npm run lint` | clean |
 | Frontend types | `npm run typecheck` | clean |
-| Frontend tests | `vitest --run` | **117 passed** (13 files) |
+| Frontend tests | `vitest --run` | **125 passed** (15 files) |
 | Production build | `npm run build` | succeeds; MapLibre split into its own chunk |
 | OpenAPI contract | `export_openapi.py --check` | up to date |
 | Terminology lint | `terminology_lint.py` | no prohibited claims |
 | Geography audit | `geography_audit.py --verify-only` | PASS — all four sources unchanged |
-| Migrations | `alembic heads`, structural tests | single head `0026_reapply_runtime_role_grants`, linear chain, 32 structural tests passed |
+| Migrations | `alembic heads`, structural tests | single head `0027_live_sync`, linear chain, 32 structural tests passed |
 | PowerShell | AST parse | 4 scripts, no errors |
 
 Integration tests and the live `alembic check` drift gate require a PostgreSQL
@@ -448,6 +452,8 @@ Stated rather than discovered.
 | [Architecture and data flow](docs/architecture/data-flow.md) | The two evidence lanes, the pipeline, enforced properties |
 | [Deployment runbook](docs/runbooks/deployment.md) | Requirements, environment, startup order, health checks |
 | [Operations runbook](docs/runbooks/operations.md) | Data refresh, DHIS2, governance activation, monitoring |
+| [Live synchronization](docs/operations/live-synchronization.md) | Durable retrieval jobs, checkpoints, snapshot encryption |
+| [Live acceptance map](docs/operations/live-system-acceptance.md) | What is implemented live, and what is not yet accepted |
 | [Release checklist](docs/runbooks/release-checklist.md) | Every gate, in order |
 | [Backup and recovery](docs/runbooks/backup-and-recovery.md) | Backup, restore, tested drill |
 | [Permission matrix](docs/security/permission-matrix.md) | Every route's permission and sensitivity tier |

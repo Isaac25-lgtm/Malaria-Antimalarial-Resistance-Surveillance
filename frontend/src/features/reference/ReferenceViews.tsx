@@ -8,6 +8,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import { ApiError, api } from "../../api/client";
 import { useAuth } from "../../auth/context";
@@ -17,7 +18,11 @@ import {
   NoDataState,
   UnavailableState,
 } from "../../design-system/States";
+import { PeriodControl } from "../../design-system/Surveillance";
 import "../status/status.css";
+import { useLiveDashboard } from "../operations/useLiveDashboard";
+import { useReportingPeriod } from "../operations/useReportingPeriod";
+import { LiveSnapshotStatus } from "../operations/LiveSnapshotStatus";
 
 /** Map an API failure onto the state that actually describes it. */
 function renderError(error: unknown, onRetry: () => void) {
@@ -191,12 +196,8 @@ export function OrganisationView() {
 export function FacilitiesView() {
   const { user } = useAuth();
   const liveMode = user?.source_status?.mode === "live";
-  const live = useQuery({
-    queryKey: ["live", "dashboard", "latest"],
-    queryFn: () => api.latestLiveDashboard(),
-    enabled: liveMode,
-    retry: false,
-  });
+  const [period, setPeriod] = useReportingPeriod();
+  const live = useLiveDashboard(period);
   const facilities = useQuery({
     queryKey: ["facilities"],
     queryFn: () => api.facilities({ limit: 50 }),
@@ -215,12 +216,14 @@ export function FacilitiesView() {
             shown only when validated - MARS never places a facility approximately.
           </p>
         </div>
+        <PeriodControl period={period} onChange={setPeriod} />
       </header>
 
       <section className="panel">
         <div className="panel__header">
           <h2>Facility list</h2>
         </div>
+        <LiveSnapshotStatus live={live} />
         <div className="panel__body">
           {liveMode && live.isPending ? (
             <LoadingState label="live facilities" rows={4} />
@@ -231,7 +234,7 @@ export function FacilitiesView() {
                 <thead><tr><th>Facility</th><th>Confirmed malaria</th><th>Tested</th><th>HMIS</th><th>Tracker</th><th>Map point</th></tr></thead>
                 <tbody>{live.data.facilities.map((facility) => (
                   <tr key={facility.uid}>
-                    <th>{facility.name}</th>
+                    <th><Link to={`/facility/${facility.uid}`}>{facility.name}</Link></th>
                     <td>{facility.confirmed_malaria?.toLocaleString() ?? "—"}</td>
                     <td>{facility.tested_for_malaria?.toLocaleString() ?? "—"}</td>
                     <td>{facility.aggregate_reported ? "Reported" : "No value returned"}</td>

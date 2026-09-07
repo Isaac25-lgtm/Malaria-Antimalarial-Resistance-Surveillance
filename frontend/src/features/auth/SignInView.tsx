@@ -102,14 +102,14 @@ function LiveSignInForm() {
       navigate(intended && intended !== "/sign-in" ? intended : "/", { replace: true });
     } catch (caught) {
       if (caught instanceof ApiError && caught.isUnavailable) {
-        setError("Unable to connect to eRegisters");
+        setError("Sign-in is temporarily unavailable. Please try again shortly.");
         setErrorKind("upstream");
       } else if (caught instanceof ApiError && caught.isUnauthenticated) {
         setError("Invalid username or password");
         setErrorKind("credentials");
       } else {
-        setError("Invalid username or password");
-        setErrorKind("credentials");
+        setError("MARS could not complete sign-in. Please try again shortly.");
+        setErrorKind("other");
       }
       usernameRef.current?.focus();
     } finally {

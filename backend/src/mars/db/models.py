@@ -66,6 +66,7 @@ from mars.domain.investigation import (
     InvestigationEvidenceRequest,
     InvestigationFeedback,
 )
+from mars.domain.live_sync import LiveSyncJob
 from mars.domain.organisation import Facility, FacilityIdentifier, OrganisationUnit
 from mars.domain.recurrence import RecurrenceResult
 from mars.domain.security import (
@@ -129,6 +130,7 @@ __all__ = [
     "InvestigationEvidenceRequest",
     "InvestigationFeedback",
     "LaboratoryTestObservation",
+    "LiveSyncJob",
     "MethodDefinition",
     "MethodVersion",
     "OpdEncounter",

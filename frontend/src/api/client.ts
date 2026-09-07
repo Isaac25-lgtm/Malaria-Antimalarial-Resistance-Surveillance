@@ -306,6 +306,10 @@ export const api = {
     }).then((snapshot) => validateLiveSnapshot(snapshot)!),
 
   logout: () => request<void>("/auth/logout", { method: "POST" }),
+  submitLiveDashboardJob: (body: { period_start: string; period_end: string }) =>
+    request<Schemas["LiveSyncJobSummary"]>("/live/dashboard/jobs", { method: "POST", body }),
+  latestLiveDashboardJob: (range?: { period_start: string; period_end: string }) =>
+    request<Schemas["LiveSyncJobSummary"] | null>("/live/dashboard/jobs/latest", { query: range }),
 
   developmentUsers: () =>
     request<Schemas["DevelopmentUserSummary"][]>("/auth/dev/users"),
@@ -444,7 +448,7 @@ export const api = {
     limit?: number;
   }) => request<Schemas["PatientOfInterestSummary"][]>("/patients", { query }),
 
-  livePatientEvidence: (alias: string) => request<Schemas["LiveRepeatPositivePatient"]>(`/live/patients/${encodeURIComponent(alias)}`),
+  livePatientEvidence: (alias: string, range?: { period_start: string; period_end: string }) => request<Schemas["LiveRepeatPositivePatient"]>(`/live/patients/${encodeURIComponent(alias)}`, { query: range }),
 
   patientTimeline: (patientReferenceId: string) =>
     request<Schemas["PatientTimeline"]>(

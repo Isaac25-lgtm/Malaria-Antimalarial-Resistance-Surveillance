@@ -380,7 +380,7 @@ describe("operational overview", () => {
     expect(screen.getByText("CONNECTED — live data synchronization pending")).toBeInTheDocument();
     expect(screen.getAllByText(/Last sync:\s*Not yet run/).length).toBeGreaterThan(0);
     expect(await screen.findByRole("heading", { name: "Pader District Map" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Refresh metadata" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Refresh metadata" })).toBeInTheDocument();
     expect(api.mapContext).not.toHaveBeenCalled();
     expect(api.mapFeatures).toHaveBeenCalledWith({ level: "district" });
     await userEvent.selectOptions(screen.getByLabelText("Boundary layer"), "subcounty");

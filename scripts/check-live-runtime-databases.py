@@ -6,7 +6,35 @@ import argparse
 import os
 import sys
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import Connection, create_engine, text
+
+
+def _check_live_sync_privileges(connection: Connection, label: str) -> None:
+    # The identity role must not have USAGE on mars_analytics. Resolving a
+    # schema-qualified table name as that role raises permission denied before
+    # has_table_privilege can answer. Its catalog OID requires no schema access.
+    table_oid = connection.execute(
+        text(
+            "SELECT c.oid FROM pg_catalog.pg_class AS c "
+            "JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'mars_analytics' AND c.relname = 'live_sync_job' "
+            "AND c.relkind IN ('r', 'p')"
+        )
+    ).scalar_one_or_none()
+    if table_oid is None:
+        raise RuntimeError("durable live synchronization table is missing")
+    permissions = [
+        connection.execute(
+            text("SELECT has_table_privilege(current_user, CAST(:oid AS oid), :privilege)"),
+            {"oid": table_oid, "privilege": privilege},
+        ).scalar_one()
+        for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")
+    ]
+    # A comma-separated privilege argument means ANY, not ALL, in PostgreSQL.
+    if label == "application" and not all(permissions):
+        raise RuntimeError("application cannot use durable live synchronization")
+    if label == "identity" and any(permissions):
+        raise RuntimeError("identity role can reach live synchronization evidence")
 
 DATABASES = (
     ("application", "MARS_DATABASE_URL", "mars_app", "mars_core", "mars_identity"),
@@ -56,6 +84,7 @@ def _check_database(
                 ).scalar_one()
                 if not is_member or not can_use_allowed_schema or can_use_denied_schema:
                     raise RuntimeError("runtime database privilege boundary is invalid")
+                _check_live_sync_privileges(connection, label)
     finally:
         engine.dispose()
 

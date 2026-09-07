@@ -20,15 +20,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { ApiError, api, type Schemas } from "../../api/client";
+import { useAuth } from "../../auth/context";
+import type { PeriodSelection } from "../../design-system/period";
 import {
   ForbiddenState,
   LoadingState,
   NoDataState,
   UnavailableState,
 } from "../../design-system/States";
+import { PeriodControl } from "../../design-system/Surveillance";
+import { LiveSnapshotStatus } from "../operations/LiveSnapshotStatus";
+import { useLiveDashboard } from "../operations/useLiveDashboard";
+import { useReportingPeriod } from "../operations/useReportingPeriod";
 import { GeographyCanvas } from "./GeographyCanvas";
 import { GeographyList } from "./GeographyList";
-import { decorateCollection, isInScope } from "./geography";
+import { confirmedByArea, decorateCollection, isInScope, overlayProps } from "./geography";
 import "./map.css";
 
 type UnitSummary = Schemas["GeographyUnitSummary"];
@@ -65,6 +71,11 @@ const ROOT_STEP: DrillStep = {
 };
 
 export function NationalMapView() {
+  const { user } = useAuth();
+  const [period, setPeriod] = useReportingPeriod();
+  const live = useLiveDashboard(period);
+  const liveMode = user?.source_status?.mode === "live";
+  const scopeName = user?.geography_scopes[0]?.name ?? "Authorised scope";
   const [trail, setTrail] = useState<DrillStep[]>([ROOT_STEP]);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [hoveredUnitId, setHoveredUnitId] = useState<string | null>(null);
@@ -114,6 +125,21 @@ export function NationalMapView() {
     return null;
   }, [features.data?.bbox, metadata.data?.initial_bounds]);
 
+  const confirmedByUnit = useMemo(() => {
+    if (!liveMode || !features.data || !live.data) return new Map<string, number>();
+    if (step.drawLevel === "subcounty") {
+      return confirmedByArea(features.data, live.data.facilities).counts;
+    }
+    const districtId = user?.geography_scopes.find((scope) => scope.level === "district")
+      ?.geography_unit_id;
+    const confirmed = live.data.kpis.find(
+      (kpi) => kpi.code === "ENC_CONFIRMED_MALARIA" && kpi.status === "available",
+    )?.numerator;
+    return districtId && confirmed != null
+      ? new Map<string, number>([[districtId, confirmed]])
+      : new Map<string, number>();
+  }, [features.data, live.data, liveMode, step.drawLevel, user?.geography_scopes]);
+
   /** The drawn features, as list rows. One source of truth for both views. */
   const collection = useMemo(
     () =>
@@ -121,9 +147,11 @@ export function NationalMapView() {
         ? decorateCollection(features.data, {
             signalPriorityByUnitId: new Map(),
             inScopeUnitIds: null,
+            confirmedByUnitId: confirmedByUnit,
+            liveCounts: liveMode,
           })
         : null,
-    [features.data],
+    [confirmedByUnit, features.data, liveMode],
   );
 
   const units = useMemo<UnitSummary[]>(() => {
@@ -151,6 +179,9 @@ export function NationalMapView() {
     selectedFeature && isInScope(selectedFeature)
       ? (units.find((unit) => unit.id === selectedUnitId) ?? null)
       : null;
+  const selectedConfirmed = selectedFeature
+    ? overlayProps(selectedFeature).confirmed_count
+    : undefined;
 
   const drillInto = useCallback((unit: UnitSummary) => {
     setTrail((current) => [
@@ -175,7 +206,7 @@ export function NationalMapView() {
   // -- States ------------------------------------------------------------
   if (metadata.isPending) {
     return (
-      <MapPage>
+      <MapPage live={liveMode ? live : undefined} period={period} onPeriod={setPeriod} scopeName={scopeName}>
         <LoadingState label="the national map" rows={5} />
       </MapPage>
     );
@@ -183,7 +214,7 @@ export function NationalMapView() {
 
   if (metadata.isError) {
     return (
-      <MapPage>
+      <MapPage live={liveMode ? live : undefined} period={period} onPeriod={setPeriod} scopeName={scopeName}>
         {renderQueryError(metadata.error, () => void metadata.refetch())}
       </MapPage>
     );
@@ -191,7 +222,7 @@ export function NationalMapView() {
 
   if (!metadata.data.is_available) {
     return (
-      <MapPage>
+      <MapPage live={liveMode ? live : undefined} period={period} onPeriod={setPeriod} scopeName={scopeName}>
         <NoDataState
           title="No boundaries have been loaded"
           description={
@@ -214,7 +245,14 @@ export function NationalMapView() {
   const currentName = nameOf(step, trail.length - 1);
 
   return (
-    <MapPage version={versionLabel} importedAt={metadata.data.imported_at}>
+    <MapPage
+      version={versionLabel}
+      importedAt={metadata.data.imported_at}
+      live={liveMode ? live : undefined}
+      period={period}
+      onPeriod={setPeriod}
+      scopeName={scopeName}
+    >
       <nav className="map-breadcrumbs" aria-label="Geography drill-down">
         <ol>
           {trail.map((entry, index) => (
@@ -349,8 +387,11 @@ export function NationalMapView() {
               </div>
             </dl>
             <p className="page__note">
-              Boundary reference only. No surveillance indicator is available for this
-              area yet.
+              {liveMode
+                ? selectedConfirmed == null
+                  ? "No verified live facility total was linked to this GeoJSON area for the selected period."
+                  : `Confirmed malaria reported for this area: ${Number(selectedConfirmed).toLocaleString()}.`
+                : "Boundary reference only. No surveillance indicator is available for this area yet."}
             </p>
           </div>
         </section>
@@ -363,21 +404,26 @@ interface MapPageProps {
   children: React.ReactNode;
   version?: string;
   importedAt?: string | null;
+  live?: ReturnType<typeof useLiveDashboard>;
+  period?: PeriodSelection;
+  onPeriod?: (period: PeriodSelection) => void;
+  scopeName?: string;
 }
 
-function MapPage({ children, version, importedAt }: MapPageProps) {
+function MapPage({ children, version, importedAt, live, period, onPeriod, scopeName }: MapPageProps) {
   return (
     <div className="page">
       <header className="page__header">
         <div>
-          <p className="label">National view</p>
-          <h1>Uganda administrative boundaries</h1>
+          <p className="label">{live ? "Live map explorer" : "National view"}</p>
+          <h1>{live ? `${scopeName} surveillance map` : "Uganda administrative boundaries"}</h1>
           <p className="page__lede">
-            Drawn from the boundary version loaded into MARS. Administrative reference
-            only - no surveillance indicator is shown.
+            {live
+              ? "Real confirmed-malaria totals are joined only through verified DHIS2 hierarchy metadata to the supplied GeoJSON boundaries."
+              : "Drawn from the boundary version loaded into MARS. Administrative reference only - no surveillance indicator is shown."}
           </p>
         </div>
-        {version ? (
+        {live && period && onPeriod ? <PeriodControl period={period} onChange={onPeriod} /> : version ? (
           <div className="page__header-meta">
             <span className="chip chip--info">Boundary version</span>
             <span className="mono">{version}</span>
@@ -389,6 +435,8 @@ function MapPage({ children, version, importedAt }: MapPageProps) {
           </div>
         ) : null}
       </header>
+      {live ? <LiveSnapshotStatus live={live} /> : null}
+      {live && version ? <p className="page__note">Boundary version: <span className="mono">{version}</span>{importedAt ? ` · imported ${new Date(importedAt).toLocaleDateString()}` : ""}</p> : null}
       {children}
     </div>
   );

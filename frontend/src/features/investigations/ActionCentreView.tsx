@@ -19,6 +19,10 @@ import { api } from "../../api/client";
 import { useAuth } from "../../auth/context";
 import { QueryRegion } from "../../design-system/QueryRegion";
 import { NoDataState } from "../../design-system/States";
+import { PeriodControl } from "../../design-system/Surveillance";
+import { LiveSnapshotStatus } from "../operations/LiveSnapshotStatus";
+import { useLiveDashboard } from "../operations/useLiveDashboard";
+import { useReportingPeriod } from "../operations/useReportingPeriod";
 import "./action-centre.css";
 
 const QUEUES = [
@@ -36,12 +40,8 @@ export function ActionCentreView() {
   const { user } = useAuth();
   const liveMode = user?.source_status?.mode === "live";
   const [active, setActive] = useState<QueueName>("new");
-  const live = useQuery({
-    queryKey: ["live", "dashboard", "latest"],
-    queryFn: () => api.latestLiveDashboard(),
-    enabled: liveMode,
-    retry: false,
-  });
+  const [period, setPeriod] = useReportingPeriod();
+  const live = useLiveDashboard(period);
 
   const catalogue = useQuery({
     queryKey: ["investigations", "queues"],
@@ -67,7 +67,10 @@ export function ActionCentreView() {
             Signals that have become somebody&apos;s work, and what state that work is in.
           </p>
         </div>
+        <PeriodControl period={period} onChange={setPeriod} />
       </header>
+
+      <LiveSnapshotStatus live={live} />
 
       {!liveMode && overdue && !overdue.available ? (
         <NoDataState

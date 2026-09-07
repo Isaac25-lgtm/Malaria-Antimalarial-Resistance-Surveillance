@@ -1116,6 +1116,18 @@ class LiveOperationalAlert(MarsModel):
     detail: str
 
 
+class LiveSyncJobSummary(MarsModel):
+    id: str
+    status: Literal["queued", "running", "completed", "partial", "failed", "interrupted"]
+    period_start: date
+    period_end: date
+    created_at: datetime
+    updated_at: datetime
+    completed_steps: int
+    total_steps: int
+    error_code: str | None = None
+
+
 class LiveDashboardSnapshot(MarsModel):
     """A real DHIS2 snapshot; it can never contain synthetic fallback values."""
 
@@ -1144,6 +1156,12 @@ class LiveDashboardSnapshot(MarsModel):
     positive_patients: list[LiveRepeatPositivePatient] = Field(default_factory=list)
     warnings: list[str]
     synthetic_data_used: Literal[False]
+    snapshot_id: str | None = None
+    latest_attempt: LiveSyncJobSummary | None = None
+    retrieval_complete: bool = False
+    aggregate_retrieval_complete: bool = False
+    trend_retrieval_complete: bool = False
+    tracker_retrieved_facility_count: int = 0
 
 
 # ---------------------------------------------------------------------------

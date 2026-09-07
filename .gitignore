@@ -81,6 +81,7 @@ env/
 # Test and type-check caches
 .pytest_cache/
 /backend/.pytest-work/
+/backend/.pytest-tmp-*/
 .mypy_cache/
 .ruff_cache/
 .coverage

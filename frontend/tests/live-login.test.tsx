@@ -33,6 +33,19 @@ afterEach(() => {
 });
 
 describe("live sign-in form", () => {
+  it("does not blame credentials for a server failure", async () => {
+    vi.spyOn(api, "session").mockResolvedValue({ authenticated: false, auth_mode: "live" });
+    vi.spyOn(api, "version").mockResolvedValue({ auth_mode: "live" } as never);
+    vi.spyOn(api, "liveLogin").mockRejectedValue(new ApiError(500, null, "Server error"));
+    renderLiveSignIn();
+    await userEvent.type(await screen.findByLabelText("Username"), "officer");
+    await userEvent.type(screen.getByLabelText("Password"), "temporary-secret");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("MARS could not complete sign-in");
+    expect(screen.queryByText("Invalid username or password")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toHaveValue("");
+  });
+
   it("shows username and password, never a synthetic account chooser", async () => {
     vi.spyOn(api, "session").mockResolvedValue({ authenticated: false, auth_mode: "live" });
     vi.spyOn(api, "version").mockResolvedValue({

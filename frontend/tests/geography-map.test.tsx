@@ -84,6 +84,20 @@ describe("decorateCollection", () => {
     expect(decorated.features.every((item) => fillClassOf(item) === "none")).toBe(true);
   });
 
+  it("colours only areas carrying a verified live count", () => {
+    const decorated = decorateCollection(collection(), {
+      signalPriorityByUnitId: new Map(),
+      inScopeUnitIds: null,
+      confirmedByUnitId: new Map([[PADER, 7]]),
+      liveCounts: true,
+    });
+    const gulu = decorated.features.find((item) => item.properties.unit_id === GULU);
+    const pader = decorated.features.find((item) => item.properties.unit_id === PADER);
+    expect(fillClassOf(gulu!)).toBe("nodata");
+    expect(fillClassOf(pader!)).toBe("informational");
+    expect(overlayProps(pader!).confirmed_count).toBe(7);
+  });
+
   it("marks out-of-scope districts without attaching a signal class", () => {
     const decorated = decorateCollection(collection(), {
       signalPriorityByUnitId: new Map([[GULU, "urgent"]]),

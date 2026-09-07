@@ -14,8 +14,14 @@ from mars.api.v1.schemas import (
     LiveDashboardSnapshot,
     LiveDashboardSyncRequest,
     LiveRepeatPositivePatient,
+    LiveSyncJobSummary,
 )
-from mars.core.errors import FeatureDisabledError, UnauthenticatedError, UpstreamUnavailableError
+from mars.core.errors import (
+    FeatureDisabledError,
+    RateLimitedError,
+    UnauthenticatedError,
+    UpstreamUnavailableError,
+)
 from mars.core.logging import get_logger
 from mars.domain.enums import AuditAction
 from mars.security.permissions import Permission, SensitivityLevel
@@ -31,6 +37,79 @@ PatientReader = Annotated[
 ]
 
 
+@router.post(
+    "/dashboard/jobs",
+    response_model=LiveSyncJobSummary,
+    status_code=202,
+    dependencies=[Depends(require_sensitivity(SensitivityLevel.PSEUDONYMOUS_CASE))],
+)
+def submit_live_job(
+    payload: LiveDashboardSyncRequest,
+    request: Request,
+    settings: SettingsDep,
+    principal: PatientReader,
+    audit: AuditDep,
+) -> LiveSyncJobSummary:
+    service = getattr(request.app.state, "live_dashboard", None)
+    raw_id = request.cookies.get(settings.session_cookie_name)
+    if not settings.is_live_auth_active or not raw_id:
+        raise UnauthenticatedError("An active live session is required")
+    if service is None or not hasattr(service, "submit_job"):
+        raise FeatureDisabledError(
+            "Persistent synchronization requires MARS_IDENTITY_ENCRYPTION_KEY"
+        )
+    try:
+        result = service.submit_job(
+            raw_id, period_start=payload.period_start, period_end=payload.period_end
+        )
+    except LiveDashboardError as error:
+        from mars.services.durable_live_dashboard import LiveDashboardBusyError
+
+        if isinstance(error, LiveDashboardBusyError):
+            raise RateLimitedError(str(error)) from error
+        raise FeatureDisabledError(str(error)) from error
+    audit.record(
+        action=AuditAction.CASE_EVIDENCE_ACCESSED,
+        principal=principal,
+        object_type="live_dashboard_job",
+        object_id=result["id"],
+        context={
+            "period_start": payload.period_start.isoformat(),
+            "period_end": payload.period_end.isoformat(),
+        },
+    )
+    return LiveSyncJobSummary.model_validate(result)
+
+
+@router.get(
+    "/dashboard/jobs/latest",
+    response_model=LiveSyncJobSummary | None,
+    dependencies=[Depends(require_sensitivity(SensitivityLevel.PSEUDONYMOUS_CASE))],
+)
+def latest_live_job(
+    request: Request,
+    settings: SettingsDep,
+    principal: PatientReader,
+    period_start: date | None = None,
+    period_end: date | None = None,
+) -> LiveSyncJobSummary | None:
+    if (period_start is None) != (period_end is None):
+        from mars.core.errors import ValidationFailedError
+
+        raise ValidationFailedError("Supply both period_start and period_end")
+    service = getattr(request.app.state, "live_dashboard", None)
+    raw_id = request.cookies.get(settings.session_cookie_name)
+    if (
+        not settings.is_live_auth_active
+        or not raw_id
+        or service is None
+        or not hasattr(service, "latest_job")
+    ):
+        return None
+    result = service.latest_job(raw_id, period_start=period_start, period_end=period_end)
+    return LiveSyncJobSummary.model_validate(result) if result else None
+
+
 @router.get(
     "/patients/{patient_alias}",
     response_model=LiveRepeatPositivePatient,
@@ -42,12 +121,22 @@ def live_patient_evidence(
     settings: SettingsDep,
     principal: PatientReader,
     audit: AuditDep,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ) -> LiveRepeatPositivePatient:
     from mars.core.errors import NotFoundError
 
     raw_id = request.cookies.get(settings.session_cookie_name)
     service = getattr(request.app.state, "live_dashboard", None)
-    snapshot = service.latest(raw_id) if service is not None and raw_id else None
+    if (period_start is None) != (period_end is None):
+        from mars.core.errors import ValidationFailedError
+
+        raise ValidationFailedError("Supply both period_start and period_end")
+    snapshot = (
+        service.latest(raw_id, period_start=period_start, period_end=period_end)
+        if service is not None and raw_id
+        else None
+    )
     rows = snapshot.get("positive_patients", []) if snapshot else []
     patient = next((row for row in rows if row["mars_patient_id"] == patient_alias), None)
     if patient is None:

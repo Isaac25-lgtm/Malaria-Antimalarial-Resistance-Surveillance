@@ -2,7 +2,7 @@
  * Operational list pages that share the overview's APIs rather than inventing figures.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -11,11 +11,12 @@ import { useAuth } from "../../auth/context";
 import { EmptyState, LoadingState, UnavailableState } from "../../design-system/States";
 import { useLiveDashboard } from "./useLiveDashboard";
 import { PeriodControl } from "../../design-system/Surveillance";
-import { monthPeriod, type PeriodSelection } from "../../design-system/period";
+import { type PeriodSelection } from "../../design-system/period";
+import { useReportingPeriod } from "./useReportingPeriod";
+import { LiveSnapshotStatus } from "./LiveSnapshotStatus";
 
 function usePeriod(): [PeriodSelection, (period: PeriodSelection) => void] {
-  const [period, setPeriod] = useState<PeriodSelection>(() => monthPeriod(-1));
-  return [period, setPeriod];
+  return useReportingPeriod();
 }
 
 export function SignalsListView() {
@@ -31,14 +32,17 @@ export function SignalsListView() {
   return (
     <ListPage
       title="Signals"
+      notice={<LiveSnapshotStatus live={live} />}
       period={period}
       onPeriod={setPeriod}
       loading={query.isLoading || live.isLoading}
-      empty={live.liveMode ? !(live.data?.operational_alerts ?? []).length : !query.data?.length}
-      emptyTitle="No active signals"
-      emptyDescription="An empty register is not a zero until the signal method is configured."
+      empty={live.liveMode ? true : !query.data?.length}
+      emptyTitle={live.liveMode ? "No governed live signals" : "No active signals"}
+      emptyDescription={live.liveMode
+        ? "The real source snapshot is available, but no approved live signal method is configured. Commodity and data-quality observations remain in their own sections and are not relabelled as epidemiological signals."
+        : "An empty register is not a zero until the signal method is configured."}
     >
-      {live.liveMode && live.data ? <LiveIssueRows snapshot={live.data} /> : <table className="table">
+      {live.liveMode ? null : <table className="table">
         <thead>
           <tr>
             <th scope="col">Title</th>
@@ -75,6 +79,7 @@ export function CommoditiesView() {
   return (
     <ListPage
       title="Commodities"
+      notice={<LiveSnapshotStatus live={live} />}
       period={period}
       onPeriod={setPeriod}
       loading={query.isLoading || live.isLoading}
@@ -107,6 +112,7 @@ export function AnalyticsView() {
   return (
     <ListPage
       title="Analytics"
+      notice={<LiveSnapshotStatus live={live} />}
       period={period}
       onPeriod={setPeriod}
       loading={query.isLoading || live.isLoading}
@@ -135,6 +141,7 @@ export function DataQualityView() {
         <PeriodControl period={period} onChange={setPeriod} />
       </header>
       {query.isLoading || live.isLoading ? <LoadingState label="Loading provenance" /> : null}
+      <LiveSnapshotStatus live={live} />
       {live.liveMode && live.data ? (
         <LiveQualityDetails snapshot={live.data} />
       ) : query.data ? (
@@ -149,10 +156,6 @@ export function DataQualityView() {
       ) : null}
     </div>
   );
-}
-
-function LiveIssueRows({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
-  return <table className="table"><thead><tr><th>Issue</th><th>Location</th><th>Status</th><th>Evidence</th></tr></thead><tbody>{(snapshot.operational_alerts ?? []).map((item) => <tr key={item.id}><th>{item.title}</th><td>{item.facility_name}</td><td>{item.status.replace("_", " ")}</td><td>{item.detail}</td></tr>)}</tbody></table>;
 }
 
 function LiveCommodityRows({ snapshot }: { snapshot: Schemas["LiveDashboardSnapshot"] }) {
@@ -176,6 +179,7 @@ export function ReportsView() {
   const { user } = useAuth();
   const liveMode = user?.source_status?.mode === "live";
   const [period, setPeriod] = usePeriod();
+  const live = useLiveDashboard(period);
   const range = useMemo(() => period, [period]);
   const href =
     (liveMode ? `/api/v1/live/dashboard/export.csv` : `/api/v1/reports/${user?.has_national_scope ? "national_brief" : "district_brief"}/export.csv`) +
@@ -190,9 +194,14 @@ export function ReportsView() {
         Exports are authorised, scoped and audited on the server. A file built in the
         browser would carry none of that.
       </p>
-      <a className="button" href={href} download>
-        Download {user?.has_national_scope ? "national" : "district"} brief (CSV)
-      </a>
+      <LiveSnapshotStatus live={live} />
+      {!liveMode || live.data ? (
+        <a className="button" href={href} download>
+          Download {user?.has_national_scope ? "national" : "district"} brief (CSV)
+        </a>
+      ) : (
+        <p>Synchronize this reporting period before downloading its live report.</p>
+      )}
     </div>
   );
 }
@@ -227,6 +236,7 @@ function ListPage({
   emptyTitle,
   emptyDescription,
   children,
+  notice,
 }: {
   title: string;
   period: PeriodSelection;
@@ -236,6 +246,7 @@ function ListPage({
   emptyTitle: string;
   emptyDescription: string;
   children: ReactNode;
+  notice?: ReactNode;
 }) {
   return (
     <div className="page">
@@ -244,6 +255,7 @@ function ListPage({
         <PeriodControl period={period} onChange={onPeriod} />
       </header>
       {loading ? <LoadingState label={`Loading ${title.toLowerCase()}`} /> : null}
+      {notice}
       {!loading && empty ? (
         <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (

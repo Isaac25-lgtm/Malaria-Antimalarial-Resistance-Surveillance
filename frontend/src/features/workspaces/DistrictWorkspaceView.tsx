@@ -12,7 +12,7 @@
  * is what hides the explanation.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
@@ -25,16 +25,13 @@ import {
 } from "../../design-system/Surveillance";
 import { Breadcrumbs } from "../../design-system/Breadcrumbs";
 import { QueryRegion } from "../../design-system/QueryRegion";
-import {
-  formatPeriod,
-  monthPeriod,
-  type PeriodSelection,
-} from "../../design-system/period";
+import { formatPeriod } from "../../design-system/period";
+import { useReportingPeriod } from "../operations/useReportingPeriod";
 import "./workspace.css";
 
 export function DistrictWorkspaceView() {
   const { unitId = "" } = useParams<{ unitId: string }>();
-  const [period, setPeriod] = useState<PeriodSelection>(() => monthPeriod(-1));
+  const [period, setPeriod] = useReportingPeriod();
   const range = useMemo(
     () => ({ period_start: period.start, period_end: period.end }),
     [period],

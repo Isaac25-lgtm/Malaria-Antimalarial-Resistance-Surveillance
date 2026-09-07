@@ -1142,6 +1142,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/live/dashboard/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Live Job */
+        post: operations["submit_live_job_api_v1_live_dashboard_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live/dashboard/jobs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest Live Job */
+        get: operations["latest_live_job_api_v1_live_dashboard_jobs_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/live/dashboard/synchronize": {
         parameters: {
             query?: never;
@@ -2869,6 +2903,11 @@ export interface components {
         LiveDashboardSnapshot: {
             /** Aggregate Reporting Facility Count */
             aggregate_reporting_facility_count: number;
+            /**
+             * Aggregate Retrieval Complete
+             * @default false
+             */
+            aggregate_retrieval_complete: boolean;
             /** Aggregate Value Count */
             aggregate_value_count: number;
             commodity_alerts: components["schemas"]["LiveCommodityAlerts"];
@@ -2880,6 +2919,7 @@ export interface components {
             invalid_aggregate_value_count: number;
             /** Kpis */
             kpis: components["schemas"]["LiveDashboardKpi"][];
+            latest_attempt?: components["schemas"]["LiveSyncJobSummary"] | null;
             /** Malaria Lab Event Count */
             malaria_lab_event_count: number;
             /** Operational Alerts */
@@ -2901,10 +2941,17 @@ export interface components {
             /** Repeat Positive Patients */
             repeat_positive_patients: components["schemas"]["LiveRepeatPositivePatient"][];
             /**
+             * Retrieval Complete
+             * @default false
+             */
+            retrieval_complete: boolean;
+            /**
              * Scope
              * @constant
              */
             scope: "Pader District";
+            /** Snapshot Id */
+            snapshot_id?: string | null;
             /** Source Updated At */
             source_updated_at?: string | null;
             /**
@@ -2928,8 +2975,18 @@ export interface components {
             tracker_failed_facility_count: number;
             /** Tracker Reporting Facility Count */
             tracker_reporting_facility_count: number;
+            /**
+             * Tracker Retrieved Facility Count
+             * @default 0
+             */
+            tracker_retrieved_facility_count: number;
             /** Trend */
             trend: components["schemas"]["LiveDashboardTrendPoint"][];
+            /**
+             * Trend Retrieval Complete
+             * @default false
+             */
+            trend_retrieval_complete: boolean;
             /** Unique Positive Patient Count */
             unique_positive_patient_count: number;
             /** Warnings */
@@ -3097,6 +3154,42 @@ export interface components {
             positive_encounter_count: number;
             /** Tests */
             tests?: components["schemas"]["LivePatientTest"][];
+        };
+        /** LiveSyncJobSummary */
+        LiveSyncJobSummary: {
+            /** Completed Steps */
+            completed_steps: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Code */
+            error_code?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "partial" | "failed" | "interrupted";
+            /** Total Steps */
+            total_steps: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * LiveTrackerFacilitySummary
@@ -6092,6 +6185,71 @@ export interface operations {
             };
         };
     };
+    submit_live_job_api_v1_live_dashboard_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveDashboardSyncRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveSyncJobSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_live_job_api_v1_live_dashboard_jobs_latest_get: {
+        parameters: {
+            query?: {
+                period_start?: string | null;
+                period_end?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveSyncJobSummary"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     synchronize_live_dashboard_api_v1_live_dashboard_synchronize_post: {
         parameters: {
             query?: never;
@@ -6127,7 +6285,10 @@ export interface operations {
     };
     live_patient_evidence_api_v1_live_patients__patient_alias__get: {
         parameters: {
-            query?: never;
+            query?: {
+                period_start?: string | null;
+                period_end?: string | null;
+            };
             header?: never;
             path: {
                 patient_alias: string;

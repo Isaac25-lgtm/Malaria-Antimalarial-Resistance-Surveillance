@@ -71,6 +71,25 @@ def _build_engine(settings: Settings) -> Engine:
     return engine
 
 
+def create_session_factory(settings: Settings) -> tuple[Engine, sessionmaker[Session]]:
+    """Create an application-owned engine and session factory.
+
+    Background services cannot use the process-global cached factory when an
+    application was constructed with explicit settings (tests and embedded
+    deployments do this). Returning the engine makes ownership and disposal
+    explicit instead of leaking a second pool at shutdown.
+    """
+    engine = _build_engine(settings)
+    factory = sessionmaker(
+        bind=engine,
+        class_=Session,
+        expire_on_commit=False,
+        autoflush=False,
+        future=True,
+    )
+    return engine, factory
+
+
 @lru_cache(maxsize=1)
 def get_session_factory() -> sessionmaker[Session]:
     return sessionmaker(

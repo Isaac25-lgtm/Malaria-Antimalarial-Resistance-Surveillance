@@ -3371,6 +3371,11 @@
             "title": "Aggregate Reporting Facility Count",
             "type": "integer"
           },
+          "aggregate_retrieval_complete": {
+            "default": false,
+            "title": "Aggregate Retrieval Complete",
+            "type": "boolean"
+          },
           "aggregate_value_count": {
             "title": "Aggregate Value Count",
             "type": "integer"
@@ -3399,6 +3404,16 @@
             },
             "title": "Kpis",
             "type": "array"
+          },
+          "latest_attempt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveSyncJobSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "malaria_lab_event_count": {
             "title": "Malaria Lab Event Count",
@@ -3439,10 +3454,26 @@
             "title": "Repeat Positive Patients",
             "type": "array"
           },
+          "retrieval_complete": {
+            "default": false,
+            "title": "Retrieval Complete",
+            "type": "boolean"
+          },
           "scope": {
             "const": "Pader District",
             "title": "Scope",
             "type": "string"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
           },
           "source_updated_at": {
             "anyOf": [
@@ -3487,12 +3518,22 @@
             "title": "Tracker Reporting Facility Count",
             "type": "integer"
           },
+          "tracker_retrieved_facility_count": {
+            "default": 0,
+            "title": "Tracker Retrieved Facility Count",
+            "type": "integer"
+          },
           "trend": {
             "items": {
               "$ref": "#/components/schemas/LiveDashboardTrendPoint"
             },
             "title": "Trend",
             "type": "array"
+          },
+          "trend_retrieval_complete": {
+            "default": false,
+            "title": "Trend Retrieval Complete",
+            "type": "boolean"
           },
           "unique_positive_patient_count": {
             "title": "Unique Positive Patient Count",
@@ -3909,6 +3950,77 @@
           "cross_facility"
         ],
         "title": "LiveRepeatPositivePatient",
+        "type": "object"
+      },
+      "LiveSyncJobSummary": {
+        "properties": {
+          "completed_steps": {
+            "title": "Completed Steps",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "partial",
+              "failed",
+              "interrupted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "total_steps": {
+            "title": "Total Steps",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "period_start",
+          "period_end",
+          "created_at",
+          "updated_at",
+          "completed_steps",
+          "total_steps"
+        ],
+        "title": "LiveSyncJobSummary",
         "type": "object"
       },
       "LiveTrackerFacilitySummary": {
@@ -10323,6 +10435,132 @@
         ]
       }
     },
+    "/api/v1/live/dashboard/jobs": {
+      "post": {
+        "operationId": "submit_live_job_api_v1_live_dashboard_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveDashboardSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveSyncJobSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Submit Live Job",
+        "tags": [
+          "live data"
+        ]
+      }
+    },
+    "/api/v1/live/dashboard/jobs/latest": {
+      "get": {
+        "operationId": "latest_live_job_api_v1_live_dashboard_jobs_latest_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveSyncJobSummary"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Latest Live Job Api V1 Live Dashboard Jobs Latest Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Latest Live Job",
+        "tags": [
+          "live data"
+        ]
+      }
+    },
     "/api/v1/live/dashboard/synchronize": {
       "post": {
         "description": "Read scoped HMIS values and pseudonymous Tracker evidence server-to-server.",
@@ -10381,6 +10619,40 @@
             "schema": {
               "title": "Patient Alias",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period End"
             }
           }
         ],

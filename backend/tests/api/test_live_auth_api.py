@@ -351,6 +351,53 @@ class TestLiveLoginApi:
         assert latest.status_code == 200
         assert latest.json() == body
 
+    def test_live_session_cookie_authorises_investigation_queues(
+        self, live_client: TestClient
+    ) -> None:
+        assert _login(live_client).status_code == 200
+        catalogue = live_client.get("/api/v1/investigations/queues")
+        queue = live_client.get("/api/v1/investigations/queues/new")
+        assert catalogue.status_code == 200, catalogue.text
+        assert queue.status_code == 200, queue.text
+
+    def test_live_sync_worker_capacity_returns_retryable_429(
+        self, live_client: TestClient, live_app
+    ) -> None:
+        from mars.services.durable_live_dashboard import LiveDashboardBusyError
+
+        live_app[1].snapshot = _snapshot(
+            PADER_UID,
+            name="Pader",
+            tracker=(
+                RemoteOrgUnit(
+                    uid=TRACKER_UID,
+                    name="Pader HC III",
+                    code=None,
+                    level=4,
+                    path=f"/UgandanRoot/{PADER_UID}/{TRACKER_UID}",
+                    parent_uid=PADER_UID,
+                ),
+            ),
+        )
+        login = _login(live_client)
+        assert login.status_code == 200
+
+        class BusyDashboard:
+            def submit_job(self, *_args, **_kwargs):
+                raise LiveDashboardBusyError(
+                    "The synchronization worker is at capacity; retry shortly"
+                )
+
+        live_app[0].state.live_dashboard = BusyDashboard()
+        response = live_client.post(
+            "/api/v1/live/dashboard/jobs",
+            json={"period_start": "2026-08-01", "period_end": "2026-08-31"},
+            headers={"Origin": ORIGIN, "X-CSRF-Token": login.json()["csrf_token"]},
+        )
+        assert response.status_code == 429, response.text
+        assert response.json()["code"] == "rate_limited"
+        assert response.headers["retry-after"] == "60"
+
     def test_invalid_credentials_are_generic(self, live_client: TestClient, live_app) -> None:
         live_app[1].error = LoginAdapterError(
             IntegrationErrorCategory.AUTHENTICATION, "DHIS2 returned HTTP 401"

@@ -13,9 +13,9 @@
  * sensitivity tier for it; the panel says so rather than rendering empty.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../api/client";
 import { MeasureGrid } from "../../design-system/Measure";
@@ -28,17 +28,20 @@ import {
 } from "../../design-system/Surveillance";
 import {
   formatPeriod,
-  monthPeriod,
   type PeriodSelection,
 } from "../../design-system/period";
 import { useAuth } from "../../auth/context";
 import { Breadcrumbs } from "../../design-system/Breadcrumbs";
+import { LiveSnapshotStatus } from "../operations/LiveSnapshotStatus";
+import { useLiveDashboard } from "../operations/useLiveDashboard";
+import { useReportingPeriod } from "../operations/useReportingPeriod";
 import "./workspace.css";
 
 export function FacilityWorkspaceView() {
   const { facilityId = "" } = useParams<{ facilityId: string }>();
-  const [period, setPeriod] = useState<PeriodSelection>(() => monthPeriod(-1));
+  const [period, setPeriod] = useReportingPeriod();
   const { user } = useAuth();
+  const live = useLiveDashboard(period);
   const range = useMemo(
     () => ({ period_start: period.start, period_end: period.end }),
     [period],
@@ -47,22 +50,34 @@ export function FacilityWorkspaceView() {
   const facility = useQuery({
     queryKey: ["facility", facilityId],
     queryFn: () => api.facility(facilityId),
-    enabled: Boolean(facilityId),
+    enabled: Boolean(facilityId) && !live.liveMode,
     retry: false,
   });
 
   const summary = useQuery({
     queryKey: ["surveillance", "facility-summary", facilityId, range],
     queryFn: () => api.facilitySummary(facilityId, range),
-    enabled: Boolean(facilityId),
+    enabled: Boolean(facilityId) && !live.liveMode,
     retry: false,
   });
 
   const provenance = useQuery({
     queryKey: ["surveillance", "provenance", range],
     queryFn: () => api.surveillanceProvenance(range),
+    enabled: !live.liveMode,
     retry: false,
   });
+
+  if (live.liveMode) {
+    return (
+      <LiveFacilityWorkspace
+        facilityId={facilityId}
+        period={period}
+        setPeriod={setPeriod}
+        live={live}
+      />
+    );
+  }
 
   const facilityName = facility.data?.name ?? "Facility";
   const districtId = facility.data?.district_geography_unit_id ?? null;
@@ -131,4 +146,81 @@ export function FacilityWorkspaceView() {
       </section>
     </div>
   );
+}
+
+function LiveFacilityWorkspace({
+  facilityId,
+  period,
+  setPeriod,
+  live,
+}: {
+  facilityId: string;
+  period: PeriodSelection;
+  setPeriod: (period: PeriodSelection) => void;
+  live: ReturnType<typeof useLiveDashboard>;
+}) {
+  const facility = live.data?.facilities.find((item) => item.uid === facilityId);
+  const patients = (live.data?.positive_patients ?? []).filter(
+    (patient) => patient.facility_name === facility?.name,
+  );
+  const positivity = validRate(
+    facility?.confirmed_malaria,
+    facility?.tested_for_malaria,
+  );
+  return (
+    <div className="page workspace">
+      <Breadcrumbs trail={[{ to: "/command-centre", label: "Pader Overview" }, { label: facility?.name ?? "Facility" }]} />
+      <header className="page__header workspace__header">
+        <div>
+          <p className="label">Pader live facility</p>
+          <h1>{facility?.name ?? "Facility"}</h1>
+          <p className="page__lede">Reported results for this authorised eRegisters facility only.</p>
+        </div>
+        <PeriodControl period={period} onChange={setPeriod} />
+      </header>
+      <LiveSnapshotStatus live={live} />
+      {!live.isLoading && live.data && !facility ? (
+        <NoDataState
+          title="Facility is outside this synchronized snapshot"
+          description="The requested facility UID is not present in the current authorised facility set."
+          awaiting="an authorised facility in the selected reporting period"
+        />
+      ) : facility ? (
+        <>
+          <section className="panel" aria-labelledby="live-facility-measures">
+            <div className="panel__header"><h2 id="live-facility-measures">Facility measures</h2></div>
+            <div className="panel__body">
+              <dl>
+                <dt>Tested for malaria</dt><dd>{count(facility.tested_for_malaria)}</dd>
+                <dt>Confirmed malaria</dt><dd>{count(facility.confirmed_malaria)}</dd>
+                <dt>Positivity among reported tests</dt><dd>{positivity}</dd>
+                <dt>HMIS return</dt><dd>{facility.aggregate_reported ? "Reported" : "No value returned"}</dd>
+                <dt>Tracker retrieval</dt><dd>{facility.tracker_reported ? "At least one event returned" : "No event returned"}</dd>
+                <dt>RDT stock-out days</dt><dd>{count(facility.rdt_days_out_of_stock)}</dd>
+                <dt>AL stock-out days</dt><dd>{count(facility.al_days_out_of_stock)}</dd>
+                <dt>Artesunate stock-out days</dt><dd>{count(facility.artesunate_days_out_of_stock)}</dd>
+              </dl>
+            </div>
+          </section>
+          <section className="panel" aria-labelledby="live-facility-patients">
+            <div className="panel__header"><h2 id="live-facility-patients">Positive-patient evidence last recorded here</h2></div>
+            <div className="panel__body">
+              {patients.length ? <ul>{patients.map((patient) => <li key={patient.mars_patient_id}><Link to={`/patients/${patient.mars_patient_id}`}>{patient.mars_patient_id}</Link> — latest positive {patient.latest_positive_on}</li>)}</ul> : <p>No mapped positive-patient evidence in this snapshot names this facility as the latest positive location.</p>}
+            </div>
+          </section>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function count(value: number | null | undefined): string {
+  return value == null ? "Not reported" : value.toLocaleString("en-GB");
+}
+
+function validRate(confirmed: number | null | undefined, tested: number | null | undefined): string {
+  if (confirmed == null || tested == null || tested <= 0 || confirmed > tested) {
+    return "Not available";
+  }
+  return `${(100 * confirmed / tested).toFixed(1)}%`;
 }

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,6 +79,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             ),
         )
     yield
+    dashboard = getattr(app.state, "live_dashboard", None)
+    if dashboard is not None and hasattr(dashboard, "close"):
+        dashboard.close()
+    live_sync_engine = getattr(app.state, "live_sync_engine", None)
+    if live_sync_engine is not None:
+        live_sync_engine.dispose()
     logger.info("api_stopping")
 
 
@@ -139,6 +147,54 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 project_root=Path(__file__).resolve().parents[3],
             ),
         )
+        if settings.identity_encryption_key is not None:
+            from mars.api.v1.schemas import LiveDashboardSnapshot
+            from mars.db.session import create_session_factory
+            from mars.services.durable_live_dashboard import DurableLiveDashboardService
+            from mars.services.live_sync_store import LiveSyncStore
+
+            project_root = Path(__file__).resolve().parents[3]
+            mapping_path = project_root / "config" / "dhis2" / "pader-live-v1.json"
+            try:
+                mapping_version = hashlib.sha256(mapping_path.read_bytes()).hexdigest()
+            except OSError as error:
+                raise RuntimeError(
+                    "Live synchronization mapping is missing or unreadable: "
+                    "config/dhis2/pader-live-v1.json"
+                ) from error
+            live_sync_engine, live_sync_sessions = create_session_factory(settings)
+            app.state.live_sync_engine = live_sync_engine
+
+            def live_context(raw_id: str) -> dict[str, Any] | None:
+                live_session = app.state.live_session_store.get(raw_id)
+                facilities = app.state.live_metadata_discovery.tracker_facilities(raw_id)
+                if live_session is None or not facilities:
+                    return None
+                principal = live_session.principal
+                return {
+                    "source": settings.dhis2_login_base_url,
+                    "subject": principal.subject,
+                    "permissions": sorted(str(p) for p in principal.permissions),
+                    "sensitivity": str(principal.max_sensitivity),
+                    "mapping_version": mapping_version,
+                    "display_key_version": hashlib.sha256(
+                        settings.patient_display_key.get_secret_value().encode()
+                    ).hexdigest()
+                    if settings.patient_display_key
+                    else "missing",
+                    "facilities": sorted(facilities, key=lambda row: row["id"]),
+                }
+
+            app.state.live_dashboard = DurableLiveDashboardService(
+                app.state.live_credential_holder,
+                build_live_dashboard_runner(settings, project_root=project_root),
+                LiveSyncStore(
+                    live_sync_sessions,
+                    settings.identity_encryption_key.get_secret_value(),
+                ),
+                live_context,
+                lambda result: LiveDashboardSnapshot.model_validate(result).model_dump(mode="json"),
+            )
         app.state.live_geography_lookup_factory = lambda session: SqlAlchemyGeographyLookup(
             session, Dhis2Crosswalk(session)
         )

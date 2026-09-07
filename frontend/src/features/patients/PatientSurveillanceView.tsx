@@ -6,6 +6,10 @@ import { ApiError, api, type Schemas } from "../../api/client";
 import { ForbiddenState, UnavailableState } from "../../design-system/States";
 import { useAuth } from "../../auth/context";
 import "./patient-surveillance.css";
+import { useLiveDashboard } from "../operations/useLiveDashboard";
+import { useReportingPeriod } from "../operations/useReportingPeriod";
+import { LiveSnapshotStatus } from "../operations/LiveSnapshotStatus";
+import { PeriodControl } from "../../design-system/Surveillance";
 
 export function PatientSurveillanceView() {
   const { patientReferenceId } = useParams();
@@ -22,15 +26,12 @@ function PatientListView() {
   const [page, setPage] = useState(0);
   const { user } = useAuth();
   const liveMode = user?.source_status?.mode === "live";
-  const live = useQuery({
-    queryKey: ["live", "dashboard", "latest"],
-    queryFn: () => api.latestLiveDashboard(),
-    enabled: liveMode,
-    retry: false,
-  });
+  const [period, setPeriod] = useReportingPeriod();
+  const live = useLiveDashboard(period);
   const patients = useQuery({
     queryKey: ["patients", "of-interest"],
     queryFn: () => api.patientsOfInterest({ limit: 100 }),
+    enabled: !liveMode,
     retry: false,
   });
   if (patients.error instanceof ApiError && patients.error.isForbidden) {
@@ -51,7 +52,9 @@ function PatientListView() {
           </p>
         </div>
         <span className="chip">Pseudonymous</span>
+        <PeriodControl period={period} onChange={setPeriod} />
       </header>
+      <LiveSnapshotStatus live={live} />
       <section className="panel" aria-labelledby="patients-heading">
         <div className="panel__header">
           <h2 id="patients-heading">Patients with positive malaria evidence</h2>
@@ -128,7 +131,9 @@ function LivePatientTable({
 }
 
 function LivePatientTimeline({ alias }: { alias: string }) {
-  const query = useQuery({ queryKey: ["live", "patient", alias], queryFn: () => api.livePatientEvidence(alias), retry: false });
+  const [period] = useReportingPeriod();
+  const range = { period_start: period.start, period_end: period.end };
+  const query = useQuery({ queryKey: ["live", "patient", alias, range], queryFn: () => api.livePatientEvidence(alias, range), retry: false });
   if (query.error) return <UnavailableState title="Patient evidence unavailable" description={query.error.message} />;
   return <div className="page patient-surveillance"><Link to="/patients">Back to patients</Link><h1>{alias}</h1><p>Recorded malaria tests in the synchronized reporting window.</p>{query.isPending ? <p>Loading evidence…</p> : <ol className="patient-timeline">{(query.data.tests ?? []).map((test, index) => <li className="panel patient-timeline__event" key={`${test.occurred_on}:${index}`}><strong>{test.occurred_on}</strong><div>{test.facility_name}<p>Malaria result: {test.result}</p></div></li>)}</ol>}</div>;
 }

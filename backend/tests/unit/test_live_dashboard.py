@@ -3,8 +3,14 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import pytest
+
 from mars.core.settings import Environment, Settings
-from mars.integrations.dhis2.live_dashboard import _assemble, build_live_dashboard_runner
+from mars.integrations.dhis2.live_dashboard import (
+    _assemble,
+    _load_mapping,
+    build_live_dashboard_runner,
+)
 from mars.integrations.ports import RemoteDataValue, RemoteEvent
 from mars.security.live_session import InMemoryCredentialHolder
 from mars.services.live_dashboard import (
@@ -57,6 +63,22 @@ def test_missing_patient_display_key_fails_before_mapping_or_remote_reads() -> N
         assert "MARS_PATIENT_DISPLAY_KEY" in str(error)
     else:
         raise AssertionError("missing patient display key did not fail closed")
+
+
+def test_missing_mapping_is_a_local_configuration_error(tmp_path: Path) -> None:
+    with pytest.raises(LiveDashboardConfigurationError, match="missing or unreadable"):
+        _load_mapping(tmp_path / "not-present.json")
+
+
+def test_incomplete_mapping_names_the_missing_local_field(tmp_path: Path) -> None:
+    mapping = tmp_path / "mapping.json"
+    mapping.write_text(
+        '{"schema_version":"2.0","status":"approved","programme_uid":"program",'
+        '"datasets":{},"aggregate_data_elements":{},"tracker":{}}',
+        encoding="utf-8",
+    )
+    with pytest.raises(LiveDashboardConfigurationError, match="mapping is incomplete"):
+        _load_mapping(mapping)
 
 
 def test_assembles_real_values_and_never_exposes_remote_patient_uid() -> None:

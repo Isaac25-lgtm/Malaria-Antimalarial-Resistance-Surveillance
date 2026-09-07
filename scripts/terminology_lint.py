@@ -59,6 +59,7 @@ SKIP_DIRECTORIES = {
     ".idea",
     ".vscode",
 }
+SKIP_DIRECTORY_PREFIXES = (".pytest-tmp-",)
 
 #: File suffixes scanned.
 SCANNED_SUFFIXES = {
@@ -185,7 +186,11 @@ def is_scanned(path: Path, root: Path) -> bool:
         return False
     if relative in EXEMPT_PATHS:
         return False
-    return all(part not in SKIP_DIRECTORIES for part in path.parts)
+    return all(
+        part not in SKIP_DIRECTORIES
+        and not any(part.startswith(prefix) for prefix in SKIP_DIRECTORY_PREFIXES)
+        for part in path.parts
+    )
 
 
 def is_confirmed_lane(path: Path) -> bool:

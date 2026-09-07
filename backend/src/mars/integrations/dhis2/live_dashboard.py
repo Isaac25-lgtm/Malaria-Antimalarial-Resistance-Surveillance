@@ -13,16 +13,19 @@ import hashlib
 import hmac
 import json
 import math
+import time
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import asdict
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, cast
 
 from mars.core.settings import Settings
-from mars.integrations.dhis2.client import Dhis2Client, Dhis2Config
+from mars.integrations.dhis2.client import Dhis2Client, Dhis2Config, Dhis2Error
 from mars.integrations.dhis2.tracker.client import BoundedTrackerEventClient, TrackerClientConfig
 from mars.integrations.ports import RemoteDataValue, RemoteEvent, RemoteScope, iterate_pages
+from mars.services.durable_live_dashboard import SyncCheckpoint
 from mars.services.live_dashboard import LiveDashboardConfigurationError
 
 
@@ -37,6 +40,8 @@ def build_live_dashboard_runner(
         facilities: Sequence[Mapping[str, Any]],
         period_start: date,
         period_end: date,
+        *,
+        checkpoint: SyncCheckpoint | None = None,
     ) -> dict[str, Any]:
         display_key = settings.patient_display_key
         if display_key is None:
@@ -78,15 +83,34 @@ def build_live_dashboard_runner(
             period_start=period_start,
             period_end=period_end,
         )
+        aggregate_complete = False
+        trend_complete = False
         try:
             with Dhis2Client(config) as client:
-                for page in iterate_pages(
-                    lambda cursor: client.fetch_data_values(aggregate_scope, cursor),
-                    max_pages=10,
-                ):
-                    aggregate_values.extend(
-                        value for value in page.records if isinstance(value, RemoteDataValue)
-                    )
+                cached = checkpoint.get("aggregate") if checkpoint else None
+                if cached is not None:
+                    aggregate_values = [RemoteDataValue(**item) for item in cached]
+                else:
+                    for page in iterate_pages(
+                        lambda cursor: client.fetch_data_values(aggregate_scope, cursor),
+                        max_pages=10,
+                    ):
+                        if checkpoint:
+                            checkpoint.check()
+                        aggregate_values.extend(
+                            value for value in page.records if isinstance(value, RemoteDataValue)
+                        )
+                    if checkpoint:
+                        checkpoint.save(
+                            "aggregate", [_aggregate_checkpoint(v) for v in aggregate_values]
+                        )
+                aggregate_complete = True
+        except Exception as error:
+            aggregate_values = []
+            warnings.append(f"Aggregate HMIS request unavailable ({type(error).__name__})")
+
+        try:
+            with Dhis2Client(config) as client:
                 trend_scope = RemoteScope(
                     organisation_unit_remote_ids=facility_uids,
                     dataset_remote_ids=(mapping["datasets"]["monthly_105_opd"],),
@@ -103,15 +127,25 @@ def build_live_dashboard_runner(
                     period_start=_month_start(period_end, months_before=11),
                     period_end=period_end,
                 )
-                for page in iterate_pages(
-                    lambda cursor: client.fetch_data_values(trend_scope, cursor),
-                    max_pages=10,
-                ):
-                    trend_values.extend(
-                        value for value in page.records if isinstance(value, RemoteDataValue)
-                    )
+                cached = checkpoint.get("trend") if checkpoint else None
+                if cached is not None:
+                    trend_values = [RemoteDataValue(**item) for item in cached]
+                else:
+                    for page in iterate_pages(
+                        lambda cursor: client.fetch_data_values(trend_scope, cursor),
+                        max_pages=10,
+                    ):
+                        if checkpoint:
+                            checkpoint.check()
+                        trend_values.extend(
+                            value for value in page.records if isinstance(value, RemoteDataValue)
+                        )
+                    if checkpoint:
+                        checkpoint.save("trend", [_aggregate_checkpoint(v) for v in trend_values])
+                trend_complete = True
         except Exception as error:
-            warnings.append(f"Aggregate HMIS request unavailable ({type(error).__name__})")
+            trend_values = []
+            warnings.append(f"Historical HMIS request unavailable ({type(error).__name__})")
 
         tracker = mapping["tracker"]
         lab_stage = tracker["stages"]["laboratory_tests"]
@@ -132,6 +166,10 @@ def build_live_dashboard_runner(
             authorized_org_unit_uids=frozenset(facility_uids),
         ) as client:
             for facility_uid in facility_uids:
+                cached = checkpoint.get(f"tracker:{facility_uid}") if checkpoint else None
+                if cached is not None:
+                    tracker_events.extend(_event_from_checkpoint(item) for item in cached)
+                    continue
                 scope = RemoteScope(
                     organisation_unit_remote_ids=(facility_uid,),
                     period_start=period_start,
@@ -142,13 +180,23 @@ def build_live_dashboard_runner(
                     },
                 )
                 try:
+                    facility_events: list[RemoteEvent] = []
                     for page in iterate_pages(
-                        lambda cursor, scope=scope: client.fetch_events(scope, cursor),
+                        lambda cursor, scope=scope: _retry_tracker_read(
+                            lambda: client.fetch_events(scope, cursor), checkpoint
+                        ),
                         max_pages=100,
                     ):
-                        tracker_events.extend(
+                        if checkpoint:
+                            checkpoint.check()
+                        facility_events.extend(
                             event for event in page.records if isinstance(event, RemoteEvent)
                         )
+                    if checkpoint:
+                        checkpoint.save(
+                            f"tracker:{facility_uid}", [asdict(e) for e in facility_events]
+                        )
+                    tracker_events.extend(facility_events)
                 except Exception:
                     tracker_failed.append(facility_uid)
         if tracker_failed:
@@ -157,7 +205,7 @@ def build_live_dashboard_runner(
                 f"{len(facility_uids)} authorised facilities"
             )
 
-        return _assemble(
+        result = _assemble(
             mapping,
             aggregate_values,
             tracker_events,
@@ -169,17 +217,101 @@ def build_live_dashboard_runner(
             tracker_failed,
             trend_values,
         )
+        result.update(
+            retrieval_complete=aggregate_complete and trend_complete and not tracker_failed,
+            aggregate_retrieval_complete=aggregate_complete,
+            trend_retrieval_complete=trend_complete,
+            tracker_retrieved_facility_count=len(facility_uids) - len(tracker_failed),
+        )
+        return result
 
     return run
 
 
+def _aggregate_checkpoint(value: RemoteDataValue) -> dict[str, Any]:
+    row = asdict(value)
+    row.pop("stored_by", None)
+    row.pop("comment", None)
+    return row
+
+
+def _retry_tracker_read(operation: Callable[[], Any], checkpoint: SyncCheckpoint | None) -> Any:
+    for attempt in range(3):
+        if checkpoint:
+            checkpoint.check()
+        try:
+            return operation()
+        except Dhis2Error as error:
+            if not error.is_retryable or attempt == 2:
+                raise
+            time.sleep(0.5 * (2**attempt))
+    raise RuntimeError("Tracker retry bound exhausted")
+
+
+def _event_from_checkpoint(value: Mapping[str, Any]) -> RemoteEvent:
+    row = dict(value)
+    for key in ("occurred_at", "updated_at"):
+        if isinstance(row.get(key), str):
+            row[key] = datetime.fromisoformat(row[key])
+    return RemoteEvent(**row)
+
+
 def _load_mapping(path: Path) -> dict[str, Any]:
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise LiveDashboardConfigurationError(
+            "The approved Pader live mapping is missing or unreadable"
+        ) from error
     if raw.get("schema_version") != "2.0" or raw.get("status") != "approved":
-        raise RuntimeError("The Pader live mapping is absent or not approved")
+        raise LiveDashboardConfigurationError("The Pader live mapping is absent or not approved")
     required = ("programme_uid", "datasets", "aggregate_data_elements", "tracker")
     if any(not raw.get(key) for key in required):
-        raise RuntimeError("The Pader live mapping is incomplete")
+        raise LiveDashboardConfigurationError("The Pader live mapping is incomplete")
+    nested_requirements = {
+        "datasets": ("monthly_105_opd",),
+        "aggregate_data_elements": (
+            "new_attendance",
+            "reattendance",
+            "suspected_malaria",
+            "tested_for_malaria",
+            "confirmed_malaria",
+            "rdt_days_out_of_stock",
+            "al_days_out_of_stock",
+            "artesunate_days_out_of_stock",
+        ),
+    }
+    tracker = raw.get("tracker")
+    if not isinstance(tracker, dict):
+        raise LiveDashboardConfigurationError("The Pader live Tracker mapping is incomplete")
+    nested_requirements.update(
+        {
+            "tracker.stages": ("laboratory_tests",),
+            "tracker.data_elements": ("laboratory_test_type", "laboratory_result"),
+            "tracker.options": (
+                "test_types_malaria",
+                "positive_malaria_results",
+                "negative_result",
+            ),
+        }
+    )
+    containers: dict[str, Any] = {
+        "datasets": raw.get("datasets"),
+        "aggregate_data_elements": raw.get("aggregate_data_elements"),
+        "tracker.stages": tracker.get("stages"),
+        "tracker.data_elements": tracker.get("data_elements"),
+        "tracker.options": tracker.get("options"),
+    }
+    missing = [
+        f"{container}.{key}"
+        for container, keys in nested_requirements.items()
+        for key in keys
+        if not isinstance(containers.get(container), dict) or not containers[container].get(key)
+    ]
+    if missing:
+        raise LiveDashboardConfigurationError(
+            "The Pader live mapping is incomplete: " + ", ".join(missing)
+        )
     return cast(dict[str, Any], raw)
 
 
