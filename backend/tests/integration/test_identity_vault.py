@@ -18,6 +18,7 @@ Requires ``MARS_TEST_DATABASE_URL``. Without it every test here skips.
 from __future__ import annotations
 
 import datetime
+import secrets
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
@@ -25,7 +26,8 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Engine, create_engine, make_url, select, text
+from sqlalchemy import Connection, Engine, create_engine, make_url, select, text
+from sqlalchemy.engine import URL
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -59,10 +61,58 @@ SURNAME = "Okello"
 GIVEN_NAME = "Amina"
 PHONE = "0700999888"
 
-#: Login roles created for the test cluster only. The cluster runs trust
-#: authentication on loopback, so no password exists to leak.
+#: Disposable login roles, created and dropped by this module against the
+#: throwaway test database only. They are never MARS runtime roles.
 APP_LOGIN = "mars_app_login_test"
 IDENTITY_LOGIN = "mars_identity_login_test"
+
+#: Generated per run and held only in this process. CI runs PostgreSQL with
+#: password authentication, so these roles need real passwords; the previous
+#: fixture created them passwordless and assumed loopback trust, which is why
+#: eight role-separation tests failed the moment they met a password-required
+#: cluster. Never written to disk, a log, or the repository.
+ROLE_PASSWORDS = {
+    APP_LOGIN: secrets.token_urlsafe(24),
+    IDENTITY_LOGIN: secrets.token_urlsafe(24),
+}
+
+
+def _run_composed(connection: Connection, template: str, *arguments: str) -> None:
+    """Execute DDL composed by PostgreSQL's own ``format``.
+
+    Role names and passwords cannot be bind parameters in DDL, and pasting them
+    into an f-string is how quoting bugs become injection. ``format`` with
+    ``%I`` and ``%L`` makes the server do the quoting, while the values still
+    travel as ordinary bound parameters.
+    """
+    placeholders = ", ".join(f":a{index}" for index in range(len(arguments)))
+    statement = connection.scalar(
+        text(f"SELECT format(:template, {placeholders})"),
+        {"template": template, **{f"a{i}": value for i, value in enumerate(arguments)}},
+    )
+    assert statement is not None
+    connection.execute(text(statement))
+
+
+def _provision_login_role(connection: Connection, login: str, group: str) -> None:
+    """Create or repair one disposable login role, with a password.
+
+    ``ALTER`` rather than skip when the role already exists, so a run that
+    crashed before cleanup leaves nothing that breaks the next one: the password
+    is always the one this process generated.
+    """
+    exists = connection.scalar(
+        text("SELECT 1 FROM pg_roles WHERE rolname = :login"), {"login": login}
+    )
+    verb = "ALTER" if exists else "CREATE"
+    _run_composed(connection, verb + " ROLE %I LOGIN PASSWORD %L", login, ROLE_PASSWORDS[login])
+    _run_composed(connection, "GRANT %I TO %I", group, login)
+
+
+def _drop_login_role(connection: Connection, login: str) -> None:
+    """Remove a role this module created, and anything it came to own."""
+    _run_composed(connection, "DROP OWNED BY %I", login)
+    _run_composed(connection, "DROP ROLE IF EXISTS %I", login)
 
 
 @pytest.fixture(scope="module")
@@ -76,13 +126,7 @@ def vault_engine(integration_database_url: str) -> Iterator[Engine]:
             text(PROVISION_SQL.read_text(encoding="utf-8").replace("\\set ON_ERROR_STOP on", ""))
         )
         for login, group in ((APP_LOGIN, "mars_app"), (IDENTITY_LOGIN, "mars_identity_service")):
-            connection.execute(
-                text(
-                    f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='{login}') "
-                    f"THEN CREATE ROLE {login} LOGIN; END IF; "
-                    f"GRANT {group} TO {login}; END $$;"
-                )
-            )
+            _provision_login_role(connection, login, group)
 
     config = Config(str(MIGRATIONS_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(MIGRATIONS_ROOT / "migrations"))
@@ -90,12 +134,24 @@ def vault_engine(integration_database_url: str) -> Iterator[Engine]:
     command.upgrade(config, "head")
     yield engine
     command.downgrade(config, "base")
+    # This module created these roles, so it removes them. Leaving them behind
+    # would let a later run authenticate with a password from a dead process.
+    with engine.begin() as connection:
+        for login in (APP_LOGIN, IDENTITY_LOGIN):
+            _drop_login_role(connection, login)
     engine.dispose()
 
 
-def _login_url(base: str, user: str) -> str:
-    """The same database, reached as a different role."""
-    return str(make_url(base).set(username=user, password=None))
+def _login_url(base: str, user: str) -> URL:
+    """The same database, reached as a different role.
+
+    Returns the URL object rather than a string on purpose. ``str(URL)`` masks
+    the password as ``***``, and handing that masked string to ``create_engine``
+    sends ``***`` as the password. ``URL.set(password=None)`` also does not
+    clear an inherited password, so the previous helper contrived to be wrong in
+    both directions at once and only ever worked under loopback trust.
+    """
+    return make_url(base).set(username=user, password=ROLE_PASSWORDS[user])
 
 
 @pytest.fixture(scope="module")

@@ -23,6 +23,13 @@ from mars.domain.live_sync import LiveSyncJob
 
 LEASE_SECONDS = 300
 
+#: The states in which a worker still holds authority over a job. Anything else
+#: is a result, not a competitor. Keeping the distinction explicit is the whole
+#: point: a published snapshot that sorted ahead of a stalled attempt used to
+#: hide it, leaving the stalled worker's lease valid to overwrite a good
+#: snapshot minutes later.
+ACTIVE_STATUSES = ("queued", "running")
+
 
 class LiveSyncStore:
     def __init__(self, sessions: Callable[[], Session], secret: str) -> None:
@@ -50,6 +57,32 @@ class LiveSyncStore:
             job.updated_at.replace(tzinfo=UTC) if job.updated_at.tzinfo is None else job.updated_at
         )
         return moment < datetime.now(UTC) - timedelta(seconds=LEASE_SECONDS)
+
+    def _resumable_checkpoint(self, attempts: list[LiveSyncJob], scope: str) -> dict[str, Any]:
+        """The furthest-progressed checkpoint among previous attempts.
+
+        Restricted to attempts the caller already filtered to one scope and
+        reporting window, so a checkpoint can never cross either boundary. A
+        completed attempt holds none - ``finish`` clears it - so success cannot
+        pollute recovery, while an interrupted or failed attempt keeps whatever
+        it managed.
+
+        The most progressed attempt wins rather than the most recent: resuming
+        from further along is strictly better, and a worker that stalled after
+        more work should not lose it to one that stalled later having done less.
+        """
+        best: LiveSyncJob | None = None
+        for attempt in attempts:
+            if attempt.checkpoint is None:
+                continue
+            if best is None or (attempt.completed_steps, attempt.updated_at) > (
+                best.completed_steps,
+                best.updated_at,
+            ):
+                best = attempt
+        if best is None:
+            return {}
+        return self._open(best.checkpoint, f"{scope}:{best.id}:checkpoint")
 
     @staticmethod
     def public(job: LiveSyncJob) -> dict[str, Any]:
@@ -81,26 +114,48 @@ class LiveSyncStore:
                     signed=True,
                 )
                 db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
-            job = db.scalar(
-                select(LiveSyncJob)
-                .where(
-                    LiveSyncJob.scope_key == scope,
-                    LiveSyncJob.period_start == start,
-                    LiveSyncJob.period_end == end,
+            # Every attempt for this scope and window, locked together.
+            # Selecting one row by recency was the ownership defect: a completed
+            # or partial attempt updated more recently than a stalled one sorted
+            # ahead of it, so the stalled worker was never seen, never revoked,
+            # and its late result was still accepted by ``finish``.
+            #
+            # Authority and resumability are then two different questions.
+            # Only an *active* attempt holds authority worth revoking, but any
+            # earlier attempt may still hold progress worth resuming - a worker
+            # that reported ``session_required`` at logout is interrupted, not
+            # active, and its checkpoint is exactly what the next attempt needs.
+            attempts = list(
+                db.scalars(
+                    select(LiveSyncJob)
+                    .where(
+                        LiveSyncJob.scope_key == scope,
+                        LiveSyncJob.period_start == start,
+                        LiveSyncJob.period_end == end,
+                    )
+                    .order_by(LiveSyncJob.created_at.asc(), LiveSyncJob.id.asc())
+                    .with_for_update()
                 )
-                .order_by(LiveSyncJob.updated_at.desc(), LiveSyncJob.created_at.desc())
-                .limit(1)
-                .with_for_update()
             )
-            if job and job.job_status in {"queued", "running"} and not self._stale(job):
-                return self.public(job), None
+            active = [a for a in attempts if a.job_status in ACTIVE_STATUSES]
+            live = [attempt for attempt in active if not self._stale(attempt)]
+            if live:
+                # A healthy attempt already owns this window; do not duplicate it.
+                return self.public(live[-1]), None
+
             token = str(uuid.uuid4())
             now = datetime.now(UTC)
-            saved = self._open(job.checkpoint, f"{scope}:{job.id}:checkpoint") if job else {}
-            if job and job.job_status in {"queued", "running"}:
-                job.job_status = "interrupted"
-                job.lease_token = None
-                job.error_code = "session_required"
+            # Taken before the retirement loop clears anything, and only from a
+            # previous *attempt* at this same scope and window.
+            saved = self._resumable_checkpoint(attempts, scope)
+            for attempt in active:
+                # Revoking the lease is what actually fences the old worker: its
+                # next heartbeat or checkpoint raises, and a late finish writes
+                # nothing.
+                attempt.job_status = "interrupted"
+                attempt.lease_token = None
+                attempt.error_code = "session_required"
+                attempt.updated_at = now
             # Every attempt has its own immutable published snapshot version.
             # Re-encrypt reusable checkpoints with the new job's associated data.
             job = LiveSyncJob(
@@ -155,6 +210,9 @@ class LiveSyncStore:
                 .where(
                     LiveSyncJob.id == job_id,
                     LiveSyncJob.lease_token == token,
+                    # A terminal job never returns to running, even if a token
+                    # somehow matched. Status is the second lock on authority.
+                    LiveSyncJob.job_status.in_(ACTIVE_STATUSES),
                 )
                 .values(updated_at=datetime.now(UTC), job_status="running")
                 .returning(LiveSyncJob.id)
@@ -167,7 +225,7 @@ class LiveSyncStore:
     ) -> dict[str, Any]:
         with self._sessions() as db, db.begin():
             job = db.scalar(select(LiveSyncJob).where(LiveSyncJob.id == job_id).with_for_update())
-            if job is None or job.lease_token != token:
+            if job is None or job.lease_token != token or job.job_status not in ACTIVE_STATUSES:
                 raise RuntimeError("job_lease_lost")
             aad = f"{job.scope_key}:{job.id}:checkpoint"
             if value is not None:
@@ -182,7 +240,10 @@ class LiveSyncStore:
     ) -> None:
         with self._sessions() as db, db.begin():
             job = db.scalar(select(LiveSyncJob).where(LiveSyncJob.id == job_id).with_for_update())
-            if job is None or job.lease_token != token:
+            if job is None or job.lease_token != token or job.job_status not in ACTIVE_STATUSES:
+                # A fenced or already-settled worker arriving late. Discard it
+                # silently: this runs on the worker's own error paths, and
+                # raising here would replace the real outcome with this one.
                 return
             if snapshot is not None:
                 job.snapshot = self._seal(snapshot, f"{job.scope_key}:{job.id}:snapshot")

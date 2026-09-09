@@ -293,3 +293,123 @@ def test_tracker_retries_transient_failures_but_not_denials(monkeypatch):
     with pytest.raises(Dhis2Error):
         adapter._retry_tracker_read(denied, None)
     assert len(attempts) == 1
+
+
+def _stall(factory, job_id, minutes=6):
+    """Age one attempt past its lease without sleeping."""
+    with factory() as db, db.begin():
+        db.get(LiveSyncJob, job_id).updated_at = datetime.now(UTC) - timedelta(minutes=minutes)
+
+
+def test_stalled_attempt_is_found_behind_a_newer_published_snapshot(store):
+    """The ownership defect, at the level the integration suite caught it.
+
+    Replacement used to select a single job ordered by ``updated_at``. A
+    published snapshot finished *after* an attempt stalled therefore sorted
+    ahead of it, so the stalled worker was never seen, never revoked, and its
+    late result overwrote a good snapshot.
+    """
+    repository, factory = store
+    complete, complete_token = repository.submit("scope", START, END, 3)
+    repository.finish(complete["id"], complete_token, snapshot(value="100"))
+    partial, partial_token = repository.submit("scope", START, END, 3)
+    repository.finish(partial["id"], partial_token, snapshot("partial", "25"))
+    assert repository.latest("scope", START, END)["value"] == "100"
+
+    stale, stale_token = repository.submit("scope", START, END, 3)
+    repository.checkpoint(stale["id"], stale_token, {"aggregate": []})
+    _stall(factory, stale["id"])
+
+    resumed, resumed_token = repository.submit("scope", START, END, 3)
+    assert resumed["id"] != stale["id"]
+
+    # The stalled worker finishing late must change nothing.
+    repository.finish(stale["id"], stale_token, snapshot(value="999"))
+    assert repository.latest("scope", START, END)["value"] == "100"
+    # ...and its progress must still reach the replacement.
+    assert repository.checkpoint(resumed["id"], resumed_token) == {"aggregate": []}
+
+
+def test_superseded_worker_is_rejected_at_heartbeat_checkpoint_and_finish(store):
+    repository, factory = store
+    stale, stale_token = repository.submit("scope", START, END, 3)
+    _stall(factory, stale["id"])
+    repository.submit("scope", START, END, 3)
+
+    with pytest.raises(RuntimeError, match="lease_lost"):
+        repository.heartbeat(stale["id"], stale_token)
+    with pytest.raises(RuntimeError, match="lease_lost"):
+        repository.checkpoint(stale["id"], stale_token, {"aggregate": []})
+    repository.finish(stale["id"], stale_token, snapshot(value="999"))
+    assert repository.latest("scope", START, END) is None
+
+
+def test_checkpoint_recovery_prefers_the_furthest_progressed_attempt(store):
+    """Two stalled attempts: resume from the one that got further."""
+    repository, factory = store
+    behind, behind_token = repository.submit("scope", START, END, 3)
+    repository.checkpoint(behind["id"], behind_token, {"a": []})
+    _stall(factory, behind["id"], minutes=9)
+
+    # A second attempt exists concurrently and gets further before stalling.
+    ahead, ahead_token = repository.submit("scope", START, END, 3)
+    repository.checkpoint(ahead["id"], ahead_token, {"a": [], "b": [], "c": []})
+    _stall(factory, ahead["id"], minutes=7)
+
+    resumed, resumed_token = repository.submit("scope", START, END, 3)
+    assert repository.checkpoint(resumed["id"], resumed_token) == {"a": [], "b": [], "c": []}
+
+
+def test_terminal_job_cannot_be_reactivated(store):
+    repository, _ = store
+    job, token = repository.submit("scope", START, END, 3)
+    repository.finish(job["id"], token, snapshot(value="100"))
+    # finish() clears the lease, so the settled job answers to nobody.
+    with pytest.raises(RuntimeError, match="lease_lost"):
+        repository.heartbeat(job["id"], token)
+    with pytest.raises(RuntimeError, match="lease_lost"):
+        repository.checkpoint(job["id"], token, {"aggregate": []})
+    repository.finish(job["id"], token, snapshot(value="999"))
+    assert repository.latest("scope", START, END)["value"] == "100"
+
+
+def test_replacement_and_completion_race_resolves_the_same_way_in_both_orders(store):
+    """Deterministic instead of threaded: both interleavings, stated explicitly."""
+    repository, factory = store
+
+    # Completion first, then replacement: the finished result stands and the
+    # replacement starts clean rather than adopting a settled attempt.
+    first, first_token = repository.submit("scope-a", START, END, 3)
+    repository.finish(first["id"], first_token, snapshot(value="100"))
+    successor, _ = repository.submit("scope-a", START, END, 3)
+    assert successor["id"] != first["id"]
+    assert repository.latest("scope-a", START, END)["value"] == "100"
+
+    # Replacement first, then completion: the superseded worker writes nothing.
+    second, second_token = repository.submit("scope-b", START, END, 3)
+    _stall(factory, second["id"])
+    replacement, replacement_token = repository.submit("scope-b", START, END, 3)
+    repository.finish(second["id"], second_token, snapshot(value="999"))
+    assert repository.latest("scope-b", START, END) is None
+    repository.finish(replacement["id"], replacement_token, snapshot(value="42"))
+    assert repository.latest("scope-b", START, END)["value"] == "42"
+
+
+def test_replacement_does_not_reach_across_scope_or_period(store):
+    """A stalled attempt elsewhere is not this window's business."""
+    repository, factory = store
+    other_period_end = date(2026, 9, 30)
+    foreign, foreign_token = repository.submit("scope-a", START, other_period_end, 3)
+    repository.checkpoint(foreign["id"], foreign_token, {"foreign": []})
+    _stall(factory, foreign["id"])
+    other_scope, other_token = repository.submit("scope-b", START, END, 3)
+    repository.checkpoint(other_scope["id"], other_token, {"other": []})
+    _stall(factory, other_scope["id"])
+
+    fresh, fresh_token = repository.submit("scope-a", START, END, 3)
+    # Neither foreign checkpoint may be adopted.
+    assert repository.checkpoint(fresh["id"], fresh_token) == {}
+    # And neither foreign attempt is revoked by this window's replacement:
+    # each stays its own window's business until that window is resubmitted.
+    assert repository.checkpoint(foreign["id"], foreign_token) == {"foreign": []}
+    assert repository.checkpoint(other_scope["id"], other_token) == {"other": []}
