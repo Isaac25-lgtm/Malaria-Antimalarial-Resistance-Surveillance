@@ -31,6 +31,11 @@ LEASE_SECONDS = 300
 ACTIVE_STATUSES = ("queued", "running")
 
 
+def _aware(value: datetime) -> datetime:
+    """SQLite returns naive datetimes; every stored moment is UTC."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value
+
+
 class LiveSyncStore:
     def __init__(self, sessions: Callable[[], Session], secret: str) -> None:
         self._sessions = sessions
@@ -59,13 +64,14 @@ class LiveSyncStore:
         return moment < datetime.now(UTC) - timedelta(seconds=LEASE_SECONDS)
 
     def _resumable_checkpoint(self, attempts: list[LiveSyncJob], scope: str) -> dict[str, Any]:
-        """The furthest-progressed checkpoint among previous attempts.
+        """Recover progress since the last finished retrieval.
 
         Restricted to attempts the caller already filtered to one scope and
         reporting window, so a checkpoint can never cross either boundary. A
-        completed attempt holds none - ``finish`` clears it - so success cannot
-        pollute recovery, while an interrupted or failed attempt keeps whatever
-        it managed.
+        Attempts arrive in creation order. A finished retrieval is a boundary:
+        checkpoints from older failed attempts must not seed a fresh refresh.
+        A partial snapshot with completed retrieval also starts a new boundary;
+        its remaining problems require fresh source data, not old checkpoints.
 
         The most progressed attempt wins rather than the most recent: resuming
         from further along is strictly better, and a worker that stalled after
@@ -73,6 +79,11 @@ class LiveSyncStore:
         """
         best: LiveSyncJob | None = None
         for attempt in attempts:
+            if attempt.job_status == "completed" or (
+                attempt.snapshot is not None and attempt.checkpoint is None
+            ):
+                best = None
+                continue
             if attempt.checkpoint is None:
                 continue
             if best is None or (attempt.completed_steps, attempt.updated_at) > (
@@ -144,7 +155,16 @@ class LiveSyncStore:
                 return self.public(live[-1]), None
 
             token = str(uuid.uuid4())
+            # Attempt order decides checkpoint lineage, so it must be a strict
+            # total order. Wall-clock time alone is not: two submissions can
+            # share a timestamp, ordering then fell through to a random UUID,
+            # and a fresh refresh could recover a checkpoint from before a
+            # completed retrieval. Every attempt for this window is loaded
+            # under this lock, so the new one is placed strictly after them.
             now = datetime.now(UTC)
+            latest = max((_aware(a.created_at) for a in attempts), default=None)
+            if latest is not None and now <= latest:
+                now = latest + timedelta(microseconds=1)
             # Taken before the retirement loop clears anything, and only from a
             # previous *attempt* at this same scope and window.
             saved = self._resumable_checkpoint(attempts, scope)

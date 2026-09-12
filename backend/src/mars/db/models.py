@@ -69,6 +69,13 @@ from mars.domain.investigation import (
 from mars.domain.live_sync import LiveSyncJob
 from mars.domain.organisation import Facility, FacilityIdentifier, OrganisationUnit
 from mars.domain.recurrence import RecurrenceResult
+from mars.domain.recurrence_analysis import (
+    ClinicalEvidenceDataset,
+    PatientRecurrenceFinding,
+    RecurrenceAnalysisRun,
+    RecurrenceDefinition,
+    RecurrenceDefinitionVersion,
+)
 from mars.domain.security import (
     Role,
     RolePermission,
@@ -97,6 +104,7 @@ __all__ = [
     "BaselineBuild",
     "BaselineResult",
     "BoundaryVersion",
+    "ClinicalEvidenceDataset",
     "CommodityOperationalAlert",
     "CommodityStockFact",
     "CommodityStockObservation",
@@ -139,8 +147,12 @@ __all__ = [
     "OpdEncounterReferral",
     "OpdEncounterTest",
     "OrganisationUnit",
+    "PatientRecurrenceFinding",
     "PatientReference",
     "ReconciliationFinding",
+    "RecurrenceAnalysisRun",
+    "RecurrenceDefinition",
+    "RecurrenceDefinitionVersion",
     "RecurrenceResult",
     "ReidentificationEvent",
     "Role",

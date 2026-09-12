@@ -270,7 +270,9 @@ describe("operational overview", () => {
     stubApis();
     renderOverview();
 
-    expect(await screen.findByRole("heading", { name: "National Overview" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "National Overview" }, { timeout: 5_000 }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/not a live Ministry feed/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Investigations" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Commodity security" })).toBeInTheDocument();

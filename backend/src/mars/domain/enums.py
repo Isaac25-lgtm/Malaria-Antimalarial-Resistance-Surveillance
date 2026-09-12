@@ -216,6 +216,10 @@ class AuditAction(str, enum.Enum):
     METHOD_PROMOTED = "method_promoted"
     METHOD_ROLLED_BACK = "method_rolled_back"
 
+    # Configurable recurrence analysis
+    RECURRENCE_DEFINITION_SAVED = "recurrence_definition_saved"
+    RECURRENCE_RUN_SUBMITTED = "recurrence_run_submitted"
+
     # Reference data
     GEOGRAPHY_IMPORTED = "geography_imported"
     ORGANISATION_UNIT_CHANGED = "organisation_unit_changed"

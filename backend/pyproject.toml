@@ -11,6 +11,8 @@ license = { text = "Proprietary" }
 readme = "README.md"
 
 dependencies = [
+    # zoneinfo has no system database on Windows; Africa/Kampala needs this.
+    "tzdata>=2024.1",
     "fastapi>=0.115,<0.116",
     "uvicorn[standard]>=0.34,<0.35",
     "pydantic>=2.11,<3",

@@ -584,6 +584,26 @@
         "title": "CommoditySection",
         "type": "object"
       },
+      "CompareRequest": {
+        "properties": {
+          "run_a": {
+            "format": "uuid",
+            "title": "Run A",
+            "type": "string"
+          },
+          "run_b": {
+            "format": "uuid",
+            "title": "Run B",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_a",
+          "run_b"
+        ],
+        "title": "CompareRequest",
+        "type": "object"
+      },
       "ConfigurationKeySummary": {
         "properties": {
           "active_effective_from": {
@@ -1002,6 +1022,203 @@
         "title": "DataReadinessSummary",
         "type": "object"
       },
+      "DefinitionCreate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "parameters"
+        ],
+        "title": "DefinitionCreate",
+        "type": "object"
+      },
+      "DefinitionVersionCreate": {
+        "properties": {
+          "expected_latest_version": {
+            "minimum": 1.0,
+            "title": "Expected Latest Version",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "parameters",
+          "expected_latest_version"
+        ],
+        "title": "DefinitionVersionCreate",
+        "type": "object"
+      },
+      "DefinitionVersionView": {
+        "properties": {
+          "checksum": {
+            "title": "Checksum",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "definition_id": {
+            "format": "uuid",
+            "title": "Definition Id",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          },
+          "version_number": {
+            "title": "Version Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "definition_id",
+          "version_number",
+          "parameters",
+          "checksum",
+          "engine_version",
+          "created_by",
+          "created_at",
+          "note"
+        ],
+        "title": "DefinitionVersionView",
+        "type": "object"
+      },
+      "DefinitionView": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "const": "exploratory",
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_username": {
+            "title": "Owner Username",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/DefinitionVersionView"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "mode",
+          "owner_username",
+          "created_at",
+          "versions"
+        ],
+        "title": "DefinitionView",
+        "type": "object"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -1210,6 +1427,63 @@
           "items"
         ],
         "title": "DistrictSection",
+        "type": "object"
+      },
+      "DuplicatePageView": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "previous_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Cursor"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "items",
+          "total",
+          "limit",
+          "next_cursor",
+          "previous_cursor"
+        ],
+        "title": "DuplicatePageView",
         "type": "object"
       },
       "EvidenceRequestSummary": {
@@ -2919,6 +3193,18 @@
             ],
             "title": "Outcome Note"
           },
+          "patient_finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Finding Id"
+          },
           "period_end": {
             "format": "date",
             "title": "Period End",
@@ -2938,9 +3224,16 @@
             "type": "integer"
           },
           "signal_id": {
-            "format": "uuid",
-            "title": "Signal Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal Id"
           },
           "triaged_at": {
             "anyOf": [
@@ -3105,6 +3398,18 @@
             "title": "Opened At",
             "type": "string"
           },
+          "patient_finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Finding Id"
+          },
           "period_end": {
             "format": "date",
             "title": "Period End",
@@ -3124,9 +3429,16 @@
             "type": "integer"
           },
           "signal_id": {
-            "format": "uuid",
-            "title": "Signal Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal Id"
           }
         },
         "required": [
@@ -3144,6 +3456,19 @@
         ],
         "title": "InvestigationQueueEntry",
         "type": "object"
+      },
+      "LifecycleStatus": {
+        "description": "Change-control lifecycle for governed configuration and methods.\n\nBlueprint sections 077 and 078: draft, review, approval, an effective date,\nand the ability to retire and roll back. Exactly one version of a given key\nmay be ``active`` at a time.",
+        "enum": [
+          "draft",
+          "in_review",
+          "approved",
+          "active",
+          "retired",
+          "rejected"
+        ],
+        "title": "LifecycleStatus",
+        "type": "string"
       },
       "LiveCommodityAlerts": {
         "properties": {
@@ -3394,6 +3719,17 @@
             "title": "Facility Count",
             "type": "integer"
           },
+          "interpretation_limit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretation Limit"
+          },
           "invalid_aggregate_value_count": {
             "title": "Invalid Aggregate Value Count",
             "type": "integer"
@@ -3404,6 +3740,17 @@
             },
             "title": "Kpis",
             "type": "array"
+          },
+          "laboratory_retrieval_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Laboratory Retrieval Complete"
           },
           "latest_attempt": {
             "anyOf": [
@@ -3447,6 +3794,71 @@
             "title": "Positive Patients",
             "type": "array"
           },
+          "possible_duplicate_positive_groups": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Possible Duplicate Positive Groups"
+          },
+          "repeat_positive_coverage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "complete",
+                  "partial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Positive Coverage"
+          },
+          "repeat_positive_coverage_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Repeat Positive Coverage Notes",
+            "type": "array"
+          },
+          "repeat_positive_definition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveRecurrenceDefinitionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repeat_positive_denominator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Positive Denominator"
+          },
+          "repeat_positive_indeterminate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Positive Indeterminate"
+          },
           "repeat_positive_patients": {
             "items": {
               "$ref": "#/components/schemas/LiveRepeatPositivePatient"
@@ -3458,6 +3870,17 @@
             "default": false,
             "title": "Retrieval Complete",
             "type": "boolean"
+          },
+          "retrieval_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrieval Plan"
           },
           "scope": {
             "const": "Pader District",
@@ -3514,6 +3937,18 @@
             "title": "Tracker Failed Facility Count",
             "type": "integer"
           },
+          "tracker_lookback_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracker Lookback Start"
+          },
           "tracker_reporting_facility_count": {
             "title": "Tracker Reporting Facility Count",
             "type": "integer"
@@ -3522,6 +3957,22 @@
             "default": 0,
             "title": "Tracker Retrieved Facility Count",
             "type": "integer"
+          },
+          "treatment_context_coverage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "not_mapped"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Context Coverage"
           },
           "trend": {
             "items": {
@@ -3885,7 +4336,9 @@
             "enum": [
               "positive",
               "negative",
-              "unmapped"
+              "unmapped",
+              "not_recorded",
+              "not_done"
             ],
             "title": "Result",
             "type": "string"
@@ -3899,12 +4352,110 @@
         "title": "LivePatientTest",
         "type": "object"
       },
-      "LiveRepeatPositivePatient": {
-        "description": "Pseudonymous evidence only; the source tracked-entity UID is excluded.",
+      "LiveRecurrenceDefinitionSummary": {
+        "description": "The repeat-positive definition a snapshot was evaluated under.",
         "properties": {
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "exploratory": {
+            "title": "Exploratory",
+            "type": "boolean"
+          },
+          "maximum_window_days": {
+            "title": "Maximum Window Days",
+            "type": "integer"
+          },
+          "minimum_gap_days": {
+            "title": "Minimum Gap Days",
+            "type": "integer"
+          },
+          "minimum_positive_encounters": {
+            "title": "Minimum Positive Encounters",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "same_day_policy": {
+            "title": "Same Day Policy",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "minimum_gap_days",
+          "maximum_window_days",
+          "minimum_positive_encounters",
+          "same_day_policy",
+          "engine_version",
+          "exploratory"
+        ],
+        "title": "LiveRecurrenceDefinitionSummary",
+        "type": "object"
+      },
+      "LiveRepeatPositivePatient": {
+        "description": "Pseudonymous evidence only; the source tracked-entity UID is excluded.\n\n``interval_days`` is kept for compatibility and has one documented meaning:\nthe qualifying chain interval, otherwise the latest adjacent interval, and\nnull with fewer than two eligible positives. New consumers read the named\ninterval fields instead.",
+        "properties": {
+          "adjacent_interval_days": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Adjacent Interval Days",
+            "type": "array"
+          },
+          "anchor_interval_days": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Anchor Interval Days",
+            "type": "array"
+          },
+          "chain_interval_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Interval Days"
+          },
+          "chain_length": {
+            "default": 0,
+            "title": "Chain Length",
+            "type": "integer"
+          },
           "cross_facility": {
             "title": "Cross Facility",
             "type": "boolean"
+          },
+          "determination": {
+            "anyOf": [
+              {
+                "enum": [
+                  "qualifies",
+                  "does_not_qualify",
+                  "indeterminate",
+                  "not_in_period"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Determination"
+          },
+          "explanation": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Explanation",
+            "type": "array"
           },
           "facility_name": {
             "title": "Facility Name",
@@ -3916,8 +4467,15 @@
             "type": "string"
           },
           "interval_days": {
-            "title": "Interval Days",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Days"
           },
           "latest_positive_on": {
             "format": "date",
@@ -3928,9 +4486,27 @@
             "title": "Mars Patient Id",
             "type": "string"
           },
+          "observed_positive_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Positive Count"
+          },
           "positive_encounter_count": {
             "title": "Positive Encounter Count",
             "type": "integer"
+          },
+          "quality_flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Quality Flags",
+            "type": "array"
           },
           "tests": {
             "items": {
@@ -3945,7 +4521,6 @@
           "first_positive_on",
           "latest_positive_on",
           "positive_encounter_count",
-          "interval_days",
           "facility_name",
           "cross_facility"
         ],
@@ -4832,6 +5407,37 @@
         "title": "MethodDefinitionSummary",
         "type": "object"
       },
+      "MethodTransitionRequest": {
+        "properties": {
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/LifecycleStatus"
+          }
+        },
+        "required": [
+          "target",
+          "reason"
+        ],
+        "title": "MethodTransitionRequest",
+        "type": "object"
+      },
       "MethodVersionSummary": {
         "properties": {
           "artifact_checksum": {
@@ -4896,6 +5502,70 @@
           "artifact_checksum"
         ],
         "title": "MethodVersionSummary",
+        "type": "object"
+      },
+      "MethodVersionView": {
+        "properties": {
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          },
+          "semantic_version": {
+            "title": "Semantic Version",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "semantic_version",
+          "status",
+          "owner"
+        ],
+        "title": "MethodVersionView",
         "type": "object"
       },
       "NationalGeographyResponse": {
@@ -5375,6 +6045,58 @@
         "title": "Page[OrganisationUnitSummary]",
         "type": "object"
       },
+      "PatientDetailView": {
+        "properties": {
+          "definition": {
+            "additionalProperties": true,
+            "title": "Definition",
+            "type": "object"
+          },
+          "definition_name": {
+            "title": "Definition Name",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "exploratory": {
+            "title": "Exploratory",
+            "type": "boolean"
+          },
+          "finding": {
+            "additionalProperties": true,
+            "title": "Finding",
+            "type": "object"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "timeline": {
+            "additionalProperties": true,
+            "title": "Timeline",
+            "type": "object"
+          }
+        },
+        "required": [
+          "run_id",
+          "finding",
+          "timeline",
+          "definition_name",
+          "definition",
+          "engine_version",
+          "exploratory",
+          "interpretation"
+        ],
+        "title": "PatientDetailView",
+        "type": "object"
+      },
       "PatientEncounterSummary": {
         "description": "Clinical facts from one encounter in a pseudonymous timeline.",
         "properties": {
@@ -5478,9 +6200,127 @@
         "title": "PatientEncounterSummary",
         "type": "object"
       },
+      "PatientInvestigationRequest": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "title": "PatientInvestigationRequest",
+        "type": "object"
+      },
+      "PatientOfInterestPage": {
+        "description": "One page of a complete, server-side evaluated stored patient list.\n\nEvery patient in scope is evaluated before a page is taken, so ``total``\ncounts every match and never depends on ``limit``. The cursors are opaque\nand bound to the evaluated evidence: when the evidence changes, a stale\ncursor is refused rather than silently moving patients between pages.",
+        "properties": {
+          "coverage_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Coverage Notes",
+            "type": "array"
+          },
+          "coverage_status": {
+            "enum": [
+              "complete",
+              "partial"
+            ],
+            "title": "Coverage Status",
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/LiveRecurrenceDefinitionSummary"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PatientOfInterestSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
+          "period_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Start"
+          },
+          "previous_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Cursor"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "coverage_status",
+          "definition"
+        ],
+        "title": "PatientOfInterestPage",
+        "type": "object"
+      },
       "PatientOfInterestSummary": {
         "description": "One pseudonymous positive-encounter history; never direct identity.",
         "properties": {
+          "adjacent_interval_days": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Adjacent Interval Days",
+            "type": "array"
+          },
           "age_unit": {
             "anyOf": [
               {
@@ -5503,6 +6343,24 @@
             ],
             "title": "Age Value"
           },
+          "anchor_interval_days": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Anchor Interval Days",
+            "type": "array"
+          },
+          "chain_interval_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Interval Days"
+          },
           "classification": {
             "enum": [
               "positive_encounter",
@@ -5510,6 +6368,23 @@
             ],
             "title": "Classification",
             "type": "string"
+          },
+          "determination": {
+            "anyOf": [
+              {
+                "enum": [
+                  "qualifies",
+                  "does_not_qualify",
+                  "indeterminate",
+                  "not_in_period"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Determination"
           },
           "facility_id": {
             "format": "uuid",
@@ -5574,6 +6449,74 @@
           "classification"
         ],
         "title": "PatientOfInterestSummary",
+        "type": "object"
+      },
+      "PatientPageView": {
+        "properties": {
+          "filters": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Filters",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "previous_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Cursor"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "items",
+          "total",
+          "limit",
+          "next_cursor",
+          "previous_cursor",
+          "filters"
+        ],
+        "title": "PatientPageView",
         "type": "object"
       },
       "PatientTimeline": {
@@ -5785,6 +6728,170 @@
           "code"
         ],
         "title": "ProblemDetail",
+        "type": "object"
+      },
+      "ProgrammeStatusView": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "method_code": {
+            "title": "Method Code",
+            "type": "string"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          },
+          "semantic_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Version"
+          }
+        },
+        "required": [
+          "method_code",
+          "active",
+          "detail"
+        ],
+        "title": "ProgrammeStatusView",
+        "type": "object"
+      },
+      "ProjectionView": {
+        "properties": {
+          "coverage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "facility_names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Facility Names",
+            "type": "object"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rows": {
+            "title": "Rows"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "run_id",
+          "name",
+          "rows",
+          "unit",
+          "coverage",
+          "facility_names",
+          "interpretation"
+        ],
+        "title": "ProjectionView",
+        "type": "object"
+      },
+      "PromoteDefinitionRequest": {
+        "properties": {
+          "semantic_version": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Semantic Version",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "semantic_version",
+          "summary"
+        ],
+        "title": "PromoteDefinitionRequest",
         "type": "object"
       },
       "ReadinessResponse": {
@@ -6081,6 +7188,326 @@
           "expected_version"
         ],
         "title": "RequestEvidenceRequest",
+        "type": "object"
+      },
+      "RunCreate": {
+        "properties": {
+          "definition_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Version Id"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filters"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "mode": {
+            "default": "exploratory",
+            "enum": [
+              "exploratory",
+              "programme"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "source": {
+            "default": "stored_encounter",
+            "enum": [
+              "stored_encounter",
+              "live_tracker"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "Africa/Kampala",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end"
+        ],
+        "title": "RunCreate",
+        "type": "object"
+      },
+      "RunView": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "dataset": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "title": "Definition",
+            "type": "object"
+          },
+          "definition_checksum": {
+            "title": "Definition Checksum",
+            "type": "string"
+          },
+          "definition_name": {
+            "title": "Definition Name",
+            "type": "string"
+          },
+          "definition_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Version Id"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "exploratory": {
+            "title": "Exploratory",
+            "type": "boolean"
+          },
+          "facility_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Count"
+          },
+          "filters": {
+            "additionalProperties": true,
+            "title": "Filters",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "manifest_checksum": {
+            "title": "Manifest Checksum",
+            "type": "string"
+          },
+          "method_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version Id"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "national_scope": {
+            "title": "National Scope",
+            "type": "boolean"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "progress_completed": {
+            "title": "Progress Completed",
+            "type": "integer"
+          },
+          "progress_total": {
+            "title": "Progress Total",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "error_code",
+          "mode",
+          "source",
+          "definition_name",
+          "definition",
+          "definition_checksum",
+          "definition_version_id",
+          "method_version_id",
+          "exploratory",
+          "engine_version",
+          "period_start",
+          "period_end",
+          "timezone",
+          "facility_count",
+          "national_scope",
+          "filters",
+          "manifest_checksum",
+          "created_by",
+          "created_at",
+          "completed_at",
+          "progress_completed",
+          "progress_total",
+          "dataset",
+          "summary",
+          "coverage",
+          "interpretation"
+        ],
+        "title": "RunView",
         "type": "object"
       },
       "SessionScopeSummary": {
@@ -11017,7 +12444,7 @@
     },
     "/api/v1/patients": {
       "get": {
-        "description": "Positive encounter histories under stable MARS aliases.",
+        "description": "One page of positive encounter histories under stable MARS aliases.\n\nThe whole scoped cohort is evaluated first; ``total`` is independent of\n``limit``, and the cursor refuses to continue over changed evidence.",
         "operationId": "patients_of_interest_api_v1_patients_get",
         "parameters": [
           {
@@ -11065,6 +12492,44 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "determination",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "qualifies",
+                    "does_not_qualify",
+                    "indeterminate"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Determination"
+            }
           }
         ],
         "responses": {
@@ -11072,11 +12537,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PatientOfInterestSummary"
-                  },
-                  "title": "Response Patients Of Interest Api V1 Patients Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/PatientOfInterestPage"
                 }
               }
             },
@@ -11150,6 +12611,991 @@
         "summary": "Patient Timeline",
         "tags": [
           "patient surveillance"
+        ]
+      }
+    },
+    "/api/v1/recurrence/compare": {
+      "post": {
+        "operationId": "compare_api_v1_recurrence_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Compare Api V1 Recurrence Compare Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Compare",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/definition-versions/{version_id}/promote": {
+      "post": {
+        "operationId": "promote_definition_api_v1_recurrence_definition_versions__version_id__promote_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoteDefinitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MethodVersionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Promote Definition",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/definitions": {
+      "get": {
+        "operationId": "definitions_api_v1_recurrence_definitions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DefinitionView"
+                  },
+                  "title": "Response Definitions Api V1 Recurrence Definitions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Definitions",
+        "tags": [
+          "recurrence analysis"
+        ]
+      },
+      "post": {
+        "operationId": "create_definition_api_v1_recurrence_definitions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefinitionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Create Definition",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/definitions/{definition_id}/versions": {
+      "post": {
+        "operationId": "create_definition_version_api_v1_recurrence_definitions__definition_id__versions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "definition_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Definition Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefinitionVersionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefinitionVersionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Create Definition Version",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/programme": {
+      "get": {
+        "operationId": "programme_api_v1_recurrence_programme_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgrammeStatusView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Programme",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/programme/versions/{version_id}/transition": {
+      "post": {
+        "operationId": "transition_programme_method_api_v1_recurrence_programme_versions__version_id__transition_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MethodTransitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MethodVersionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Transition Programme Method",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/runs": {
+      "get": {
+        "operationId": "runs_api_v1_recurrence_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunView"
+                  },
+                  "title": "Response Runs Api V1 Recurrence Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Runs",
+        "tags": [
+          "recurrence analysis"
+        ]
+      },
+      "post": {
+        "operationId": "submit_run_api_v1_recurrence_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Submit Run",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/runs/{run_id}": {
+      "get": {
+        "operationId": "run_api_v1_recurrence_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Run",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/runs/{run_id}/duplicates": {
+      "get": {
+        "operationId": "duplicates_api_v1_recurrence_runs__run_id__duplicates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicatePageView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Duplicates",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/runs/{run_id}/patients": {
+      "get": {
+        "operationId": "patients_api_v1_recurrence_runs__run_id__patients_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "determination",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Determination"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sex",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sex"
+            }
+          },
+          {
+            "in": "query",
+            "name": "age_group",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Age Group"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quality",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Quality"
+            }
+          },
+          {
+            "in": "query",
+            "name": "facility",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Facility"
+            }
+          },
+          {
+            "in": "query",
+            "name": "test_method",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Test Method"
+            }
+          },
+          {
+            "in": "query",
+            "name": "treatment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Treatment"
+            }
+          },
+          {
+            "in": "query",
+            "name": "investigation_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Investigation Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientPageView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Patients",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/runs/{run_id}/patients/{patient_alias}": {
+      "get": {
+        "operationId": "patient_detail_api_v1_recurrence_runs__run_id__patients__patient_alias__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "patient_alias",
+            "required": true,
+            "schema": {
+              "pattern": "^MARS-PT2-[A-Z2-7]+$",
+              "title": "Patient Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientDetailView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Patient Detail",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/runs/{run_id}/patients/{patient_alias}/investigation": {
+      "post": {
+        "operationId": "open_patient_investigation_api_v1_recurrence_runs__run_id__patients__patient_alias__investigation_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "patient_alias",
+            "required": true,
+            "schema": {
+              "pattern": "^MARS-PT2-[A-Z2-7]+$",
+              "title": "Patient Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientInvestigationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Open Patient Investigation",
+        "tags": [
+          "recurrence analysis"
+        ]
+      }
+    },
+    "/api/v1/recurrence/runs/{run_id}/projections/{name}": {
+      "get": {
+        "operationId": "projection_api_v1_recurrence_runs__run_id__projections__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "enum": [
+                "summary",
+                "intervals",
+                "facilities",
+                "weekly",
+                "frequency",
+                "treatments",
+                "geography"
+              ],
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "MARS bearer token": []
+          }
+        ],
+        "summary": "Projection",
+        "tags": [
+          "recurrence analysis"
         ]
       }
     },

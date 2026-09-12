@@ -8,7 +8,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import { AuthProvider } from "../auth/AuthProvider";
@@ -43,6 +43,7 @@ import {
 import { NationalMapView } from "../features/map/NationalMapView";
 import { SystemStatusView } from "../features/status/SystemStatusView";
 import { PatientSurveillanceView } from "../features/patients/PatientSurveillanceView";
+import { PatientCareTimeline } from "../features/recurrence/PatientCareTimeline";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -260,6 +261,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="recurrence/:runId/patients/:patientAlias"
+          element={
+            <RequireAuth permissions={["case:view_pseudonymous_evidence"]}>
+              <RecurrencePatientRoute />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="commodities"
           element={
             <RequireAuth permissions={["surveillance:view_aggregate"]}>
@@ -324,4 +333,10 @@ function ScopedCommandCentre() {
     return <LiveRemoteWorkspaceView />;
   }
   return <CommandCentreView />;
+}
+
+function RecurrencePatientRoute() {
+  const { runId, patientAlias } = useParams();
+  if (!runId || !patientAlias) return <NotFoundView />;
+  return <PatientCareTimeline runId={runId} alias={patientAlias} />;
 }

@@ -265,6 +265,19 @@ def candidate_files(root: Path) -> list[Path]:
     default.
     """
     try:
+        top_level = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+        if Path(top_level.stdout.strip()).resolve() != root.resolve():
+            # ``git -C`` also succeeds for an arbitrary directory nested inside
+            # a worktree. Its file names are then relative to the repository
+            # root, not to ``root``; joining them to the nested path silently
+            # scans nothing. A caller asking to scan a subtree or extracted
+            # fixture needs the safe filesystem walk instead.
+            raise subprocess.CalledProcessError(1, top_level.args)
         completed = subprocess.run(
             [
                 "git",

@@ -1384,7 +1384,10 @@ export interface paths {
         };
         /**
          * Patients Of Interest
-         * @description Positive encounter histories under stable MARS aliases.
+         * @description One page of positive encounter histories under stable MARS aliases.
+         *
+         *     The whole scoped cohort is evaluated first; ``total`` is independent of
+         *     ``limit``, and the cursor refuses to continue over changed evidence.
          */
         get: operations["patients_of_interest_api_v1_patients_get"];
         put?: never;
@@ -1407,6 +1410,229 @@ export interface paths {
          * @description An authorised longitudinal encounter timeline, still pseudonymous.
          */
         get: operations["patient_timeline_api_v1_patients__patient_reference_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compare */
+        post: operations["compare_api_v1_recurrence_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/definition-versions/{version_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Promote Definition */
+        post: operations["promote_definition_api_v1_recurrence_definition_versions__version_id__promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/definitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Definitions */
+        get: operations["definitions_api_v1_recurrence_definitions_get"];
+        put?: never;
+        /** Create Definition */
+        post: operations["create_definition_api_v1_recurrence_definitions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/definitions/{definition_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Definition Version */
+        post: operations["create_definition_version_api_v1_recurrence_definitions__definition_id__versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/programme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Programme */
+        get: operations["programme_api_v1_recurrence_programme_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/programme/versions/{version_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition Programme Method */
+        post: operations["transition_programme_method_api_v1_recurrence_programme_versions__version_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runs */
+        get: operations["runs_api_v1_recurrence_runs_get"];
+        put?: never;
+        /** Submit Run */
+        post: operations["submit_run_api_v1_recurrence_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run */
+        get: operations["run_api_v1_recurrence_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/runs/{run_id}/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Duplicates */
+        get: operations["duplicates_api_v1_recurrence_runs__run_id__duplicates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/runs/{run_id}/patients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Patients */
+        get: operations["patients_api_v1_recurrence_runs__run_id__patients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/runs/{run_id}/patients/{patient_alias}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Patient Detail */
+        get: operations["patient_detail_api_v1_recurrence_runs__run_id__patients__patient_alias__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/runs/{run_id}/patients/{patient_alias}/investigation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open Patient Investigation */
+        post: operations["open_patient_investigation_api_v1_recurrence_runs__run_id__patients__patient_alias__investigation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recurrence/runs/{run_id}/projections/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Projection */
+        get: operations["projection_api_v1_recurrence_runs__run_id__projections__name__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1840,6 +2066,19 @@ export interface components {
             source: string;
             source_period: components["schemas"]["PeriodWindow"] | null;
         };
+        /** CompareRequest */
+        CompareRequest: {
+            /**
+             * Run A
+             * Format: uuid
+             */
+            run_a: string;
+            /**
+             * Run B
+             * Format: uuid
+             */
+            run_b: string;
+        };
         /** ConfigurationKeySummary */
         ConfigurationKeySummary: {
             /** Active Effective From */
@@ -2010,6 +2249,88 @@ export interface components {
             /** Tracker Sync */
             tracker_sync: string;
         };
+        /** DefinitionCreate */
+        DefinitionCreate: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Parameters */
+            parameters: {
+                [key: string]: unknown;
+            };
+        };
+        /** DefinitionVersionCreate */
+        DefinitionVersionCreate: {
+            /** Expected Latest Version */
+            expected_latest_version: number;
+            /** Note */
+            note?: string | null;
+            /** Parameters */
+            parameters: {
+                [key: string]: unknown;
+            };
+        };
+        /** DefinitionVersionView */
+        DefinitionVersionView: {
+            /** Checksum */
+            checksum: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /**
+             * Definition Id
+             * Format: uuid
+             */
+            definition_id: string;
+            /** Engine Version */
+            engine_version: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Note */
+            note: string | null;
+            /** Parameters */
+            parameters: {
+                [key: string]: unknown;
+            };
+            /** Version Number */
+            version_number: number;
+        };
+        /** DefinitionView */
+        DefinitionView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Mode
+             * @constant
+             */
+            mode: "exploratory";
+            /** Name */
+            name: string;
+            /** Owner Username */
+            owner_username: string;
+            /** Versions */
+            versions: components["schemas"]["DefinitionVersionView"][];
+        };
         /** DependencyStatus */
         DependencyStatus: {
             /** Detail */
@@ -2086,6 +2407,26 @@ export interface components {
             /** Source */
             source: string;
             source_period: components["schemas"]["PeriodWindow"] | null;
+        };
+        /** DuplicatePageView */
+        DuplicatePageView: {
+            /** Items */
+            items: {
+                [key: string]: unknown;
+            }[];
+            /** Limit */
+            limit: number;
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Previous Cursor */
+            previous_cursor: string | null;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Total */
+            total: number;
         };
         /**
          * EvidenceRequestSummary
@@ -2736,6 +3077,8 @@ export interface components {
             outcome: string | null;
             /** Outcome Note */
             outcome_note: string | null;
+            /** Patient Finding Id */
+            patient_finding_id?: string | null;
             /**
              * Period End
              * Format: date
@@ -2750,11 +3093,8 @@ export interface components {
             priority: string;
             /** Record Version */
             record_version: number;
-            /**
-             * Signal Id
-             * Format: uuid
-             */
-            signal_id: string;
+            /** Signal Id */
+            signal_id: string | null;
             /** Triaged At */
             triaged_at: string | null;
         };
@@ -2816,6 +3156,8 @@ export interface components {
              * Format: date-time
              */
             opened_at: string;
+            /** Patient Finding Id */
+            patient_finding_id?: string | null;
             /**
              * Period End
              * Format: date
@@ -2830,12 +3172,19 @@ export interface components {
             priority: string;
             /** Record Version */
             record_version: number;
-            /**
-             * Signal Id
-             * Format: uuid
-             */
-            signal_id: string;
+            /** Signal Id */
+            signal_id: string | null;
         };
+        /**
+         * LifecycleStatus
+         * @description Change-control lifecycle for governed configuration and methods.
+         *
+         *     Blueprint sections 077 and 078: draft, review, approval, an effective date,
+         *     and the ability to retire and roll back. Exactly one version of a given key
+         *     may be ``active`` at a time.
+         * @enum {string}
+         */
+        LifecycleStatus: "draft" | "in_review" | "approved" | "active" | "retired" | "rejected";
         /** LiveCommodityAlerts */
         LiveCommodityAlerts: {
             /** Al Stock Out Facilities */
@@ -2915,10 +3264,14 @@ export interface components {
             facilities: components["schemas"]["LiveDashboardFacility"][];
             /** Facility Count */
             facility_count: number;
+            /** Interpretation Limit */
+            interpretation_limit?: string | null;
             /** Invalid Aggregate Value Count */
             invalid_aggregate_value_count: number;
             /** Kpis */
             kpis: components["schemas"]["LiveDashboardKpi"][];
+            /** Laboratory Retrieval Complete */
+            laboratory_retrieval_complete?: boolean | null;
             latest_attempt?: components["schemas"]["LiveSyncJobSummary"] | null;
             /** Malaria Lab Event Count */
             malaria_lab_event_count: number;
@@ -2938,6 +3291,17 @@ export interface components {
             positive_malaria_event_count: number;
             /** Positive Patients */
             positive_patients?: components["schemas"]["LiveRepeatPositivePatient"][];
+            /** Possible Duplicate Positive Groups */
+            possible_duplicate_positive_groups?: number | null;
+            /** Repeat Positive Coverage */
+            repeat_positive_coverage?: ("complete" | "partial") | null;
+            /** Repeat Positive Coverage Notes */
+            repeat_positive_coverage_notes?: string[];
+            repeat_positive_definition?: components["schemas"]["LiveRecurrenceDefinitionSummary"] | null;
+            /** Repeat Positive Denominator */
+            repeat_positive_denominator?: number | null;
+            /** Repeat Positive Indeterminate */
+            repeat_positive_indeterminate?: number | null;
             /** Repeat Positive Patients */
             repeat_positive_patients: components["schemas"]["LiveRepeatPositivePatient"][];
             /**
@@ -2945,6 +3309,8 @@ export interface components {
              * @default false
              */
             retrieval_complete: boolean;
+            /** Retrieval Plan */
+            retrieval_plan?: string | null;
             /**
              * Scope
              * @constant
@@ -2973,6 +3339,8 @@ export interface components {
             tracker_event_count: number;
             /** Tracker Failed Facility Count */
             tracker_failed_facility_count: number;
+            /** Tracker Lookback Start */
+            tracker_lookback_start?: string | null;
             /** Tracker Reporting Facility Count */
             tracker_reporting_facility_count: number;
             /**
@@ -2980,6 +3348,8 @@ export interface components {
              * @default 0
              */
             tracker_retrieved_facility_count: number;
+            /** Treatment Context Coverage */
+            treatment_context_coverage?: ("complete" | "partial" | "not_mapped") | null;
             /** Trend */
             trend: components["schemas"]["LiveDashboardTrendPoint"][];
             /**
@@ -3125,15 +3495,55 @@ export interface components {
              * Result
              * @enum {string}
              */
-            result: "positive" | "negative" | "unmapped";
+            result: "positive" | "negative" | "unmapped" | "not_recorded" | "not_done";
+        };
+        /**
+         * LiveRecurrenceDefinitionSummary
+         * @description The repeat-positive definition a snapshot was evaluated under.
+         */
+        LiveRecurrenceDefinitionSummary: {
+            /** Engine Version */
+            engine_version: string;
+            /** Exploratory */
+            exploratory: boolean;
+            /** Maximum Window Days */
+            maximum_window_days: number;
+            /** Minimum Gap Days */
+            minimum_gap_days: number;
+            /** Minimum Positive Encounters */
+            minimum_positive_encounters: number;
+            /** Name */
+            name: string;
+            /** Same Day Policy */
+            same_day_policy: string;
         };
         /**
          * LiveRepeatPositivePatient
          * @description Pseudonymous evidence only; the source tracked-entity UID is excluded.
+         *
+         *     ``interval_days`` is kept for compatibility and has one documented meaning:
+         *     the qualifying chain interval, otherwise the latest adjacent interval, and
+         *     null with fewer than two eligible positives. New consumers read the named
+         *     interval fields instead.
          */
         LiveRepeatPositivePatient: {
+            /** Adjacent Interval Days */
+            adjacent_interval_days?: number[];
+            /** Anchor Interval Days */
+            anchor_interval_days?: number[];
+            /** Chain Interval Days */
+            chain_interval_days?: number | null;
+            /**
+             * Chain Length
+             * @default 0
+             */
+            chain_length: number;
             /** Cross Facility */
             cross_facility: boolean;
+            /** Determination */
+            determination?: ("qualifies" | "does_not_qualify" | "indeterminate" | "not_in_period") | null;
+            /** Explanation */
+            explanation?: string[];
             /** Facility Name */
             facility_name: string;
             /**
@@ -3142,7 +3552,7 @@ export interface components {
              */
             first_positive_on: string;
             /** Interval Days */
-            interval_days: number;
+            interval_days?: number | null;
             /**
              * Latest Positive On
              * Format: date
@@ -3150,8 +3560,12 @@ export interface components {
             latest_positive_on: string;
             /** Mars Patient Id */
             mars_patient_id: string;
+            /** Observed Positive Count */
+            observed_positive_count?: number | null;
             /** Positive Encounter Count */
             positive_encounter_count: number;
+            /** Quality Flags */
+            quality_flags?: string[];
             /** Tests */
             tests?: components["schemas"]["LivePatientTest"][];
         };
@@ -3488,6 +3902,14 @@ export interface components {
             /** Versions */
             versions?: components["schemas"]["MethodVersionSummary"][];
         };
+        /** MethodTransitionRequest */
+        MethodTransitionRequest: {
+            /** Effective From */
+            effective_from?: string | null;
+            /** Reason */
+            reason: string;
+            target: components["schemas"]["LifecycleStatus"];
+        };
         /** MethodVersionSummary */
         MethodVersionSummary: {
             /** Artifact Checksum */
@@ -3507,6 +3929,28 @@ export interface components {
             summary: string;
             /** Validation Reference */
             validation_reference: string | null;
+        };
+        /** MethodVersionView */
+        MethodVersionView: {
+            /** Approved By */
+            approved_by?: string | null;
+            /** Effective From */
+            effective_from?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Owner */
+            owner: string;
+            /** Parameters */
+            parameters?: {
+                [key: string]: unknown;
+            } | null;
+            /** Semantic Version */
+            semantic_version: string;
+            /** Status */
+            status: string;
         };
         /**
          * NationalGeographyResponse
@@ -3683,6 +4127,34 @@ export interface components {
              */
             total?: number | null;
         };
+        /** PatientDetailView */
+        PatientDetailView: {
+            /** Definition */
+            definition: {
+                [key: string]: unknown;
+            };
+            /** Definition Name */
+            definition_name: string;
+            /** Engine Version */
+            engine_version: string;
+            /** Exploratory */
+            exploratory: boolean;
+            /** Finding */
+            finding: {
+                [key: string]: unknown;
+            };
+            /** Interpretation */
+            interpretation: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Timeline */
+            timeline: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * PatientEncounterSummary
          * @description Clinical facts from one encounter in a pseudonymous timeline.
@@ -3726,20 +4198,66 @@ export interface components {
             /** Treatments */
             treatments: string[];
         };
+        /** PatientInvestigationRequest */
+        PatientInvestigationRequest: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
+        /**
+         * PatientOfInterestPage
+         * @description One page of a complete, server-side evaluated stored patient list.
+         *
+         *     Every patient in scope is evaluated before a page is taken, so ``total``
+         *     counts every match and never depends on ``limit``. The cursors are opaque
+         *     and bound to the evaluated evidence: when the evidence changes, a stale
+         *     cursor is refused rather than silently moving patients between pages.
+         */
+        PatientOfInterestPage: {
+            /** Coverage Notes */
+            coverage_notes?: string[];
+            /**
+             * Coverage Status
+             * @enum {string}
+             */
+            coverage_status: "complete" | "partial";
+            definition: components["schemas"]["LiveRecurrenceDefinitionSummary"];
+            /** Items */
+            items: components["schemas"]["PatientOfInterestSummary"][];
+            /** Limit */
+            limit: number;
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Period End */
+            period_end?: string | null;
+            /** Period Start */
+            period_start?: string | null;
+            /** Previous Cursor */
+            previous_cursor?: string | null;
+            /** Total */
+            total: number;
+        };
         /**
          * PatientOfInterestSummary
          * @description One pseudonymous positive-encounter history; never direct identity.
          */
         PatientOfInterestSummary: {
+            /** Adjacent Interval Days */
+            adjacent_interval_days?: number[];
             /** Age Unit */
             age_unit: string | null;
             /** Age Value */
             age_value: number | null;
+            /** Anchor Interval Days */
+            anchor_interval_days?: number[];
+            /** Chain Interval Days */
+            chain_interval_days?: number | null;
             /**
              * Classification
              * @enum {string}
              */
             classification: "positive_encounter" | "repeat_positive_input";
+            /** Determination */
+            determination?: ("qualifies" | "does_not_qualify" | "indeterminate" | "not_in_period") | null;
             /**
              * Facility Id
              * Format: uuid
@@ -3770,6 +4288,30 @@ export interface components {
             positive_encounter_count: number;
             /** Sex */
             sex: string;
+        };
+        /** PatientPageView */
+        PatientPageView: {
+            /** Filters */
+            filters: {
+                [key: string]: string[];
+            };
+            /** Items */
+            items: {
+                [key: string]: unknown;
+            }[];
+            /** Limit */
+            limit: number;
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Previous Cursor */
+            previous_cursor: string | null;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Total */
+            total: number;
         };
         /**
          * PatientTimeline
@@ -3883,6 +4425,58 @@ export interface components {
              * @description URI reference identifying the problem type.
              */
             type: string;
+        };
+        /** ProgrammeStatusView */
+        ProgrammeStatusView: {
+            /** Active */
+            active: boolean;
+            /** Approved By */
+            approved_by?: string | null;
+            /** Detail */
+            detail: string;
+            /** Effective From */
+            effective_from?: string | null;
+            /** Method Code */
+            method_code: string;
+            /** Method Version Id */
+            method_version_id?: string | null;
+            /** Parameters */
+            parameters?: {
+                [key: string]: unknown;
+            } | null;
+            /** Semantic Version */
+            semantic_version?: string | null;
+        };
+        /** ProjectionView */
+        ProjectionView: {
+            /** Coverage */
+            coverage: {
+                [key: string]: unknown;
+            } | null;
+            /** Facility Names */
+            facility_names: {
+                [key: string]: string;
+            };
+            /** Interpretation */
+            interpretation: string;
+            /** Name */
+            name: string;
+            /** Rows */
+            rows: unknown;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Unit */
+            unit: string | null;
+        };
+        /** PromoteDefinitionRequest */
+        PromoteDefinitionRequest: {
+            /** Semantic Version */
+            semantic_version: string;
+            /** Summary */
+            summary: string;
         };
         /** ReadinessResponse */
         ReadinessResponse: {
@@ -4002,6 +4596,132 @@ export interface components {
             description: string;
             /** Expected Version */
             expected_version: number;
+        };
+        /** RunCreate */
+        RunCreate: {
+            /** Definition Version Id */
+            definition_version_id?: string | null;
+            /** Filters */
+            filters?: {
+                [key: string]: string[];
+            } | null;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /**
+             * Mode
+             * @default exploratory
+             * @enum {string}
+             */
+            mode: "exploratory" | "programme";
+            /** Parameters */
+            parameters?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Source
+             * @default stored_encounter
+             * @enum {string}
+             */
+            source: "stored_encounter" | "live_tracker";
+            /**
+             * Timezone
+             * @default Africa/Kampala
+             */
+            timezone: string;
+        };
+        /** RunView */
+        RunView: {
+            /** Completed At */
+            completed_at: string | null;
+            /** Coverage */
+            coverage: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Dataset */
+            dataset: {
+                [key: string]: unknown;
+            } | null;
+            /** Definition */
+            definition: {
+                [key: string]: unknown;
+            };
+            /** Definition Checksum */
+            definition_checksum: string;
+            /** Definition Name */
+            definition_name: string;
+            /** Definition Version Id */
+            definition_version_id: string | null;
+            /** Engine Version */
+            engine_version: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Exploratory */
+            exploratory: boolean;
+            /** Facility Count */
+            facility_count: number | null;
+            /** Filters */
+            filters: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interpretation */
+            interpretation: string;
+            /** Manifest Checksum */
+            manifest_checksum: string;
+            /** Method Version Id */
+            method_version_id: string | null;
+            /** Mode */
+            mode: string;
+            /** National Scope */
+            national_scope: boolean;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Progress Completed */
+            progress_completed: number;
+            /** Progress Total */
+            progress_total: number;
+            /** Source */
+            source: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed";
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            } | null;
+            /** Timezone */
+            timezone: string;
         };
         /** SessionScopeSummary */
         SessionScopeSummary: {
@@ -6528,6 +7248,8 @@ export interface operations {
                 period_from?: string | null;
                 period_to?: string | null;
                 limit?: number;
+                cursor?: string | null;
+                determination?: ("qualifies" | "does_not_qualify" | "indeterminate") | null;
             };
             header?: never;
             path?: never;
@@ -6541,7 +7263,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PatientOfInterestSummary"][];
+                    "application/json": components["schemas"]["PatientOfInterestPage"];
                 };
             };
             /** @description Validation Error */
@@ -6573,6 +7295,491 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PatientTimeline"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_api_v1_recurrence_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompareRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_definition_api_v1_recurrence_definition_versions__version_id__promote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoteDefinitionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MethodVersionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    definitions_api_v1_recurrence_definitions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefinitionView"][];
+                };
+            };
+        };
+    };
+    create_definition_api_v1_recurrence_definitions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinitionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefinitionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_definition_version_api_v1_recurrence_definitions__definition_id__versions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                definition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinitionVersionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefinitionVersionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    programme_api_v1_recurrence_programme_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeStatusView"];
+                };
+            };
+        };
+    };
+    transition_programme_method_api_v1_recurrence_programme_versions__version_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MethodTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MethodVersionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    runs_api_v1_recurrence_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_run_api_v1_recurrence_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_api_v1_recurrence_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicates_api_v1_recurrence_runs__run_id__duplicates_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                kind?: string[] | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicatePageView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patients_api_v1_recurrence_runs__run_id__patients_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                determination?: string[] | null;
+                sex?: string[] | null;
+                age_group?: string[] | null;
+                quality?: string[] | null;
+                facility?: string[] | null;
+                test_method?: string[] | null;
+                treatment?: string[] | null;
+                investigation_status?: string[] | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientPageView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patient_detail_api_v1_recurrence_runs__run_id__patients__patient_alias__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                patient_alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientDetailView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_patient_investigation_api_v1_recurrence_runs__run_id__patients__patient_alias__investigation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                patient_alias: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatientInvestigationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestigationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    projection_api_v1_recurrence_runs__run_id__projections__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                name: "summary" | "intervals" | "facilities" | "weekly" | "frequency" | "treatments" | "geography";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectionView"];
                 };
             };
             /** @description Validation Error */

@@ -977,7 +977,14 @@ class PatientOfInterestSummary(MarsModel):
     first_positive_on: date
     latest_positive_on: date
     positive_encounter_count: int
+    #: Compatibility field with one documented meaning; see the named intervals.
     interval_days: int | None
+    chain_interval_days: int | None = None
+    adjacent_interval_days: list[int] = Field(default_factory=list)
+    anchor_interval_days: list[int] = Field(default_factory=list)
+    determination: (
+        Literal["qualifies", "does_not_qualify", "indeterminate", "not_in_period"] | None
+    ) = None
     facility_id: uuid.UUID
     facility_name: str
     classification: Literal["positive_encounter", "repeat_positive_input"]
@@ -1075,20 +1082,72 @@ class LiveDashboardFacility(MarsModel):
 class LivePatientTest(MarsModel):
     occurred_on: date
     facility_name: str
-    result: Literal["positive", "negative", "unmapped"]
+    #: ``not_recorded`` (empty result) and ``unmapped`` (uninterpretable value)
+    #: are different facts, and neither is a negative.
+    result: Literal["positive", "negative", "unmapped", "not_recorded", "not_done"]
+
+
+class LiveRecurrenceDefinitionSummary(MarsModel):
+    """The repeat-positive definition a snapshot was evaluated under."""
+
+    name: str
+    minimum_gap_days: int
+    maximum_window_days: int
+    minimum_positive_encounters: int
+    same_day_policy: str
+    engine_version: str
+    #: True while no approved programme method is in force.
+    exploratory: bool
 
 
 class LiveRepeatPositivePatient(MarsModel):
-    """Pseudonymous evidence only; the source tracked-entity UID is excluded."""
+    """Pseudonymous evidence only; the source tracked-entity UID is excluded.
+
+    ``interval_days`` is kept for compatibility and has one documented meaning:
+    the qualifying chain interval, otherwise the latest adjacent interval, and
+    null with fewer than two eligible positives. New consumers read the named
+    interval fields instead.
+    """
 
     mars_patient_id: str
     first_positive_on: date
     latest_positive_on: date
     positive_encounter_count: int
-    interval_days: int
+    interval_days: int | None = None
+    chain_interval_days: int | None = None
+    adjacent_interval_days: list[int] = Field(default_factory=list)
+    anchor_interval_days: list[int] = Field(default_factory=list)
+    chain_length: int = 0
+    observed_positive_count: int | None = None
+    determination: (
+        Literal["qualifies", "does_not_qualify", "indeterminate", "not_in_period"] | None
+    ) = None
+    quality_flags: list[str] = Field(default_factory=list)
+    explanation: list[str] = Field(default_factory=list)
     facility_name: str
     cross_facility: bool
     tests: list[LivePatientTest] = Field(default_factory=list)
+
+
+class PatientOfInterestPage(MarsModel):
+    """One page of a complete, server-side evaluated stored patient list.
+
+    Every patient in scope is evaluated before a page is taken, so ``total``
+    counts every match and never depends on ``limit``. The cursors are opaque
+    and bound to the evaluated evidence: when the evidence changes, a stale
+    cursor is refused rather than silently moving patients between pages.
+    """
+
+    items: list[PatientOfInterestSummary]
+    total: int
+    limit: int
+    next_cursor: str | None = None
+    previous_cursor: str | None = None
+    period_start: date | None = None
+    period_end: date | None = None
+    coverage_status: Literal["complete", "partial"]
+    coverage_notes: list[str] = Field(default_factory=list)
+    definition: LiveRecurrenceDefinitionSummary
 
 
 class LiveCommodityAlerts(MarsModel):
@@ -1162,6 +1221,22 @@ class LiveDashboardSnapshot(MarsModel):
     aggregate_retrieval_complete: bool = False
     trend_retrieval_complete: bool = False
     tracker_retrieved_facility_count: int = 0
+    #: Separate coverage dimensions. ``retrieval_complete`` covers the whole
+    #: requested retrieval plan; laboratory recurrence evidence can be complete
+    #: while treatment context is partial, and the plan is then incomplete.
+    laboratory_retrieval_complete: bool | None = None
+    treatment_context_coverage: Literal["complete", "partial", "not_mapped"] | None = None
+    retrieval_plan: str | None = None
+    #: Added with the shared recurrence engine. Defaults keep snapshots stored
+    #: before this change valid; absence is not reported as a zero.
+    repeat_positive_definition: LiveRecurrenceDefinitionSummary | None = None
+    repeat_positive_coverage: Literal["complete", "partial"] | None = None
+    repeat_positive_coverage_notes: list[str] = Field(default_factory=list)
+    repeat_positive_denominator: int | None = None
+    repeat_positive_indeterminate: int | None = None
+    possible_duplicate_positive_groups: int | None = None
+    tracker_lookback_start: date | None = None
+    interpretation_limit: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1197,7 +1272,8 @@ class InvestigationQueueEntry(MarsModel):
     """One row in an action-centre queue."""
 
     id: uuid.UUID
-    signal_id: uuid.UUID
+    signal_id: uuid.UUID | None
+    patient_finding_id: uuid.UUID | None = None
     investigation_status: str
     priority: str
     geography_unit_id: uuid.UUID | None

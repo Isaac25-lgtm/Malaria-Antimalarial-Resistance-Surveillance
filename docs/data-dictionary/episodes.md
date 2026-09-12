@@ -99,3 +99,20 @@ approved.
 | --- | --- |
 | An approved `malaria_episode_rule` with `episode_window_days` | Any episode at all |
 | Recurrence interval bands | Prompt 15; deliberately absent here |
+
+## Episodes are not the positive-to-positive definition
+
+An episode groups a patient's encounters using the gap between *successive
+attendances*, context attendances included. The configurable repeat-positive
+definition ([configurable recurrence](../methods/configurable-recurrence.md))
+has three differences:
+
+- only confirmed positives count, and a negative visit cannot bridge a window;
+- the window is anchored at the first selected positive and bounded;
+- every positive is tried as an anchor.
+
+Both methods exist side by side. Episode builds, their governed
+`malaria_episode_rule` and their stored results are unchanged. A new recurrence
+method is registered under its own method code and engine version, and never by
+editing an episode rule, so a historical build is never quietly given a new
+meaning.

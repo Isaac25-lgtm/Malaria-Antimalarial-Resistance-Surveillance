@@ -144,6 +144,36 @@ def test_job_outlives_submission_but_logout_prevents_publication(store):
     )
 
 
+def test_canonical_evidence_is_retained_only_after_the_session_is_rechecked(store):
+    repository, _ = store
+    holder = InMemoryCredentialHolder()
+    holder.store("cookie", "officer", "never-persist-this")
+    retained: list[tuple[str, date, date, object]] = []
+    canonical = ({"encounters": "server-only"}, {"coverage": "complete"})
+
+    def runner(*args, checkpoint, evidence_sink):
+        checkpoint.check()
+        evidence_sink(canonical)
+        return snapshot()
+
+    service = DurableLiveDashboardService(
+        holder,
+        runner,
+        repository,
+        lambda raw: {"subject": "officer", "facilities": [{"id": "f1"}]},
+        dict,
+        evidence_sink=lambda scope, start, end, payload: retained.append(
+            (scope, start, end, payload)
+        ),
+    )
+    service.submit_job("cookie", period_start=START, period_end=END)
+    service.executor.shutdown(wait=True)
+
+    assert len(retained) == 1
+    assert retained[0][1:] == (START, END, canonical)
+    assert "server-only" not in str(repository.latest(retained[0][0], START, END))
+
+
 def test_worker_capacity_is_bounded_and_rejected_work_is_resumable(store):
     repository, _ = store
     holder = InMemoryCredentialHolder()
@@ -301,6 +331,28 @@ def _stall(factory, job_id, minutes=6):
         db.get(LiveSyncJob, job_id).updated_at = datetime.now(UTC) - timedelta(minutes=minutes)
 
 
+@pytest.mark.parametrize("status", ["synchronized", "partial"])
+def test_new_refresh_does_not_reuse_checkpoints_from_a_finished_retrieval(store, status):
+    repository, _ = store
+    failed, token = repository.submit("scope", START, END, 3)
+    repository.checkpoint(failed["id"], token, {"aggregate": ["old"], "tracker:f1": []})
+    repository.finish(failed["id"], token, None, "synchronization_failed")
+
+    recovered, token = repository.submit("scope", START, END, 3)
+    assert repository.checkpoint(recovered["id"], token)["aggregate"] == ["old"]
+    result = snapshot(status, "100")
+    result["retrieval_complete"] = True
+    repository.finish(recovered["id"], token, result)
+
+    fresh, token = repository.submit("scope", START, END, 3)
+    assert fresh["completed_steps"] == 0
+    assert repository.checkpoint(fresh["id"], token) == {}
+    repository.checkpoint(fresh["id"], token, {"aggregate": ["new"]})
+    repository.finish(fresh["id"], token, None, "synchronization_failed")
+    retried, token = repository.submit("scope", START, END, 3)
+    assert repository.checkpoint(retried["id"], token) == {"aggregate": ["new"]}
+
+
 def test_stalled_attempt_is_found_behind_a_newer_published_snapshot(store):
     """The ownership defect, at the level the integration suite caught it.
 
@@ -413,3 +465,86 @@ def test_replacement_does_not_reach_across_scope_or_period(store):
     # each stays its own window's business until that window is resubmitted.
     assert repository.checkpoint(foreign["id"], foreign_token) == {"foreign": []}
     assert repository.checkpoint(other_scope["id"], other_token) == {"other": []}
+
+
+def test_checkpoint_lineage_does_not_depend_on_clock_resolution(store, monkeypatch):
+    """Attempt order must be strict even when submissions share a timestamp.
+
+    Under a frozen clock every attempt used to get an identical created_at, so
+    ordering fell through to a random UUID and a fresh refresh recovered a
+    checkpoint from before a completed retrieval about five times in six.
+    """
+    from datetime import tzinfo
+
+    import mars.services.live_sync_store as module
+
+    fixed = datetime(2026, 9, 1, 12, tzinfo=UTC)
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz: tzinfo | None = None) -> datetime:
+            return fixed
+
+    monkeypatch.setattr(module, "datetime", Frozen)
+    repository, _ = store
+    for attempt in range(20):
+        scope = f"frozen-{attempt}"
+        failed, token = repository.submit(scope, START, END, 3)
+        repository.checkpoint(failed["id"], token, {"aggregate": ["old"]})
+        repository.finish(failed["id"], token, None, "synchronization_failed")
+        recovered, token = repository.submit(scope, START, END, 3)
+        assert repository.checkpoint(recovered["id"], token) == {"aggregate": ["old"]}
+        result = snapshot("synchronized", "100")
+        result["retrieval_complete"] = True
+        repository.finish(recovered["id"], token, result)
+        fresh, token = repository.submit(scope, START, END, 3)
+        assert repository.checkpoint(fresh["id"], token) == {}
+        repository.checkpoint(fresh["id"], token, {"aggregate": ["new"]})
+        repository.finish(fresh["id"], token, None, "synchronization_failed")
+        retried, token = repository.submit(scope, START, END, 3)
+        assert repository.checkpoint(retried["id"], token) == {"aggregate": ["new"]}
+
+
+def test_an_incomplete_plan_keeps_its_checkpoint_until_the_plan_completes(store):
+    """Audit defect E: a failed context stage must not discard resumable work.
+
+    A snapshot can be published while the three-stage retrieval plan is still
+    incomplete - laboratory evidence complete, a medicine stage failed. The
+    published snapshot is the last good result, but the plan is not settled,
+    so its checkpoint survives and the next attempt resumes from it. Only a
+    completed plan clears the checkpoint.
+    """
+    repository, _ = store
+    progress = {"aggregate": ["kept"], "tracker-plan/3:f1": {"laboratory": []}}
+    first, token = repository.submit("scope", START, END, 4)
+    repository.checkpoint(first["id"], token, progress)
+    partial = snapshot("partial", "25")
+    partial["retrieval_complete"] = False
+    repository.finish(first["id"], token, partial)
+    assert repository.latest("scope", START, END)["value"] == "25"
+    assert repository.read_job("scope", START, END)["status"] == "partial"
+
+    retry, token = repository.submit("scope", START, END, 4)
+    assert repository.checkpoint(retry["id"], token) == progress
+    settled = snapshot("partial", "30")
+    settled["retrieval_complete"] = True
+    repository.finish(retry["id"], token, settled)
+
+    fresh, token = repository.submit("scope", START, END, 4)
+    assert fresh["completed_steps"] == 0
+    assert repository.checkpoint(fresh["id"], token) == {}
+
+
+def test_a_failed_attempt_after_an_incomplete_plan_still_resumes_it(store):
+    repository, _ = store
+    first, token = repository.submit("scope", START, END, 4)
+    repository.checkpoint(first["id"], token, {"aggregate": ["kept"]})
+    partial = snapshot("partial", "25")
+    partial["retrieval_complete"] = False
+    repository.finish(first["id"], token, partial)
+    second, token = repository.submit("scope", START, END, 4)
+    repository.finish(second["id"], token, None, "synchronization_failed")
+    third, token = repository.submit("scope", START, END, 4)
+    assert repository.checkpoint(third["id"], token) == {"aggregate": ["kept"]}
+    # The last good snapshot is still the published one.
+    assert repository.latest("scope", START, END)["value"] == "25"

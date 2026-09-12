@@ -1,9 +1,11 @@
 """Read-only live Pader dashboard assembly from approved DHIS2 metadata.
 
 This module is application wiring, not a surveillance rule engine. It retrieves
-reported HMIS values and the minimum Tracker event envelope needed to count
-repeat-positive patients. It never requests tracked-entity attributes and never
-returns a DHIS2 tracked-entity UID to the browser.
+reported HMIS values and the laboratory, medical-visit and medicine Tracker
+stages over the reporting period plus the recurrence lookback, and hands them to
+the shared canonical adapter and recurrence engine
+(``docs/methods/configurable-recurrence.md``). It never requests tracked-entity
+attributes and never returns a DHIS2 tracked-entity UID to the browser.
 """
 
 from __future__ import annotations
@@ -17,16 +19,72 @@ import time
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 from mars.core.settings import Settings
+from mars.domain.enums import IntegrationErrorCategory
+from mars.domain.longitudinal import (
+    EXPLORATORY_PRESET,
+    INTERPRETATION_LIMIT,
+    UNRESOLVED_OUTCOMES,
+    AdaptedEvidence,
+    EvidenceCoverage,
+    LabOutcome,
+)
 from mars.integrations.dhis2.client import Dhis2Client, Dhis2Config, Dhis2Error
 from mars.integrations.dhis2.tracker.client import BoundedTrackerEventClient, TrackerClientConfig
+from mars.integrations.dhis2.tracker.clinical_adapter import (
+    LAB,
+    MEDICINE,
+    VISIT,
+    LiveClinicalMapping,
+    adapt_live_events,
+    live_namespace,
+)
 from mars.integrations.ports import RemoteDataValue, RemoteEvent, RemoteScope, iterate_pages
 from mars.services.durable_live_dashboard import SyncCheckpoint
-from mars.services.live_dashboard import LiveDashboardConfigurationError
+from mars.services.live_dashboard import LiveDashboardConfigurationError, LiveDashboardError
+from mars.services.live_recurrence import evaluate_live_recurrence
+
+#: The snapshot's repeat-positive question. An exploratory preset, labelled as
+#: such in every snapshot, until a programme method is approved and in force.
+SNAPSHOT_DEFINITION = EXPLORATORY_PRESET
+
+#: Versioned so a checkpoint written under an older retrieval plan - the former
+#: laboratory-only one included - can never satisfy this one. Plan 3 carries each
+#: event's recorded date precision, which plan-2 checkpoints lack.
+TRACKER_PLAN_VERSION = "tracker-plan/3"
+
+#: Matches the Tracker client's bounded request window.
+TRACKER_WINDOW_DAYS = 62
+
+#: How many times a capped window may be halved before it is a genuine failure.
+MAX_WINDOW_SPLITS = 6
+
+
+def _is_fatal(error: BaseException) -> bool:
+    """Whether an error must end the whole retrieval rather than degrade it.
+
+    Cancellation and a lost MARS session (``LiveDashboardError``), a lost job
+    lease (``job_lease_lost``) and an upstream authentication failure all mean
+    that no further request is authorised. Only a bounded upstream availability
+    failure may become a partial snapshot.
+    """
+    if isinstance(error, Dhis2Error):
+        return error.category is IntegrationErrorCategory.AUTHENTICATION
+    if isinstance(error, LiveDashboardError):
+        return True
+    return isinstance(error, RuntimeError) and str(error) == "job_lease_lost"
+
+
+def _guarded(checkpoint: SyncCheckpoint | None, operation: Callable[[], Any]) -> Any:
+    """Check the job and session immediately before one remote request."""
+    if checkpoint:
+        checkpoint.check()
+    return operation()
 
 
 def build_live_dashboard_runner(
@@ -42,6 +100,7 @@ def build_live_dashboard_runner(
         period_end: date,
         *,
         checkpoint: SyncCheckpoint | None = None,
+        evidence_sink: Callable[[tuple[AdaptedEvidence, EvidenceCoverage]], None] | None = None,
     ) -> dict[str, Any]:
         display_key = settings.patient_display_key
         if display_key is None:
@@ -92,7 +151,10 @@ def build_live_dashboard_runner(
                     aggregate_values = [RemoteDataValue(**item) for item in cached]
                 else:
                     for page in iterate_pages(
-                        lambda cursor: client.fetch_data_values(aggregate_scope, cursor),
+                        lambda cursor: _guarded(
+                            checkpoint,
+                            lambda: client.fetch_data_values(aggregate_scope, cursor),
+                        ),
                         max_pages=10,
                     ):
                         if checkpoint:
@@ -106,6 +168,10 @@ def build_live_dashboard_runner(
                         )
                 aggregate_complete = True
         except Exception as error:
+            if _is_fatal(error):
+                # Cancellation, session loss and lost job authority are not a
+                # source outage: no further request may follow.
+                raise
             aggregate_values = []
             warnings.append(f"Aggregate HMIS request unavailable ({type(error).__name__})")
 
@@ -132,7 +198,9 @@ def build_live_dashboard_runner(
                     trend_values = [RemoteDataValue(**item) for item in cached]
                 else:
                     for page in iterate_pages(
-                        lambda cursor: client.fetch_data_values(trend_scope, cursor),
+                        lambda cursor: _guarded(
+                            checkpoint, lambda: client.fetch_data_values(trend_scope, cursor)
+                        ),
                         max_pages=10,
                     ):
                         if checkpoint:
@@ -144,13 +212,21 @@ def build_live_dashboard_runner(
                         checkpoint.save("trend", [_aggregate_checkpoint(v) for v in trend_values])
                 trend_complete = True
         except Exception as error:
+            if _is_fatal(error):
+                raise
             trend_values = []
             warnings.append(f"Historical HMIS request unavailable ({type(error).__name__})")
 
-        tracker = mapping["tracker"]
-        lab_stage = tracker["stages"]["laboratory_tests"]
-        tracker_events: list[RemoteEvent] = []
+        clinical = LiveClinicalMapping.from_config(mapping)
+        extent_start = period_start - timedelta(days=SNAPSHOT_DEFINITION.maximum_window_days)
+        stages: dict[str, str] = {LAB: str(clinical.lab_stage)}
+        if clinical.retrieves_context:
+            stages[VISIT] = str(clinical.visit_stage)
+            stages[MEDICINE] = str(clinical.medicine_stage)
+        plan = _tracker_plan_key(clinical, stages, extent_start, period_end)
+        events_by_stage: dict[str, list[RemoteEvent]] = {stage: [] for stage in stages}
         tracker_failed: list[str] = []
+        context_failed: list[str] = []
         tracker_config = TrackerClientConfig(
             base_url=settings.dhis2_login_base_url,
             username=username,
@@ -158,47 +234,70 @@ def build_live_dashboard_runner(
             timeout_seconds=max(settings.dhis2_login_timeout_seconds, 30.0),
             page_size=100,
             max_records=10_000,
-            max_window_days=62,
+            max_window_days=TRACKER_WINDOW_DAYS,
             max_response_bytes=8 * 1024 * 1024,
         )
+        programme = str(mapping["programme_uid"])
         with BoundedTrackerEventClient(
             tracker_config,
             authorized_org_unit_uids=frozenset(facility_uids),
         ) as client:
             for facility_uid in facility_uids:
-                cached = checkpoint.get(f"tracker:{facility_uid}") if checkpoint else None
+                key = f"{plan}:{facility_uid}"
+                cached = checkpoint.get(key) if checkpoint else None
                 if cached is not None:
-                    tracker_events.extend(_event_from_checkpoint(item) for item in cached)
-                    continue
-                scope = RemoteScope(
-                    organisation_unit_remote_ids=(facility_uid,),
-                    period_start=period_start,
-                    period_end=period_end,
-                    extra={
-                        "programme_uid": mapping["programme_uid"],
-                        "program_stage_uid": lab_stage,
-                    },
-                )
-                try:
-                    facility_events: list[RemoteEvent] = []
-                    for page in iterate_pages(
-                        lambda cursor, scope=scope: _retry_tracker_read(
-                            lambda: client.fetch_events(scope, cursor), checkpoint
-                        ),
-                        max_pages=100,
-                    ):
-                        if checkpoint:
-                            checkpoint.check()
-                        facility_events.extend(
-                            event for event in page.records if isinstance(event, RemoteEvent)
+                    for stage, items in cached.items():
+                        events_by_stage.setdefault(stage, []).extend(
+                            _event_from_checkpoint(item) for item in items
                         )
+                    continue
+                fetched: dict[str, list[RemoteEvent]] = {}
+                try:
+                    fetched[LAB] = _fetch_stage(
+                        client,
+                        facility_uid,
+                        programme,
+                        stages[LAB],
+                        extent_start,
+                        period_end,
+                        checkpoint,
+                    )
+                except Exception as error:
+                    if _is_fatal(error):
+                        # A lost session, cancelled job or lost lease stops
+                        # every further read; it is never a facility failure.
+                        raise
+                    tracker_failed.append(facility_uid)
+                    continue
+                context_complete = True
+                for stage in (VISIT, MEDICINE):
+                    if stage not in stages:
+                        continue
+                    try:
+                        fetched[stage] = _fetch_stage(
+                            client,
+                            facility_uid,
+                            programme,
+                            stages[stage],
+                            extent_start,
+                            period_end,
+                            checkpoint,
+                        )
+                    except Exception as error:
+                        if _is_fatal(error):
+                            raise
+                        context_complete = False
+                if context_complete:
                     if checkpoint:
                         checkpoint.save(
-                            f"tracker:{facility_uid}", [asdict(e) for e in facility_events]
+                            key,
+                            {stage: [asdict(e) for e in items] for stage, items in fetched.items()},
                         )
-                    tracker_events.extend(facility_events)
-                except Exception:
-                    tracker_failed.append(facility_uid)
+                else:
+                    # Not checkpointed, so a retry fetches this facility again.
+                    context_failed.append(facility_uid)
+                for stage, items in fetched.items():
+                    events_by_stage[stage].extend(items)
         if tracker_failed:
             warnings.append(
                 f"Tracker events were unavailable for {len(tracker_failed)} of "
@@ -208,7 +307,7 @@ def build_live_dashboard_runner(
         result = _assemble(
             mapping,
             aggregate_values,
-            tracker_events,
+            events_by_stage[LAB],
             facility_names,
             period_start,
             period_end,
@@ -216,12 +315,38 @@ def build_live_dashboard_runner(
             warnings,
             tracker_failed,
             trend_values,
+            visit_events=events_by_stage.get(VISIT, []),
+            medicine_events=events_by_stage.get(MEDICINE, []),
+            tracker_extent_start=extent_start,
+            context_retrieved=clinical.retrieves_context,
+            context_failed=context_failed,
+            namespace=live_namespace(
+                urlsplit(settings.dhis2_login_base_url).hostname or "unknown-host",
+                clinical.programme,
+            ),
+            retain=evidence_sink,
+        )
+        # Laboratory recurrence evidence, clinical context and the aggregate
+        # sources are separate coverage dimensions. The retrieval *plan* is
+        # complete only when every requested stage of every facility arrived;
+        # until then the durable store keeps resumable progress.
+        context_status = (
+            "not_mapped"
+            if not clinical.retrieves_context
+            else "partial"
+            if tracker_failed or context_failed
+            else "complete"
         )
         result.update(
-            retrieval_complete=aggregate_complete and trend_complete and not tracker_failed,
+            retrieval_complete=(
+                aggregate_complete and trend_complete and not tracker_failed and not context_failed
+            ),
             aggregate_retrieval_complete=aggregate_complete,
             trend_retrieval_complete=trend_complete,
+            laboratory_retrieval_complete=not tracker_failed,
+            treatment_context_coverage=context_status,
             tracker_retrieved_facility_count=len(facility_uids) - len(tracker_failed),
+            retrieval_plan=TRACKER_PLAN_VERSION,
         )
         return result
 
@@ -246,6 +371,108 @@ def _retry_tracker_read(operation: Callable[[], Any], checkpoint: SyncCheckpoint
                 raise
             time.sleep(0.5 * (2**attempt))
     raise RuntimeError("Tracker retry bound exhausted")
+
+
+def _tracker_plan_key(
+    clinical: LiveClinicalMapping, stages: Mapping[str, str], start: date, end: date
+) -> str:
+    stage_part = "+".join(f"{name}={uid}" for name, uid in sorted(stages.items()))
+    return (
+        f"{TRACKER_PLAN_VERSION}:{clinical.version}:{stage_part}:"
+        f"{start.isoformat()}:{end.isoformat()}"
+    )
+
+
+def _date_chunks(start: date, end: date, max_days: int) -> list[tuple[date, date]]:
+    """Bounded windows covering ``start``..``end`` inclusive.
+
+    Consecutive windows share one day, so an inclusive-or-exclusive boundary in
+    the source cannot drop it; that day's events arrive twice and
+    source-revision classification keeps one.
+    """
+    chunks: list[tuple[date, date]] = []
+    cursor = start
+    while True:
+        chunk_end = min(end, cursor + timedelta(days=max_days - 1))
+        chunks.append((cursor, chunk_end))
+        if chunk_end >= end:
+            return chunks
+        cursor = chunk_end if max_days > 1 else chunk_end + timedelta(days=1)
+
+
+def _fetch_window(
+    client: BoundedTrackerEventClient,
+    facility: str,
+    programme: str,
+    stage: str,
+    start: date,
+    end: date,
+    checkpoint: SyncCheckpoint | None,
+    depth: int = 0,
+) -> list[RemoteEvent]:
+    """One stage, one facility, one bounded window.
+
+    A capped response is halved and retried rather than accepted as complete.
+    A single day that still exceeds the cap is a genuine failure.
+    """
+    scope = RemoteScope(
+        organisation_unit_remote_ids=(facility,),
+        period_start=start,
+        period_end=end,
+        extra={"programme_uid": programme, "program_stage_uid": stage},
+    )
+    try:
+        events: list[RemoteEvent] = []
+        for page in iterate_pages(
+            lambda cursor: _retry_tracker_read(
+                lambda: client.fetch_events(scope, cursor), checkpoint
+            ),
+            max_pages=100,
+        ):
+            if checkpoint:
+                checkpoint.check()
+            events.extend(event for event in page.records if isinstance(event, RemoteEvent))
+        return events
+    except Dhis2Error as error:
+        if (
+            error.category is IntegrationErrorCategory.RESPONSE_TOO_LARGE
+            and start < end
+            and depth < MAX_WINDOW_SPLITS
+        ):
+            middle = start + timedelta(days=(end - start).days // 2)
+            return [
+                *_fetch_window(
+                    client, facility, programme, stage, start, middle, checkpoint, depth + 1
+                ),
+                *_fetch_window(
+                    client,
+                    facility,
+                    programme,
+                    stage,
+                    middle + timedelta(days=1),
+                    end,
+                    checkpoint,
+                    depth + 1,
+                ),
+            ]
+        raise
+
+
+def _fetch_stage(
+    client: BoundedTrackerEventClient,
+    facility: str,
+    programme: str,
+    stage: str,
+    start: date,
+    end: date,
+    checkpoint: SyncCheckpoint | None,
+) -> list[RemoteEvent]:
+    events: list[RemoteEvent] = []
+    for chunk_start, chunk_end in _date_chunks(start, end, TRACKER_WINDOW_DAYS):
+        events.extend(
+            _fetch_window(client, facility, programme, stage, chunk_start, chunk_end, checkpoint)
+        )
+    return events
 
 
 def _event_from_checkpoint(value: Mapping[str, Any]) -> RemoteEvent:
@@ -326,6 +553,14 @@ def _assemble(
     warnings: list[str],
     tracker_failed: Sequence[str],
     trend_values: Sequence[RemoteDataValue] = (),
+    *,
+    visit_events: Sequence[RemoteEvent] = (),
+    medicine_events: Sequence[RemoteEvent] = (),
+    tracker_extent_start: date | None = None,
+    context_retrieved: bool = False,
+    context_failed: Sequence[str] = (),
+    namespace: str = "dhis2:live",
+    retain: Callable[[tuple[AdaptedEvidence, EvidenceCoverage]], None] | None = None,
 ) -> dict[str, Any]:
     elements: Mapping[str, str] = mapping["aggregate_data_elements"]
     by_element: dict[str, int] = defaultdict(int)
@@ -365,102 +600,69 @@ def _assemble(
     tested = total("tested_for_malaria")
     confirmed = total("confirmed_malaria")
 
-    tracker_elements: Mapping[str, str] = mapping["tracker"]["data_elements"]
-    tracker_options: Mapping[str, Any] = mapping["tracker"]["options"]
-    test_uid = tracker_elements["laboratory_test_type"]
-    result_uid = tracker_elements["laboratory_result"]
-    malaria_tests = {_normalise_option(item) for item in tracker_options["test_types_malaria"]}
-    positive_results = {
-        _normalise_option(item) for item in tracker_options["positive_malaria_results"]
+    clinical = LiveClinicalMapping.from_config(mapping)
+    extent_start = tracker_extent_start or period_start
+    lab_events = list(events)
+    evidence = adapt_live_events(
+        lab_events,
+        clinical,
+        namespace=namespace,
+        visit_events=visit_events,
+        medicine_events=medicine_events,
+        context_retrieved=context_retrieved,
+        context_missing_facilities=frozenset(context_failed),
+    )
+    raw_events = [*lab_events, *visit_events, *medicine_events]
+    tracker_reporting_facilities = {
+        event.organisation_unit_remote_id
+        for event in raw_events
+        if period_start <= event.occurred_at.date() <= period_end
     }
-    positives_by_person: dict[str, list[RemoteEvent]] = defaultdict(list)
-    tests_by_person: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    tracker_reporting_facilities: set[str] = set()
-    latest_tracker_update: datetime | None = None
-    malaria_lab_events = 0
-    positive_malaria_events = 0
-    unmapped_malaria_results = 0
-    # A page retry can repeat a source event. Count its latest revision once.
-    unique_events: dict[str, RemoteEvent] = {}
-    for event in events:
-        previous = unique_events.get(event.remote_id)
-        if previous is None or (event.updated_at or event.occurred_at) >= (
-            previous.updated_at or previous.occurred_at
-        ):
-            unique_events[event.remote_id] = event
-    for event in unique_events.values():
-        tracker_reporting_facilities.add(event.organisation_unit_remote_id)
-        if event.updated_at and (
-            latest_tracker_update is None or event.updated_at > latest_tracker_update
-        ):
-            latest_tracker_update = event.updated_at
-        if _normalise_option(event.data_values.get(test_uid)) not in malaria_tests:
-            continue
-        malaria_lab_events += 1
-        result_value = _normalise_option(event.data_values.get(result_uid))
-        positive = result_value in positive_results
-        negative = result_value == _normalise_option(
-            tracker_options.get("negative_result", "Negative")
-        )
-        if not positive and not negative:
-            unmapped_malaria_results += 1
-        tests_by_person[event.person_remote_id].append(
-            {
-                "occurred_on": event.occurred_at.date().isoformat(),
-                "facility_name": facility_names.get(
-                    event.organisation_unit_remote_id, "Authorised facility"
-                ),
-                "result": "positive" if positive else "negative" if negative else "unmapped",
-            }
-        )
-        if positive:
-            positive_malaria_events += 1
-            positives_by_person[event.person_remote_id].append(event)
-
+    latest_tracker_update: datetime | None = max(
+        (event.updated_at for event in raw_events if event.updated_at is not None), default=None
+    )
+    # Each test is counted by its own date, never by the date of its visit.
+    period_tests = [
+        test
+        for encounter in evidence.encounters
+        for test in encounter.tests
+        if (test_day := test.observed_on or encounter.encounter_date) is not None
+        and period_start <= test_day <= period_end
+    ]
+    malaria_lab_events = len(period_tests)
+    positive_malaria_events = sum(1 for t in period_tests if t.outcome is LabOutcome.POSITIVE)
+    unmapped_malaria_results = sum(1 for t in period_tests if t.outcome in UNRESOLVED_OUTCOMES)
     if unmapped_malaria_results:
         warnings = [
             *warnings,
             f"{unmapped_malaria_results} malaria-test events have missing or unmapped "
             "results; recurrence counts may be incomplete",
         ]
-    patient_rows: list[dict[str, Any]] = []
-    positive_patient_rows: list[dict[str, Any]] = []
-    repeat_positive_count = 0
-    for person_uid, positive_events in positives_by_person.items():
-        # RDT and microscopy on one visit are two tests, not a recurrence.
-        parent_uid = mapping["tracker"].get("parent_event_data_element_uid")
-        visits: dict[str, RemoteEvent] = {}
-        for event in positive_events:
-            parent = event.data_values.get(parent_uid) if parent_uid else None
-            visit_key = parent or f"{event.organisation_unit_remote_id}:{event.occurred_at.date()}"
-            visits.setdefault(visit_key, event)
-        positive_events = sorted(
-            visits.values(), key=lambda event: (event.occurred_at, event.remote_id)
-        )
-        if len(positive_events) >= 2:
-            repeat_positive_count += 1
-        first = positive_events[0]
-        latest = positive_events[-1]
-        row = {
-            "mars_patient_id": _patient_alias(display_key, person_uid),
-            "first_positive_on": first.occurred_at.date().isoformat(),
-            "latest_positive_on": latest.occurred_at.date().isoformat(),
-            "positive_encounter_count": len(positive_events),
-            "interval_days": (latest.occurred_at.date() - first.occurred_at.date()).days,
-            "facility_name": facility_names.get(
-                latest.organisation_unit_remote_id, "Authorised facility"
-            ),
-            "cross_facility": len({event.organisation_unit_remote_id for event in positive_events})
-            > 1,
-            "tests": sorted(tests_by_person[person_uid], key=lambda test: test["occurred_on"]),
-        }
-        positive_patient_rows.append(row)
-        if len(positive_events) >= 2:
-            patient_rows.append(row)
-    patient_rows.sort(
-        key=lambda row: (row["latest_positive_on"], row["positive_encounter_count"]),
-        reverse=True,
+    if context_failed:
+        warnings = [
+            *warnings,
+            f"Visit or medicine records were unavailable for {len(context_failed)} authorised "
+            "facilities; treatment evidence there is reported as not returned",
+        ]
+
+    recurrence = evaluate_live_recurrence(
+        evidence,
+        definition=SNAPSHOT_DEFINITION,
+        period_start=period_start,
+        period_end=period_end,
+        extent_start=extent_start,
+        facility_names=facility_names,
+        tracker_failed=tracker_failed,
+        coverage_stages=frozenset({LAB, VISIT, MEDICINE} if context_retrieved else {LAB}),
+        display_key=display_key,
+        alias=_patient_alias,
     )
+    if retain is not None:
+        retain((evidence, recurrence.coverage))
+    positive_patient_rows = recurrence.positive_rows
+    patient_rows = recurrence.repeat_rows
+    indeterminate = recurrence.indeterminate
+    duplicate_positive_groups = recurrence.duplicate_positive_groups
 
     primary_uids = {
         elements[name]
@@ -543,7 +745,7 @@ def _assemble(
         "tracker_event_count": len(events),
         "malaria_lab_event_count": malaria_lab_events,
         "positive_malaria_event_count": positive_malaria_events,
-        "unique_positive_patient_count": len(positives_by_person),
+        "unique_positive_patient_count": len(positive_patient_rows),
         "invalid_aggregate_value_count": invalid_value_count,
         "kpis": [
             _kpi("ENC_ATTENDANCE_TOTAL", "Patient encounters", encounters, "HMIS 105:01"),
@@ -555,8 +757,11 @@ def _assemble(
             _kpi(
                 "ENC_REPEAT_POSITIVE_INPUT",
                 "Repeat-positive patients",
-                repeat_positive_count
-                if has_tracker and not tracker_failed and not unmapped_malaria_results
+                len(patient_rows)
+                if has_tracker
+                and not tracker_failed
+                and recurrence.coverage_status == "complete"
+                and not indeterminate
                 else None,
                 "eRegisters Tracker",
             ),
@@ -575,10 +780,26 @@ def _assemble(
         "facilities": facilities_payload,
         "trend": trend,
         "operational_alerts": operational_alerts,
-        "repeat_positive_patients": patient_rows[:25],
-        "positive_patients": sorted(
-            positive_patient_rows, key=lambda row: row["latest_positive_on"], reverse=True
-        ),
+        # Every qualifying patient, not a truncated sample: the overview reads
+        # this list's length, and a cap here silently understated the count.
+        "repeat_positive_patients": patient_rows,
+        "positive_patients": positive_patient_rows,
+        "repeat_positive_definition": {
+            "name": SNAPSHOT_DEFINITION.name,
+            "minimum_gap_days": SNAPSHOT_DEFINITION.minimum_gap_days,
+            "maximum_window_days": SNAPSHOT_DEFINITION.maximum_window_days,
+            "minimum_positive_encounters": SNAPSHOT_DEFINITION.minimum_positive_encounters,
+            "same_day_policy": SNAPSHOT_DEFINITION.same_day_policy.value,
+            "engine_version": SNAPSHOT_DEFINITION.engine_version,
+            "exploratory": True,
+        },
+        "repeat_positive_coverage": recurrence.coverage_status,
+        "repeat_positive_coverage_notes": list(recurrence.coverage_notes),
+        "repeat_positive_denominator": recurrence.denominator,
+        "repeat_positive_indeterminate": indeterminate,
+        "possible_duplicate_positive_groups": duplicate_positive_groups,
+        "tracker_lookback_start": extent_start.isoformat(),
+        "interpretation_limit": INTERPRETATION_LIMIT,
         "warnings": warnings,
         "synthetic_data_used": False,
     }

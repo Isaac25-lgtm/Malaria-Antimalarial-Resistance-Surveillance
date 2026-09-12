@@ -60,14 +60,29 @@ from mars.domain.enums import (
 
 
 class Investigation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """One programme response to one signal."""
+    """One programme response to one signal or to one patient recurrence finding.
+
+    Exactly one source: a surveillance signal, or a patient finding from a
+    recurrence analysis run. A patient-origin investigation carries no
+    epidemiological priority - it enters explicit manual triage - because one
+    exploratory finding is not a graded signal.
+    """
 
     __tablename__ = "investigation"
     __table_args__ = (
         # One live investigation per signal. A second would split the timeline
         # and leave two people each believing the other had it.
         UniqueConstraint("signal_id", name="uq_investigation_signal"),
+        # ...and one per patient finding, for the same reason.
+        UniqueConstraint("patient_finding_id", name="uq_investigation_patient_finding"),
         UniqueConstraint("idempotency_key", name="uq_investigation_idempotency_key"),
+        CheckConstraint(
+            "(signal_id IS NULL) <> (patient_finding_id IS NULL)",
+            name="exactly_one_source",
+        ),
+        # A patient-origin investigation carries SignalPriority.UNCLASSIFIED, the
+        # supported "no priority assigned" value: one exploratory finding is not
+        # a graded signal, and triage decides what it deserves.
         CheckConstraint("period_end >= period_start", name="period_ordered"),
         CheckConstraint("record_version >= 1", name="record_version_is_positive"),
         # A terminal state carries the reason it reached it. An investigation
@@ -100,13 +115,24 @@ class Investigation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         },
     )
 
-    #: The signal under investigation. RESTRICT because an investigation
-    #: outlives interest in the signal that started it, and deleting the
-    #: analysis would orphan the decision.
-    signal_id: Mapped[uuid.UUID] = mapped_column(
+    #: The signal under investigation, for a signal-origin investigation.
+    #: RESTRICT because an investigation outlives interest in the signal that
+    #: started it, and deleting the analysis would orphan the decision.
+    signal_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(f"{ANALYTICS}.surveillance_signal.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
+    )
+    #: The patient recurrence finding under review, for a patient-origin
+    #: investigation. Exactly one of this and ``signal_id`` is set.
+    patient_finding_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(
+            f"{ANALYTICS}.patient_recurrence_finding.id",
+            ondelete="RESTRICT",
+            name="fk_investigation_patient_finding",
+        ),
+        nullable=True,
     )
 
     #: ``investigation_status``, not ``status``: every lifecycle in this schema

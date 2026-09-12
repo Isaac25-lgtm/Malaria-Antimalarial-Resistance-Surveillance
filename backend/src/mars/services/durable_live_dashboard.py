@@ -12,6 +12,7 @@ from datetime import date
 from threading import BoundedSemaphore, Event
 from typing import Any
 
+from mars.core.logging import get_logger
 from mars.security.live_session import InMemoryCredentialHolder
 from mars.services.live_dashboard import (
     LiveDashboardConfigurationError,
@@ -19,6 +20,12 @@ from mars.services.live_dashboard import (
     LiveDashboardService,
 )
 from mars.services.live_sync_store import LiveSyncStore
+
+logger = get_logger(__name__)
+
+#: Receives ``(scope_key, period_start, period_end, retained)`` once a job's
+#: canonical evidence may be retained for recurrence analysis.
+EvidenceSink = Callable[[str, date, date, Any], None]
 
 
 class SyncCheckpoint:
@@ -58,12 +65,16 @@ class DurableLiveDashboardService(LiveDashboardService):
         *,
         max_workers: int = 2,
         max_pending_jobs: int = 4,
+        evidence_sink: EvidenceSink | None = None,
     ) -> None:
         super().__init__(credentials, runner)
         if max_workers < 1 or max_pending_jobs < max_workers:
             raise ValueError("max_pending_jobs must be at least max_workers")
         self._job_runner = runner
         self.store, self.context, self.validate = store, context, validate
+        #: Retains canonical evidence for recurrence analysis. Optional: without
+        #: it the runner is called exactly as before.
+        self.evidence_sink = evidence_sink
         self.executor = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="mars-live-sync"
         )
@@ -80,6 +91,19 @@ class DurableLiveDashboardService(LiveDashboardService):
             ).encode()
         ).hexdigest()
         return key, context
+
+    def recurrence_scope(self, raw_id: str) -> tuple[str, list[dict[str, Any]]] | None:
+        """The caller's *current* live scope key and facilities, or ``None``.
+
+        A recurrence run over live evidence is bound to this key; when the
+        session ends or the scope changes, the key changes and the run is no
+        longer readable.
+        """
+        try:
+            scope, context = self._scope(raw_id)
+        except LiveDashboardError:
+            return None
+        return scope, [dict(item) for item in context.get("facilities", [])]
 
     def submit_job(self, raw_id: str, *, period_start: date, period_end: date) -> dict[str, Any]:
         if self._closing.is_set():
@@ -146,13 +170,15 @@ class DurableLiveDashboardService(LiveDashboardService):
             except LiveDashboardError:
                 return False
 
+        retained: list[Any] = []
+        extra: dict[str, Any] = {"evidence_sink": retained.append} if self.evidence_sink else {}
         try:
             checkpoint = SyncCheckpoint(self.store, job_id, token, active)
             checkpoint.check()
             result = self._credentials.invoke(
                 raw_id,
                 lambda username, password: self._job_runner(
-                    username, password, facilities, start, end, checkpoint=checkpoint
+                    username, password, facilities, start, end, checkpoint=checkpoint, **extra
                 ),
             )
             checkpoint.check()
@@ -163,6 +189,15 @@ class DurableLiveDashboardService(LiveDashboardService):
             ) != str(end):
                 raise LiveDashboardError("invalid_source_period")
             snapshot = self.validate(result)
+            if self.evidence_sink is not None and retained:
+                # Retained only after the lease and session were re-checked, so
+                # a fenced or signed-out worker cannot keep evidence for a scope
+                # it no longer owns. A retention failure never blocks the
+                # snapshot; a run over live evidence then says it is missing.
+                try:
+                    self.evidence_sink(scope, start, end, retained[-1])
+                except Exception as error:
+                    logger.warning("live_evidence_not_retained", error=type(error).__name__)
             self.store.finish(job_id, token, snapshot)
         except Exception as error:
             code = (
@@ -228,6 +263,7 @@ class DurableLiveDashboardService(LiveDashboardService):
 
 __all__ = [
     "DurableLiveDashboardService",
+    "EvidenceSink",
     "LiveDashboardBusyError",
     "SyncCheckpoint",
 ]

@@ -140,9 +140,11 @@ export function ActionCentreView() {
                     {rows.map((row) => (
                       <tr key={row.id}>
                         <th scope="row">
-                          <Link to={`/signals/${row.signal_id}`}>
-                            {row.id.slice(0, 8)}
-                          </Link>
+                          {row.signal_id ? (
+                            <Link to={`/signals/${row.signal_id}`}>{row.id.slice(0, 8)}</Link>
+                          ) : (
+                            <span title="Patient finding review">{row.id.slice(0, 8)}</span>
+                          )}
                         </th>
                         <td>{row.investigation_status.replace(/_/g, " ")}</td>
                         <td>

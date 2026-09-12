@@ -1,0 +1,296 @@
+.recurrence-workspace,
+.recurrence-results {
+  display: grid;
+  gap: 1rem;
+}
+
+.recurrence-definition__heading,
+.recurrence-results__provenance {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.recurrence-definition__heading p,
+.recurrence-definition__note,
+.recurrence-caption,
+.recurrence-results__provenance span,
+.recurrence-intro span {
+  margin: 0.25rem 0 0;
+  color: var(--ink-secondary);
+}
+
+.recurrence-definition__body {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(9rem, 1fr));
+  gap: 0.85rem;
+  align-items: end;
+}
+
+.recurrence-definition label,
+.recurrence-comparison__controls label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--ink-secondary);
+  font-size: 0.85rem;
+}
+
+.recurrence-definition input,
+.recurrence-definition select,
+.recurrence-comparison__controls select {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-primary);
+  color: var(--ink-primary);
+}
+
+.recurrence-definition__check {
+  display: flex !important;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.recurrence-definition__check input {
+  min-height: auto;
+}
+
+.recurrence-definition__apply {
+  min-height: 2.75rem;
+}
+
+.recurrence-definition__note {
+  grid-column: 1 / -1;
+}
+
+.recurrence-definition__advanced {
+  grid-column: 1 / -1;
+  padding: 0.75rem;
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-sm);
+}
+
+.recurrence-definition__advanced summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.recurrence-definition__advanced > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.recurrence-definition__advanced select[multiple] {
+  min-height: 7rem;
+}
+
+.recurrence-definition__advanced p {
+  margin-bottom: 0;
+  color: var(--ink-secondary);
+}
+
+.recurrence-definition__save {
+  display: flex;
+  grid-column: span 2;
+  gap: 0.5rem;
+}
+
+.recurrence-definition__save input {
+  flex: 1;
+}
+
+.recurrence-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px dashed var(--line-default);
+  border-radius: var(--radius-sm);
+}
+
+.recurrence-results__provenance {
+  padding: 0.85rem 1rem;
+  border-left: 0.25rem solid var(--accent-primary);
+  background: var(--surface-primary);
+}
+
+.recurrence-results__provenance > div {
+  display: grid;
+}
+
+.recurrence-kpis,
+.recurrence-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.recurrence-kpis article,
+.recurrence-facts > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem;
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-primary);
+}
+
+.recurrence-kpis span,
+.recurrence-facts span {
+  color: var(--ink-secondary);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.recurrence-kpis strong {
+  font-size: 1.65rem;
+}
+
+.recurrence-grid--charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.recurrence-bars {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recurrence-bars li {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) 3fr 3rem;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.recurrence-bars__track {
+  height: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.recurrence-bars__track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-primary);
+}
+
+.recurrence-timeline {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recurrence-timeline > li {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.recurrence-timeline__date {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+}
+
+.recurrence-timeline p {
+  margin: 0.3rem 0;
+  color: var(--ink-secondary);
+}
+
+.recurrence-comparison__controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.recurrence-comparison__tables,
+.recurrence-duplicates {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.recurrence-comparison__table h4 {
+  margin-bottom: 0.5rem;
+}
+
+.recurrence-duplicates details {
+  padding: 0.75rem;
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-sm);
+}
+
+.recurrence-duplicates summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.recurrence-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.recurrence-patient-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(10rem, 1fr));
+  gap: 0.65rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.recurrence-patient-filters label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--ink-secondary);
+  font-size: 0.8rem;
+}
+
+.recurrence-patient-filters input,
+.recurrence-patient-filters select {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-primary);
+  color: var(--ink-primary);
+}
+
+@media (max-width: 1050px) {
+  .recurrence-definition__body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recurrence-definition__advanced > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recurrence-patient-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recurrence-kpis, .recurrence-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .recurrence-definition__body,
+  .recurrence-grid--charts,
+  .recurrence-kpis,
+  .recurrence-facts { grid-template-columns: 1fr; }
+  .recurrence-definition__advanced > div,
+  .recurrence-duplicates summary { grid-template-columns: 1fr; }
+  .recurrence-patient-filters { grid-template-columns: 1fr; }
+  .recurrence-timeline > li { grid-template-columns: 1fr; }
+}

@@ -25,7 +25,7 @@ said what it said on the day it ran.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import Select, func, or_, select
@@ -47,6 +47,7 @@ from mars.domain.investigation import (
     InvestigationEvidenceRequest,
     InvestigationFeedback,
 )
+from mars.domain.recurrence_analysis import PatientRecurrenceFinding
 from mars.domain.signal import SurveillanceSignal
 from mars.security.principal import AuthenticatedPrincipal
 from mars.services.analytics_query import AnalyticsQueryService
@@ -326,6 +327,85 @@ class InvestigationService:
         )
         return investigation
 
+    def open_patient_finding(
+        self,
+        principal: AuthenticatedPrincipal,
+        *,
+        patient_finding_id: uuid.UUID,
+        period_start: date,
+        period_end: date,
+        geography_unit_id: uuid.UUID | None,
+        facility_id: uuid.UUID | None,
+        idempotency_key: str | None = None,
+    ) -> Investigation:
+        """Open manual triage work for an already-authorised patient finding.
+
+        The recurrence service first verifies that the caller may currently
+        read the finding. Locking it serialises concurrent opens without
+        manufacturing an epidemiological priority.
+        """
+        if idempotency_key:
+            existing = self._session.execute(
+                self._scoped(
+                    principal,
+                    select(Investigation).where(Investigation.idempotency_key == idempotency_key),
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                if existing.patient_finding_id != patient_finding_id:
+                    raise ConflictError(
+                        "That idempotency key was already used for a different finding."
+                    )
+                return existing
+
+        finding = self._session.execute(
+            select(PatientRecurrenceFinding)
+            .where(PatientRecurrenceFinding.id == patient_finding_id)
+            .with_for_update()
+        ).scalar_one_or_none()
+        if finding is None:
+            raise NotFoundError("patient finding not found or outside your assigned scope")
+        existing = self._session.execute(
+            self._scoped(
+                principal,
+                select(Investigation).where(Investigation.patient_finding_id == patient_finding_id),
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing
+
+        investigation = Investigation(
+            signal_id=None,
+            patient_finding_id=patient_finding_id,
+            investigation_status=InvestigationStatus.NEW,
+            priority=SignalPriority.UNCLASSIFIED,
+            geography_unit_id=geography_unit_id,
+            facility_id=facility_id,
+            period_start=period_start,
+            period_end=period_end,
+            opened_at=datetime.now(UTC),
+            record_version=1,
+            idempotency_key=idempotency_key,
+        )
+        self._session.add(investigation)
+        self._session.flush()
+        self._append(
+            investigation,
+            principal,
+            kind=InvestigationEventKind.OPENED,
+            payload={
+                "patient_finding_id": str(patient_finding_id),
+                "source": "patient_finding",
+            },
+        )
+        self._record_audit(
+            principal,
+            investigation,
+            AuditAction.INVESTIGATION_UPDATED,
+            {"action": "opened_patient_review"},
+        )
+        return investigation
+
     def transition(
         self,
         principal: AuthenticatedPrincipal,
@@ -531,6 +611,7 @@ class InvestigationService:
         return {
             "id": investigation.id,
             "signal_id": investigation.signal_id,
+            "patient_finding_id": investigation.patient_finding_id,
             "investigation_status": investigation.investigation_status.value,
             "priority": investigation.priority.value,
             "geography_unit_id": investigation.geography_unit_id,
@@ -621,6 +702,8 @@ class InvestigationService:
         evidence for a later governed method review; it does not move a
         threshold.
         """
+        if investigation.signal_id is None:
+            return
         signal = self._session.execute(
             select(SurveillanceSignal).where(SurveillanceSignal.id == investigation.signal_id)
         ).scalar_one_or_none()

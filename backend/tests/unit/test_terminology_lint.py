@@ -118,6 +118,16 @@ class TestFallbackWithoutGit:
 
         assert [f.path.name for f in lint.scan(tmp_path)] == ["notes.md"]
 
+    def test_a_subtree_inside_a_git_repository_is_walked(
+        self, lint: ModuleType, repository: Path
+    ) -> None:
+        """A nested scan root must not consume repository-root-relative Git paths."""
+        subtree = repository / "extracted-source"
+        subtree.mkdir()
+        (subtree / "notes.md").write_text(PROHIBITED_LINE, encoding="utf-8")
+
+        assert [f.path.name for f in lint.scan(subtree)] == ["notes.md"]
+
 
 class TestTheRealRepository:
     def test_the_repository_itself_is_clean(self, lint: ModuleType) -> None:

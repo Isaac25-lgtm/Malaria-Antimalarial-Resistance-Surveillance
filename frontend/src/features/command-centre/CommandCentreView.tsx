@@ -22,6 +22,7 @@ import { PatientTable } from "../patients/PatientSurveillanceView";
 import { useLiveDashboard } from "../operations/useLiveDashboard";
 import { useReportingPeriod } from "../operations/useReportingPeriod";
 import { LiveSnapshotStatus } from "../operations/LiveSnapshotStatus";
+import { days } from "../recurrence/recurrenceLabels";
 import "./command-centre.css";
 
 type Snapshot = Schemas["OverviewSnapshot"];
@@ -90,7 +91,14 @@ export function CommandCentreView() {
   });
 
   const patients = useQuery({
-    queryKey: ["patients", "overview", range],
+    // Scoped to the caller, so a cached page never answers another user or scope.
+    queryKey: [
+      "patients",
+      "overview",
+      user?.username ?? "anonymous",
+      JSON.stringify(user?.geography_scopes ?? []),
+      range,
+    ],
     queryFn: () =>
       api.patientsOfInterest({
         period_from: range.period_start,
@@ -367,7 +375,7 @@ export function CommandCentreView() {
           enabled={liveMode && can("case:view_pseudonymous_evidence")}
           loading={patients.isPending}
           unavailable={patients.error instanceof ApiError && patients.error.isUnavailable}
-          patients={patients.data ?? []}
+          patients={patients.data?.items ?? []}
           livePatients={liveDashboard.data?.repeat_positive_patients ?? []}
         />
       </div>
@@ -422,7 +430,7 @@ function PatientOverviewPanel({
                 <th>Patient ID</th>
                 <th>First positive</th>
                 <th>Repeat positive</th>
-                <th>Interval</th>
+                <th>Qualifying interval</th>
                 <th>Facility</th>
               </tr>
             </thead>
@@ -432,7 +440,7 @@ function PatientOverviewPanel({
                   <td className="mono">{patient.mars_patient_id}</td>
                   <td>{patient.first_positive_on}</td>
                   <td>{patient.latest_positive_on}</td>
-                  <td>{patient.interval_days} days</td>
+                  <td>{days(patient.chain_interval_days)}</td>
                   <td>{patient.facility_name}</td>
                 </tr>
               ))}

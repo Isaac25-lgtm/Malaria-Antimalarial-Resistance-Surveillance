@@ -158,6 +158,18 @@ function Start-ProjectPostgresIfNeeded {
     # even when pg_ctl succeeded. Test the server itself, not that nullable
     # wrapper property, before declaring database startup a failure.
     if (-not (Test-ProjectPostgresReady -PgIsReady $PgIsReady)) {
+        $StarterErrorPath = Join-Path $PostgresRoot 'pg_ctl.stderr.log'
+        if (Test-Path -LiteralPath $StarterErrorPath) {
+            $StarterError = Get-Content -LiteralPath $StarterErrorPath -Raw
+            if ($StarterError -match 'could not create restricted token') {
+                throw (
+                    "Windows prevented PostgreSQL from creating its process token. " +
+                    "Run scripts\start-mars-live.ps1 from your normal Windows PowerShell " +
+                    "session outside the agent sandbox. This is a process-start failure; " +
+                    "changing database passwords or initializing new patient keys will not fix it."
+                )
+            }
+        }
         throw (
             "Project PostgreSQL failed to start on ${DbHost}:${DbPort}. " +
             "Inspect .runtime\postgres\pg_ctl.stderr.log and postgres.stderr.log."

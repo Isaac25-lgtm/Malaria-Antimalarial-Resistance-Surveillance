@@ -166,7 +166,10 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   signal?: AbortSignal;
-  query?: Record<string, string | number | boolean | undefined | null>;
+  query?: Record<
+    string,
+    string | number | boolean | readonly string[] | undefined | null
+  >;
 }
 
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
@@ -174,7 +177,9 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
   if (!query) return url;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null && value !== "") {
+    if (Array.isArray(value)) {
+      for (const item of value as string[]) params.append(key, item);
+    } else if (value !== undefined && value !== null && value !== "") {
       params.set(key, String(value));
     }
   }
@@ -442,17 +447,89 @@ export const api = {
   commodityAlerts: (query: { period_from?: string; period_to?: string; limit?: number }) =>
     request<Schemas["AnalyticalRecordSummary"][]>("/analytics/commodity-alerts", { query }),
 
+  // One page of a complete, server-evaluated list. `total` never depends on
+  // `limit`; the opaque cursor is refused (409) if the evidence changed.
   patientsOfInterest: (query: {
     period_from?: string;
     period_to?: string;
     limit?: number;
-  }) => request<Schemas["PatientOfInterestSummary"][]>("/patients", { query }),
+    cursor?: string;
+    determination?: "qualifies" | "does_not_qualify" | "indeterminate";
+  }) => request<Schemas["PatientOfInterestPage"]>("/patients", { query }),
 
   livePatientEvidence: (alias: string, range?: { period_start: string; period_end: string }) => request<Schemas["LiveRepeatPositivePatient"]>(`/live/patients/${encodeURIComponent(alias)}`, { query: range }),
 
   patientTimeline: (patientReferenceId: string) =>
     request<Schemas["PatientTimeline"]>(
       `/patients/${encodeURIComponent(patientReferenceId)}`,
+    ),
+
+  recurrenceProgramme: () =>
+    request<Schemas["ProgrammeStatusView"]>("/recurrence/programme"),
+
+  recurrenceDefinitions: () =>
+    request<Schemas["DefinitionView"][]>("/recurrence/definitions"),
+
+  createRecurrenceDefinition: (body: Schemas["DefinitionCreate"]) =>
+    request<Schemas["DefinitionView"]>("/recurrence/definitions", {
+      method: "POST",
+      body,
+    }),
+
+  submitRecurrenceRun: (body: Schemas["RunCreate"]) =>
+    request<Schemas["RunView"]>("/recurrence/runs", { method: "POST", body }),
+
+  recurrenceRun: (runId: string) =>
+    request<Schemas["RunView"]>(`/recurrence/runs/${encodeURIComponent(runId)}`),
+
+  recurrenceRuns: (limit = 20) =>
+    request<Schemas["RunView"][]>("/recurrence/runs", { query: { limit } }),
+
+  recurrenceProjection: (runId: string, name: string) =>
+    request<Schemas["ProjectionView"]>(
+      `/recurrence/runs/${encodeURIComponent(runId)}/projections/${encodeURIComponent(name)}`,
+    ),
+
+  recurrencePatients: (
+    runId: string,
+    query: {
+      limit?: number;
+      cursor?: string;
+      determination?: string[];
+      sex?: string[];
+      age_group?: string[];
+      quality?: string[];
+      facility?: string[];
+      test_method?: string[];
+      treatment?: string[];
+      investigation_status?: string[];
+    },
+  ) => request<Schemas["PatientPageView"]>(
+    `/recurrence/runs/${encodeURIComponent(runId)}/patients`,
+    { query },
+  ),
+
+  recurrencePatient: (runId: string, alias: string) =>
+    request<Schemas["PatientDetailView"]>(
+      `/recurrence/runs/${encodeURIComponent(runId)}/patients/${encodeURIComponent(alias)}`,
+    ),
+
+  recurrenceDuplicates: (runId: string, cursor?: string) =>
+    request<Schemas["DuplicatePageView"]>(
+      `/recurrence/runs/${encodeURIComponent(runId)}/duplicates`,
+      { query: { limit: 25, cursor } },
+    ),
+
+  compareRecurrenceRuns: (run_a: string, run_b: string) =>
+    request<Record<string, unknown>>("/recurrence/compare", {
+      method: "POST",
+      body: { run_a, run_b },
+    }),
+
+  openRecurrenceInvestigation: (runId: string, alias: string, idempotencyKey: string) =>
+    request<Schemas["InvestigationDetail"]>(
+      `/recurrence/runs/${encodeURIComponent(runId)}/patients/${encodeURIComponent(alias)}/investigation`,
+      { method: "POST", body: { idempotency_key: idempotencyKey } },
     ),
 
   signals: (query: {

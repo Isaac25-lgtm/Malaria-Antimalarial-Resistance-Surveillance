@@ -281,6 +281,21 @@ class Settings(BaseSettings):
     dhis2_tracker_preview_max_records: int = Field(default=200, ge=1, le=500)
     dhis2_tracker_max_response_bytes: int = Field(default=4 * 1024 * 1024, ge=1024)
 
+    # -- Configurable recurrence ----------------------------------------
+    #: Resource ceilings for one recurrence analysis, enforced through
+    #: ``RecurrenceCeilings.check`` before any work is queued. They bound
+    #: computation; they are not clinical thresholds.
+    recurrence_max_window_days: int = Field(default=366, ge=1, le=1_096)
+    recurrence_max_positive_encounters: int = Field(default=12, ge=2, le=50)
+    recurrence_max_period_days: int = Field(default=366, ge=1, le=1_096)
+    recurrence_max_filter_values: int = Field(default=500, ge=1, le=5_000)
+    #: How far before a live reporting period the Tracker retrieval reaches, so
+    #: an Apply with a longer maximum window can reuse the retained dataset
+    #: instead of refetching. Never shorter than the snapshot preset's window.
+    recurrence_live_lookback_days: int = Field(default=90, ge=28, le=366)
+    #: Concurrent background analysis runs in one API process.
+    recurrence_run_workers: int = Field(default=2, ge=1, le=8)
+
     @field_validator("database_url")
     @classmethod
     def _require_psycopg_driver(cls, value: str) -> str:

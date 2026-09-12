@@ -260,7 +260,7 @@ def _remote_event(raw: dict[str, Any]) -> RemoteEvent:
             "DHIS2 Tracker returned an event without required references or timing",
         )
     try:
-        occurred_at = _timestamp(raw["occurredAt"])
+        occurred_at, occurred_precision = _occurred(raw["occurredAt"])
         updated_at = _timestamp(raw["updatedAt"]) if raw.get("updatedAt") else None
     except ValueError as exc:
         raise Dhis2Error(
@@ -289,7 +289,24 @@ def _remote_event(raw: dict[str, Any]) -> RemoteEvent:
         updated_at=updated_at,
         status=str(raw["status"]) if raw.get("status") is not None else None,
         data_values=values,
+        occurred_precision=occurred_precision,
     )
+
+
+def _occurred(value: str) -> tuple[datetime, str]:
+    """The event moment, and how precisely DHIS2 recorded it.
+
+    The moment is normalised exactly as :func:`_timestamp` does. A value with
+    an offset is an instant (``timestamp``). A naive midnight is a date entered
+    without a time (``date``); any other naive value is a wall-clock time with
+    no offset (``local_time``). Recording which it was lets the canonical
+    adapter keep the date as entered instead of shifting it through a timezone.
+    """
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is not None:
+        return parsed, "timestamp"
+    midnight = parsed.hour == parsed.minute == parsed.second == parsed.microsecond == 0
+    return parsed.replace(tzinfo=UTC), "date" if midnight else "local_time"
 
 
 def _timestamp(value: str) -> datetime:

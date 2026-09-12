@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from mars.core.context import set_actor_id, set_session_id
 from mars.core.errors import (
+    FeatureDisabledError,
     PermissionDeniedError,
     SensitivityScopeDeniedError,
     UnauthenticatedError,
@@ -38,6 +39,10 @@ from mars.services.live_auth import LiveAuthService
 from mars.services.organisation_service import FacilityService, OrganisationService
 from mars.services.overview import OverviewService
 from mars.services.patient_surveillance import PatientSurveillanceService
+from mars.services.recurrence_analysis_service import (
+    RecurrenceAnalysisService,
+    RecurrenceRunExecutor,
+)
 from mars.services.report_service import ReportService
 from mars.services.signal_query import SignalQueryService
 from mars.services.surveillance_summary import SurveillanceSummaryService
@@ -134,6 +139,36 @@ def get_integration_status_service(
     return IntegrationStatusService(session, settings)
 
 
+def get_recurrence_analysis_service(
+    request: Request,
+    session: SessionDep,
+    settings: SettingsDep,
+    audit: AuditDep,
+) -> RecurrenceAnalysisService:
+    cipher = getattr(request.app.state, "recurrence_cipher", None)
+    if cipher is None or settings.patient_display_key is None:
+        raise FeatureDisabledError(
+            "Recurrence analysis requires the protected identity-encryption and "
+            "patient-display keys. Start MARS with the supported launcher."
+        )
+    return RecurrenceAnalysisService(
+        session,
+        settings,
+        audit,
+        cipher=cipher,
+        display_key=settings.patient_display_key.get_secret_value().encode("utf-8"),
+    )
+
+
+def get_recurrence_run_executor(request: Request) -> RecurrenceRunExecutor:
+    executor = getattr(request.app.state, "recurrence_run_executor", None)
+    if not isinstance(executor, RecurrenceRunExecutor):
+        raise FeatureDisabledError(
+            "The recurrence analysis worker is not configured in this deployment."
+        )
+    return executor
+
+
 def get_configuration_service(session: SessionDep, audit: AuditDep) -> ConfigurationService:
     return ConfigurationService(session, audit)
 
@@ -162,6 +197,10 @@ PatientSurveillanceDep = Annotated[
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
 InvestigationServiceDep = Annotated[InvestigationService, Depends(get_investigation_service)]
 IntegrationStatusDep = Annotated[IntegrationStatusService, Depends(get_integration_status_service)]
+RecurrenceAnalysisDep = Annotated[
+    RecurrenceAnalysisService, Depends(get_recurrence_analysis_service)
+]
+RecurrenceExecutorDep = Annotated[RecurrenceRunExecutor, Depends(get_recurrence_run_executor)]
 
 
 # -- Authentication -------------------------------------------------------

@@ -77,21 +77,34 @@ ROLE_PASSWORDS = {
 }
 
 
-def _run_composed(connection: Connection, template: str, *arguments: str) -> None:
-    """Execute DDL composed by PostgreSQL's own ``format``.
+def _quote_identifier(connection: Connection, name: str) -> str:
+    """Quote a role name using the server's own rules."""
+    quoted = connection.scalar(text("SELECT quote_ident(:name)"), {"name": name})
+    assert quoted is not None
+    return str(quoted)
 
-    Role names and passwords cannot be bind parameters in DDL, and pasting them
-    into an f-string is how quoting bugs become injection. ``format`` with
-    ``%I`` and ``%L`` makes the server do the quoting, while the values still
-    travel as ordinary bound parameters.
+
+def _quote_literal(connection: Connection, value: str) -> str:
+    """Quote a password using the server's own rules."""
+    quoted = connection.scalar(text("SELECT quote_literal(CAST(:value AS text))"), {"value": value})
+    assert quoted is not None
+    return str(quoted)
+
+
+def _run_ddl(connection: Connection, statement: str) -> None:
+    """Run already-quoted DDL without SQLAlchemy re-parsing it.
+
+    ``exec_driver_sql`` skips bind-parameter parsing, so a quoted literal
+    containing ``:`` cannot be mistaken for a placeholder. Role names and
+    passwords cannot be bind parameters in DDL at all, and pasting them into an
+    f-string unquoted is how quoting bugs become injection -- so the server
+    quotes them first via ``quote_ident``/``quote_literal``.
+
+    ``format()`` with ``%I``/``%L`` would read better, but its signature is
+    ``VARIADIC "any"`` and PostgreSQL cannot infer the type of an untyped bind
+    parameter passed to it.
     """
-    placeholders = ", ".join(f":a{index}" for index in range(len(arguments)))
-    statement = connection.scalar(
-        text(f"SELECT format(:template, {placeholders})"),
-        {"template": template, **{f"a{i}": value for i, value in enumerate(arguments)}},
-    )
-    assert statement is not None
-    connection.execute(text(statement))
+    connection.exec_driver_sql(statement)
 
 
 def _provision_login_role(connection: Connection, login: str, group: str) -> None:
@@ -105,14 +118,17 @@ def _provision_login_role(connection: Connection, login: str, group: str) -> Non
         text("SELECT 1 FROM pg_roles WHERE rolname = :login"), {"login": login}
     )
     verb = "ALTER" if exists else "CREATE"
-    _run_composed(connection, verb + " ROLE %I LOGIN PASSWORD %L", login, ROLE_PASSWORDS[login])
-    _run_composed(connection, "GRANT %I TO %I", group, login)
+    role = _quote_identifier(connection, login)
+    secret = _quote_literal(connection, ROLE_PASSWORDS[login])
+    _run_ddl(connection, f"{verb} ROLE {role} LOGIN PASSWORD {secret}")
+    _run_ddl(connection, f"GRANT {_quote_identifier(connection, group)} TO {role}")
 
 
 def _drop_login_role(connection: Connection, login: str) -> None:
     """Remove a role this module created, and anything it came to own."""
-    _run_composed(connection, "DROP OWNED BY %I", login)
-    _run_composed(connection, "DROP ROLE IF EXISTS %I", login)
+    role = _quote_identifier(connection, login)
+    _run_ddl(connection, f"DROP OWNED BY {role}")
+    _run_ddl(connection, f"DROP ROLE IF EXISTS {role}")
 
 
 @pytest.fixture(scope="module")

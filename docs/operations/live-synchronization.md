@@ -98,3 +98,64 @@ The regression suite exercises snapshot recovery, scope and period isolation,
 authenticated encryption, duplicate submission, stale-lease recovery, publication
 fencing, logout during retrieval, snapshot preservation, and browser navigation.
 Unit tests use controlled fixtures; no test needs Ministry patient data.
+
+## Tracker retrieval plan `tracker-plan/3`
+
+Each authorised facility is read for three Tracker stages: laboratory, medical
+visit and medicines. The visit and medicine stages are only read when the
+approved mapping names them and the parent-event element. The date extent is
+the reporting period plus the recurrence lookback: `period_start` minus the
+snapshot definition's `maximum_window_days`. With the exploratory preset
+(28 days) a calendar month needs at most 59 days, which is one bounded request
+window.
+
+- **Bounded windows.** Requests never exceed the client's 62-day window. Longer
+  extents are split into windows that overlap by one day. The duplicated day's
+  events are collapsed by source-revision classification, so an
+  inclusive-or-exclusive source boundary cannot drop a day.
+- **Capped windows are split, not truncated.** A `RESPONSE_TOO_LARGE` window is
+  halved and retried, up to six times. A single day that still exceeds the cap
+  fails the facility, which makes coverage partial.
+- **Versioned checkpoints.** A facility's three stages are checkpointed together
+  under a key built from:
+  - the plan version;
+  - the mapping version;
+  - the stage identifiers;
+  - the date extent.
+
+  A checkpoint written under the former laboratory-only plan (`tracker:<facility>`)
+  is never read. An old plan cannot satisfy a new one.
+- **Context failure is not "no treatment".** When the laboratory stage succeeds
+  but a visit or medicine stage fails:
+  - the facility is not checkpointed, so a retry reads it again;
+  - the snapshot carries a warning and is marked `partial`;
+  - treatment evidence at that facility is reported as `not_returned`.
+- **A lost session stops reading.** Cancellation and session loss end every
+  further Tracker request immediately. They are never recorded as a facility
+  failure while the loop moves on to the next facility.
+- **Attempt order is strict.** Checkpoint lineage depends on attempt order, so a
+  new attempt's `created_at` is placed strictly after every earlier attempt for
+  the same scope and window, under the submission lock. Two submissions within
+  one clock tick previously fell through to a random UUID order. That
+  occasionally recovered a checkpoint from before a completed retrieval; the
+  repair report records the reproduction and the fix.
+
+### Recurrence fields in the snapshot
+
+The snapshot evaluates repeat positives with the shared engine and reports these
+fields:
+
+| Field | Meaning |
+| --- | --- |
+| `repeat_positive_definition` | The definition used, marked `exploratory` while no approved programme method is in force |
+| `repeat_positive_coverage` | `complete` only when retrieval succeeded for every facility and reached the lookback start |
+| `repeat_positive_coverage_notes` | Why coverage is partial, in plain words |
+| `repeat_positive_denominator` | Distinct linked patients with an eligible positive in the period |
+| `repeat_positive_indeterminate` | Patients whose absence of a chain is not a reliable no |
+| `possible_duplicate_positive_groups` | Same-day groups that involve a positive; the records stay visible |
+| `tracker_lookback_start` | Where the retrieved evidence begins |
+
+The repeat-positive KPI is published only when coverage is complete and no
+denominator patient is indeterminate. Otherwise it is `unavailable`, never zero.
+`repeat_positive_patients` lists every qualifying patient. The former 25-row cap
+made the overview's count understate any larger total.

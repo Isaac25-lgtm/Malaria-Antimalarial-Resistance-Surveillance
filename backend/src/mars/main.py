@@ -82,9 +82,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     dashboard = getattr(app.state, "live_dashboard", None)
     if dashboard is not None and hasattr(dashboard, "close"):
         dashboard.close()
+    recurrence_executor = getattr(app.state, "recurrence_run_executor", None)
+    if recurrence_executor is not None:
+        recurrence_executor.close()
     live_sync_engine = getattr(app.state, "live_sync_engine", None)
     if live_sync_engine is not None:
         live_sync_engine.dispose()
+    recurrence_engine = getattr(app.state, "recurrence_engine", None)
+    if recurrence_engine is not None and recurrence_engine is not live_sync_engine:
+        recurrence_engine.dispose()
     logger.info("api_stopping")
 
 
@@ -150,8 +156,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.identity_encryption_key is not None:
             from mars.api.v1.schemas import LiveDashboardSnapshot
             from mars.db.session import create_session_factory
-            from mars.services.durable_live_dashboard import DurableLiveDashboardService
+            from mars.services.clinical_evidence_store import ClinicalEvidenceStore, EvidenceCipher
+            from mars.services.durable_live_dashboard import (
+                DurableLiveDashboardService,
+                EvidenceSink,
+            )
             from mars.services.live_sync_store import LiveSyncStore
+            from mars.services.recurrence_analysis_service import RecurrenceRunExecutor
 
             project_root = Path(__file__).resolve().parents[3]
             mapping_path = project_root / "config" / "dhis2" / "pader-live-v1.json"
@@ -164,6 +175,44 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 ) from error
             live_sync_engine, live_sync_sessions = create_session_factory(settings)
             app.state.live_sync_engine = live_sync_engine
+            recurrence_cipher = EvidenceCipher(
+                settings.identity_encryption_key.get_secret_value(),
+                settings.identity_encryption_key_version,
+            )
+            app.state.recurrence_cipher = recurrence_cipher
+            evidence_sink: EvidenceSink | None = None
+
+            if settings.patient_display_key is not None:
+                display_key = settings.patient_display_key.get_secret_value().encode("utf-8")
+                app.state.recurrence_run_executor = RecurrenceRunExecutor(
+                    live_sync_sessions,
+                    settings,
+                    recurrence_cipher,
+                    display_key,
+                    max_workers=settings.recurrence_run_workers,
+                )
+
+                def retain_live_evidence(
+                    scope_key: str,
+                    _period_start: Any,
+                    _period_end: Any,
+                    retained: Any,
+                ) -> None:
+                    evidence, coverage = retained
+                    with live_sync_sessions() as session, session.begin():
+                        ClinicalEvidenceStore(session, recurrence_cipher).publish(
+                            encounters=evidence.encounters,
+                            coverage=coverage,
+                            source_kind="live_tracker",
+                            namespace=evidence.namespace,
+                            scope_key=scope_key,
+                            facility_refs=sorted(coverage.requested_facility_refs),
+                            mapping_version=evidence.mapping_version,
+                            created_by="live-sync",
+                            unlinked_medications=evidence.unlinked_medications,
+                        )
+
+                evidence_sink = retain_live_evidence
 
             def live_context(raw_id: str) -> dict[str, Any] | None:
                 live_session = app.state.live_session_store.get(raw_id)
@@ -194,9 +243,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 ),
                 live_context,
                 lambda result: LiveDashboardSnapshot.model_validate(result).model_dump(mode="json"),
+                evidence_sink=evidence_sink,
             )
         app.state.live_geography_lookup_factory = lambda session: SqlAlchemyGeographyLookup(
             session, Dhis2Crosswalk(session)
+        )
+
+    # Stored-source recurrence analysis is also available in OIDC/demo
+    # deployments when the protected keys are configured. Live mode already
+    # owns a background session factory above, so do not create a second pool.
+    if (
+        settings.identity_encryption_key is not None
+        and settings.patient_display_key is not None
+        and not hasattr(app.state, "recurrence_run_executor")
+    ):
+        from mars.db.session import create_session_factory
+        from mars.services.clinical_evidence_store import EvidenceCipher
+        from mars.services.recurrence_analysis_service import RecurrenceRunExecutor
+
+        recurrence_engine, recurrence_sessions = create_session_factory(settings)
+        recurrence_cipher = EvidenceCipher(
+            settings.identity_encryption_key.get_secret_value(),
+            settings.identity_encryption_key_version,
+        )
+        app.state.recurrence_engine = recurrence_engine
+        app.state.recurrence_cipher = recurrence_cipher
+        app.state.recurrence_run_executor = RecurrenceRunExecutor(
+            recurrence_sessions,
+            settings,
+            recurrence_cipher,
+            settings.patient_display_key.get_secret_value().encode("utf-8"),
+            max_workers=settings.recurrence_run_workers,
         )
 
     # Dependencies resolve settings through get_settings(), which reads the

@@ -95,6 +95,13 @@ class RemoteEvent:
     updated_at: datetime | None
     status: str | None
     data_values: dict[str, str | None]
+    #: How precisely the source recorded ``occurred_at``: ``"date"`` (a date
+    #: without a time), ``"local_time"`` (a wall-clock time with no offset) or
+    #: ``"timestamp"`` (an instant with an offset). A client that normalises a
+    #: naive value to UTC records which it was here, so the date as entered is
+    #: never shifted by a timezone conversion. A producer that cannot tell says
+    #: ``"date"``, which keeps the date as recorded.
+    occurred_precision: str = "date"
 
 
 @dataclass(frozen=True, slots=True)

@@ -93,3 +93,38 @@ report a confident zero for every facility.
 | --- | --- |
 | An approved `malaria_episode_rule` | Any episode, therefore any recurrence figure |
 | An approved `recurrence_interval_bands_days` | The interval-band breakdown |
+
+## Two recurrence methods, and which one a figure came from
+
+The measures above are produced by the **episode-based recurrence engine**
+(`analytics/recurrence.py`, engine `1.0.0`). It counts positives *within an
+episode*, and an episode groups encounters by the gap between successive
+attendances. Its stored results keep that meaning and their method version, and
+nothing reinterprets them.
+
+Since 11 September 2026 the live snapshot and the patient-surveillance views use
+a **different method**: the shared positive-to-positive engine
+(`analytics/positive_recurrence.py`, engine `positive-recurrence/1.1.0`),
+specified in [configurable recurrence](../methods/configurable-recurrence.md).
+Its unit is a confirmed positive encounter, and its window is anchored at a
+positive and bounded by a maximum. Duplicates are classified before counting.
+Live and stored evidence reach it through adapters that share one canonical
+contract, so the two paths cannot disagree about a patient.
+
+The two methods answer different questions and are not interchangeable. A
+figure always states which one produced it:
+
+- live snapshot rows carry `repeat_positive_definition` and `determination`;
+- episode-based rows carry their `method_version`.
+
+### The old `interval_days`
+
+`interval_days` used to mean first-to-latest positive on the live path and
+latest-to-previous on the stored path. It now has **one** documented meaning on
+both: the qualifying chain interval when the patient qualifies, otherwise the
+latest adjacent interval, and null with fewer than two eligible positives. New
+consumers read the named fields instead:
+
+- `chain_interval_days`;
+- `adjacent_interval_days`;
+- `anchor_interval_days`.
