@@ -100,9 +100,63 @@ mars-demo-dataset register --out-dir demo/
 # 4. Load, through the ordinary ingestion path.
 for f in demo/batches/*.jsonl; do mars-import-encounters load --file "$f"; done
 
+# 5. Optional: put the demonstration configuration pack in force, then run
+#    every engine over the loaded months.
+mars-demo-dataset configure
+mars-demo-dataset compute
+
 # When finished.
 mars-demo-dataset purge --confirm
 ```
+
+Encounter loading, `compute` and patient-level views need
+`MARS_IDENTITY_LINKAGE_KEY`, `MARS_IDENTITY_ENCRYPTION_KEY` and
+`MARS_PATIENT_DISPLAY_KEY` set to local values; `configure` and `compute` also
+need `MARS_DEMO_MODE_ENABLED=true`.
+
+## The demonstration configuration pack
+
+MARS ships no analytical parameters, so a freshly loaded demo shows every
+measure as *not configured*. That is the right opening for a presentation (see
+the walkthrough), but nothing on screen fills in until someone approves a
+method.
+
+`mars-demo-dataset configure` approves one version of each indicator, method
+and setting the engines need, from `backend/src/mars/demo/configuration_pack.py`:
+
+- Every value is **illustrative**, chosen so the planted storylines can surface
+  in synthetic data. None is a recommendation for real data.
+- Every version is approved by `demo-pack:synthetic-not-programme-approved`, so
+  the approver field says what it is wherever it is shown.
+- It refuses unless `MARS_DEMO_MODE_ENABLED=true` in a non-protected
+  environment.
+- It never replaces a version approved by anyone else, and re-running it
+  changes nothing.
+
+`mars-demo-dataset compute` then runs the engines month by month over the span
+of loaded encounters, in dependency order: indicators (facility, district and
+national), testing and treatment measures, episodes, recurrence, baselines,
+anomalies, spatial aggregation and hotspots, signals, explanations. Each step
+reports on its own; a step that refuses is shown as such and the rest continue.
+
+Baselines need several months of history (three under the pack), so generate
+at least six months — the default period does.
+
+What the pack does **not** yet cover:
+
+- Commodity alerts and reporting completeness come from HMIS aggregate returns,
+  which the generator does not produce, so those panels stay empty.
+- The completeness-artefact storyline is not yet handled: a facility that sends
+  nothing is counted as zero encounters, so its return reads as a rise.
+- Repeat-positive signals are rare: episodes are built one calendar month at a
+  time, so a return in the following month is not linked, and zero-count
+  interval bands score as counter-evidence. The patient surveillance view uses
+  the positive-to-positive engine, which follows patients across months.
+- No investigation SLA is set: nothing computes an overdue queue yet, and
+  approving one would only hide the overdue count.
+
+After `compute` has written signals, `purge` refuses (signals are durable
+records); recreate the development database instead.
 
 `generate` accepts `--district CODE` (repeatable — storylines are assigned in
 the order given), `--seed`, `--start`, `--end`, `--facilities-per-district` and

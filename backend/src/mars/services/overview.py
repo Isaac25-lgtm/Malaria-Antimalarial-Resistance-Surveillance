@@ -6,6 +6,7 @@ freshness. The browser must not compute a competing indicator formula.
 
 from __future__ import annotations
 
+import uuid
 from datetime import date
 from typing import Any
 
@@ -68,7 +69,12 @@ class OverviewService:
         last_sync = integration.get("last_run_at")
         last_status = integration.get("last_run_status")
         data_mode = self._data_mode(last_status)
-        kpis = self._summary.kpis(principal, period_start=period_start, period_end=period_end)
+        kpis = self._summary.kpis(
+            principal,
+            period_start=period_start,
+            period_end=period_end,
+            geography_unit_id=_single_district(principal),
+        )
         districts = self._summary.priority_districts(
             principal, period_start=period_start, period_end=period_end, limit=8
         )
@@ -222,6 +228,20 @@ class OverviewService:
         if last_status == IntegrationRunStatus.COMPLETED.value:
             return "live"
         return "unavailable"
+
+
+def _single_district(principal: AuthenticatedPrincipal) -> uuid.UUID | None:
+    """The district a district-scoped user's key measures are read at.
+
+    National figures are the country total. For a user scoped to one district
+    the strip must read that district's own rolled-up figures; reading the
+    national row through a district filter would find nothing and show every
+    measure as unavailable.
+    """
+    if principal.has_national_scope or principal.is_facility_restricted:
+        return None
+    districts = [scope for scope in principal.geography_scopes if scope.level == "district"]
+    return districts[0].geography_unit_id if len(districts) == 1 else None
 
 
 def _section(

@@ -59,6 +59,7 @@ from mars.domain.indicator import (
     IndicatorDefinitionVersion,
     IndicatorResult,
 )
+from mars.workers.indicator_materialisation import materialise_period
 
 pytestmark = pytest.mark.integration
 
@@ -700,3 +701,99 @@ class TestTheEngineRefusesUnapprovedDefinitions:
         assert active is not None
         assert active.id == version.id
         assert active.specification_checksum == CATALOGUE_BY_CODE["ENC_TESTED_MALARIA"].checksum
+
+
+class TestMaterialisationRollsUpToTheGrainsTheOverviewReads:
+    """The overview reads district and national rows; it never sums facilities.
+
+    Before this job wrote them, an approved indicator still showed as
+    unavailable on every overview, and the only roll-up helper counted tested
+    encounters under every count code.
+    """
+
+    CODES = (
+        "ENC_ATTENDANCE_TOTAL",
+        "ENC_TESTED_MALARIA",
+        "ENC_CONFIRMED_MALARIA",
+        "ENC_TEST_POSITIVITY",
+    )
+
+    def _activate(self, session: Session) -> None:
+        registry(session).seed_catalogue()
+        session.commit()
+        for code in self.CODES:
+            definition = registry(session).get_definition(code)
+            assert definition is not None
+            version = definition.versions[0]
+            registry(session).approve_version(version.id, approved_by="programme:test")
+            registry(session).activate_version(version.id)
+        session.commit()
+
+    def _row(self, session: Session, code: str, grain: GeographyGrain) -> IndicatorResult:
+        return session.execute(
+            select(IndicatorResult).where(
+                IndicatorResult.indicator_code == code,
+                IndicatorResult.geography_grain == grain,
+            )
+        ).scalar_one()
+
+    def test_each_code_rolls_up_its_own_facility_figures(
+        self, session: Session, encounters: None
+    ) -> None:
+        self._activate(session)
+        materialise_period(session, period_start=MONTH_START, period_end=MONTH_END)
+        session.commit()
+
+        for grain, unit_id in (
+            (GeographyGrain.DISTRICT, DISTRICT_ID),
+            (GeographyGrain.NATIONAL, COUNTRY_ID),
+        ):
+            attendance = self._row(session, "ENC_ATTENDANCE_TOTAL", grain)
+            tested = self._row(session, "ENC_TESTED_MALARIA", grain)
+            confirmed = self._row(session, "ENC_CONFIRMED_MALARIA", grain)
+            positivity = self._row(session, "ENC_TEST_POSITIVITY", grain)
+
+            assert attendance.geography_unit_id == unit_id
+            assert attendance.facility_id is None
+            assert attendance.numerator == A_TESTS + A_UNTESTED + B_TESTS
+            assert tested.numerator == A_TESTS + B_TESTS
+            # The old helper wrote the tested count here.
+            assert confirmed.numerator == A_POSITIVE + B_POSITIVE
+            assert positivity.numerator == A_POSITIVE + B_POSITIVE
+            assert positivity.denominator == A_TESTS + B_TESTS
+            assert positivity.value == (
+                Decimal(A_POSITIVE + B_POSITIVE) / Decimal(A_TESTS + B_TESTS)
+            ).quantize(Decimal("0.000001"))
+            assert attendance.contributing_units == 2
+            assert attendance.expected_units == 2
+
+    def test_a_district_restricted_run_writes_no_national_figure(
+        self, session: Session, encounters: None
+    ) -> None:
+        """A national total built from one district would be a district total
+        under a national heading."""
+        self._activate(session)
+        materialise_period(
+            session, period_start=MONTH_START, period_end=MONTH_END, district_id=DISTRICT_ID
+        )
+        session.commit()
+
+        national = session.execute(
+            select(func.count())
+            .select_from(IndicatorResult)
+            .where(IndicatorResult.geography_grain == GeographyGrain.NATIONAL)
+        ).scalar_one()
+        assert national == 0
+        assert self._row(session, "ENC_TESTED_MALARIA", GeographyGrain.DISTRICT).numerator == (
+            A_TESTS + B_TESTS
+        )
+
+    def test_rerunning_over_unchanged_inputs_writes_nothing(
+        self, session: Session, encounters: None
+    ) -> None:
+        self._activate(session)
+        materialise_period(session, period_start=MONTH_START, period_end=MONTH_END)
+        session.commit()
+        again = materialise_period(session, period_start=MONTH_START, period_end=MONTH_END)
+        assert again.written == 0
+        assert again.rolled_up == 0

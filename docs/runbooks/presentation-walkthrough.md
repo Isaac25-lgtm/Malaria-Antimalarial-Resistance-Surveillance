@@ -14,9 +14,17 @@ python -m mars.demo.cli generate --out-dir ./demo
 python -m mars.demo.cli register --out-dir ./demo
 ```
 
-Then activate the governed methods, or don't — see [The unconfigured
-opening](#the-unconfigured-opening) for why leaving them off is the stronger
-demonstration.
+Then activate the governed methods with the demonstration pack, or don't — see
+[The unconfigured opening](#the-unconfigured-opening) for why leaving them off
+is the stronger opening:
+
+```bash
+python -m mars.demo.cli configure   # illustrative, synthetic-only approvals
+python -m mars.demo.cli compute     # run every engine over the loaded months
+```
+
+See [the demo dataset notes](../demo/synthetic-dataset.md#the-demonstration-configuration-pack)
+for what the pack covers and what it does not.
 
 ## The unconfigured opening
 

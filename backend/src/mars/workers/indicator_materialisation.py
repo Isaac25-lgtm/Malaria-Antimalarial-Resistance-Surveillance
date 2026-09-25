@@ -13,15 +13,21 @@ publishing none.
 
 from __future__ import annotations
 
+import uuid
+from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from mars.analytics.aggregation import IndicatorAggregationService
+from mars.analytics.aggregation import ComputedValue, IndicatorAggregationService
 from mars.analytics.indicator_registry import IndicatorRegistryService
 from mars.core.logging import get_logger
-from mars.domain.enums import GeographyGrain, IndicatorUnit, PeriodGrain
+from mars.domain.enums import GeographyGrain, GeographyLevel, IndicatorUnit, PeriodGrain
+from mars.domain.geography import GeographyUnit
+from mars.domain.indicator import IndicatorDefinitionVersion
+from mars.domain.organisation import Facility
 
 logger = get_logger(__name__)
 
@@ -47,11 +53,13 @@ class JobReport:
     unchanged: int = 0
     skipped_unapproved: list[str] = field(default_factory=list)
     facilities: int = 0
+    rolled_up: int = 0
 
     def as_dict(self) -> dict[str, object]:
         return {
             "written": self.written,
             "unchanged": self.unchanged,
+            "rolled_up": self.rolled_up,
             "skipped_unapproved": sorted(self.skipped_unapproved),
             "facilities": self.facilities,
         }
@@ -63,17 +71,23 @@ def materialise_period(
     period_start: date,
     period_end: date,
     period_grain: PeriodGrain = PeriodGrain.MONTH,
-    district_id: object | None = None,
+    district_id: uuid.UUID | None = None,
 ) -> JobReport:
-    """Compute and store facility-grain indicator values for one period."""
+    """Compute and store indicator values for one period.
+
+    Facility figures are written first. The same run then rolls them up to
+    district grain and, when every facility was in scope, to national grain:
+    the overview reads those grains and never sums facility rows itself.
+    """
     registry = IndicatorRegistryService(session)
     engine = IndicatorAggregationService(session)
     report = JobReport()
 
     active = registry.active_versions()
     cutoff = engine.latest_source_cutoff()
-    facilities = engine.active_facilities(district_id)  # type: ignore[arg-type]
+    facilities = engine.active_facilities(district_id)
     report.facilities = len(facilities)
+    computed: dict[str, dict[uuid.UUID, ComputedValue]] = {}
 
     for code, method_name in _ENCOUNTER_COUNTS.items():
         version = active.get(code)
@@ -84,23 +98,20 @@ def materialise_period(
             continue
 
         counter = getattr(engine, method_name)
+        values = computed.setdefault(code, {})
         for facility in facilities:
-            computed = engine.count_value(counter(facility.id, period_start, period_end))
-            _result, created = engine.materialise(
+            values[facility.id] = engine.count_value(counter(facility.id, period_start, period_end))
+            _write(
+                engine,
+                report,
                 version,
                 code,
+                values[facility.id],
                 grain=GeographyGrain.FACILITY,
-                period_start=period_start,
-                period_end=period_end,
-                period_grain=period_grain,
-                computed=computed,
+                period=(period_start, period_end, period_grain),
                 facility_id=facility.id,
                 source_cutoff=cutoff,
             )
-            if created:
-                report.written += 1
-            else:
-                report.unchanged += 1
 
     # Positivity is derived from two other indicators rather than counted, so
     # it is computed after them and only when both are approved.
@@ -108,82 +119,157 @@ def materialise_period(
     if positivity is None:
         report.skipped_unapproved.append("ENC_TEST_POSITIVITY")
     elif "ENC_CONFIRMED_MALARIA" in active and "ENC_TESTED_MALARIA" in active:
+        values = computed.setdefault("ENC_TEST_POSITIVITY", {})
         for facility in facilities:
-            computed = engine.proportion(
+            values[facility.id] = engine.proportion(
                 engine.count_confirmed(facility.id, period_start, period_end),
                 engine.count_tested(facility.id, period_start, period_end),
             )
-            _result, created = engine.materialise(
+            _write(
+                engine,
+                report,
                 positivity,
                 "ENC_TEST_POSITIVITY",
+                values[facility.id],
                 grain=GeographyGrain.FACILITY,
-                period_start=period_start,
-                period_end=period_end,
-                period_grain=period_grain,
-                computed=computed,
+                period=(period_start, period_end, period_grain),
                 facility_id=facility.id,
                 source_cutoff=cutoff,
             )
-            if created:
-                report.written += 1
-            else:
-                report.unchanged += 1
+
+    _roll_up(
+        session,
+        engine,
+        report,
+        active,
+        computed,
+        facilities,
+        period=(period_start, period_end, period_grain),
+        source_cutoff=cutoff,
+        include_national=district_id is None,
+    )
 
     session.flush()
     logger.info("indicator_materialisation_finished", **report.as_dict())
     return report
 
 
-def roll_up_district(
+def _roll_up(
     session: Session,
+    engine: IndicatorAggregationService,
+    report: JobReport,
+    active: dict[str, IndicatorDefinitionVersion],
+    computed: dict[str, dict[uuid.UUID, ComputedValue]],
+    facilities: list[Facility],
     *,
-    district_id: object,
-    code: str,
-    unit: IndicatorUnit,
-    period_start: date,
-    period_end: date,
-    period_grain: PeriodGrain = PeriodGrain.MONTH,
-    boundary_version_id: object | None = None,
-) -> object | None:
-    """Roll facility figures up to a district figure.
+    period: tuple[date, date, PeriodGrain],
+    source_cutoff: datetime,
+    include_national: bool,
+) -> None:
+    """Roll every facility figure computed in this run up to district and national grain.
 
-    Proportions are recomputed from summed parts, never averaged. Returns
-    ``None`` when the definition is not approved.
+    Each code is rolled up from its own facility values. Proportions are
+    recomputed from summed parts by ``roll_up``, never averaged, and a facility
+    that produced no value is counted as missing rather than as zero.
     """
-    registry = IndicatorRegistryService(session)
-    engine = IndicatorAggregationService(session)
-
-    version = registry.active_version(code)
-    if version is None:
-        return None
-
-    facilities = engine.active_facilities(district_id)  # type: ignore[arg-type]
-    per_facility = {}
+    by_district: dict[uuid.UUID, list[uuid.UUID]] = defaultdict(list)
     for facility in facilities:
-        if unit is IndicatorUnit.PROPORTION:
-            per_facility[facility.id] = engine.proportion(
-                engine.count_confirmed(facility.id, period_start, period_end),
-                engine.count_tested(facility.id, period_start, period_end),
+        if facility.district_geography_unit_id is not None:
+            by_district[facility.district_geography_unit_id].append(facility.id)
+
+    districts = {
+        unit.id: unit
+        for unit in session.execute(
+            select(GeographyUnit).where(GeographyUnit.id.in_(list(by_district)))
+        ).scalars()
+    }
+    country = (
+        session.execute(
+            select(GeographyUnit)
+            .where(
+                GeographyUnit.level == GeographyLevel.COUNTRY,
+                GeographyUnit.is_active.is_(True),
             )
-        else:
-            per_facility[facility.id] = engine.count_value(
-                engine.count_tested(facility.id, period_start, period_end)
+            .order_by(GeographyUnit.created_at)
+        )
+        .scalars()
+        .first()
+        if include_national
+        else None
+    )
+
+    for code, values in computed.items():
+        version = active[code]
+        unit = IndicatorUnit.PROPORTION if code == "ENC_TEST_POSITIVITY" else IndicatorUnit.COUNT
+        for district_id, facility_ids in by_district.items():
+            district = districts.get(district_id)
+            rolled = engine.roll_up(
+                {facility_id: values[facility_id] for facility_id in facility_ids},
+                unit=unit,
+                expected_units=len(facility_ids),
+            )
+            report.rolled_up += _write(
+                engine,
+                report,
+                version,
+                code,
+                rolled,
+                grain=GeographyGrain.DISTRICT,
+                period=period,
+                geography_unit_id=district_id,
+                boundary_version_id=district.boundary_version_id if district else None,
+                source_cutoff=source_cutoff,
+            )
+        if include_national and values:
+            rolled = engine.roll_up(values, unit=unit, expected_units=len(values))
+            report.rolled_up += _write(
+                engine,
+                report,
+                version,
+                code,
+                rolled,
+                grain=GeographyGrain.NATIONAL,
+                period=period,
+                geography_unit_id=country.id if country else None,
+                boundary_version_id=country.boundary_version_id if country else None,
+                source_cutoff=source_cutoff,
             )
 
-    rolled = engine.roll_up(per_facility, unit=unit, expected_units=len(facilities))
-    result, _created = engine.materialise(
+
+def _write(
+    engine: IndicatorAggregationService,
+    report: JobReport,
+    version: IndicatorDefinitionVersion,
+    code: str,
+    value: ComputedValue,
+    *,
+    grain: GeographyGrain,
+    period: tuple[date, date, PeriodGrain],
+    source_cutoff: datetime,
+    facility_id: uuid.UUID | None = None,
+    geography_unit_id: uuid.UUID | None = None,
+    boundary_version_id: uuid.UUID | None = None,
+) -> int:
+    """Write one figure and count it. Returns 1 when a new row was written."""
+    start, end, period_grain = period
+    _result, created = engine.materialise(
         version,
         code,
-        grain=GeographyGrain.DISTRICT,
-        period_start=period_start,
-        period_end=period_end,
+        grain=grain,
+        period_start=start,
+        period_end=end,
         period_grain=period_grain,
-        computed=rolled,
-        geography_unit_id=district_id,  # type: ignore[arg-type]
-        boundary_version_id=boundary_version_id,  # type: ignore[arg-type]
-        source_cutoff=engine.latest_source_cutoff(),
+        computed=value,
+        facility_id=facility_id,
+        geography_unit_id=geography_unit_id,
+        boundary_version_id=boundary_version_id,
+        source_cutoff=source_cutoff,
     )
-    return result
+    if created:
+        report.written += 1
+    else:
+        report.unchanged += 1
+    return int(created)
 
 
-__all__ = ["JOB_NAME", "JobReport", "materialise_period", "roll_up_district"]
+__all__ = ["JOB_NAME", "JobReport", "materialise_period"]

@@ -2,6 +2,8 @@
 
     mars-demo-dataset generate --out-dir demo/            # write the artefacts
     mars-demo-dataset register --out-dir demo/            # create the facilities
+    mars-demo-dataset configure                           # approve the demo settings pack
+    mars-demo-dataset compute                             # run every engine over the data
     mars-demo-dataset purge    --confirm                  # remove every demo record
 
 ``generate`` needs a database only to resolve real districts and subcounties.
@@ -11,6 +13,13 @@ on the real map and teaches the audience to trust a map that is wrong.
 
 ``register`` creates the fictional facilities so the artefacts have somewhere to
 load. Every one is marked ``is_synthetic`` and **none is given a coordinate**.
+
+``configure`` puts the demonstration configuration pack in force: one
+illustrative version of each method and setting the engines need, approved by a
+name that says it is synthetic. It refuses unless demo mode is on, and never
+replaces a version someone else approved. ``compute`` then runs every engine
+month by month over the span of loaded encounters, so the
+dashboards show computed figures instead of *not configured*.
 
 ``purge`` removes them again. It only ever touches records whose facility code
 carries the demo prefix, and it requires ``--confirm``.
@@ -32,6 +41,8 @@ from sqlalchemy.orm import Session
 from mars.core.logging import configure_logging, get_logger
 from mars.core.settings import get_settings
 from mars.db.session import session_scope
+from mars.demo.compute import run_chain
+from mars.demo.configuration_pack import DEMO_APPROVER, DemoPackRefused, apply_pack
 from mars.demo.generator import (
     FACILITY_CODE_PREFIX,
     SOURCE_SYSTEM,
@@ -72,7 +83,9 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("command", choices=("generate", "register", "purge"))
+    parser.add_argument(
+        "command", choices=("generate", "register", "configure", "compute", "purge")
+    )
     parser.add_argument("--out-dir", type=Path, help="Where the dataset is written or read")
     parser.add_argument(
         "--district",
@@ -289,6 +302,50 @@ def _demo_organisation_unit(session: Session) -> OrganisationUnit:
 
 
 # ---------------------------------------------------------------------------
+# configure and compute
+# ---------------------------------------------------------------------------
+def _configure(_args: argparse.Namespace) -> int:
+    try:
+        with session_scope() as session:
+            report = apply_pack(session, get_settings())
+    except DemoPackRefused as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return EXIT_USAGE
+
+    summary = report.as_dict()
+    print(f"demonstration configuration pack (approved_by={DEMO_APPROVER})")
+    for heading, items in summary.items():
+        print(f"  {heading}: {len(items)}")
+        for item in items:
+            print(f"    {item}")
+    if summary["kept_existing"]:
+        print("  kept_existing versions were approved by someone else and were left in force")
+    print()
+    print("  Next: mars-demo-dataset compute")
+    return EXIT_OK
+
+
+def _compute(_args: argparse.Namespace) -> int:
+    try:
+        report = run_chain(get_settings())
+    except DemoPackRefused as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return EXIT_USAGE
+
+    if not report.months:
+        print("ERROR: no encounters are loaded; nothing to compute", file=sys.stderr)
+        return EXIT_MISSING_INPUT
+
+    print(f"computed {len(report.months)} month(s): {report.months[0]} to {report.months[-1]}")
+    for outcome in report.outcomes:
+        month = outcome.month.isoformat()[:7] if outcome.month else "all"
+        print(f"  {month}  {outcome.step:<22s} {outcome.status}")
+    for outcome in report.failed:
+        print(f"  FAILED {outcome.step} ({outcome.month}): {outcome.detail}", file=sys.stderr)
+    return EXIT_OK
+
+
+# ---------------------------------------------------------------------------
 # purge
 # ---------------------------------------------------------------------------
 def _purge(args: argparse.Namespace) -> int:
@@ -386,6 +443,10 @@ def main(argv: list[str] | None = None) -> int:
         return _generate(args)
     if args.command == "register":
         return _register(args)
+    if args.command == "configure":
+        return _configure(args)
+    if args.command == "compute":
+        return _compute(args)
     return _purge(args)
 
 
