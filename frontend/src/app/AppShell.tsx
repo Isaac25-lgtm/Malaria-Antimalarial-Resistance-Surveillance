@@ -292,7 +292,12 @@ function SourceStatusChip({ user }: { user: AuthContextValue["user"] }) {
     return <span className="shell__badge shell__badge--pending">AUTHORIZED — MAPPING PENDING</span>;
   }
   if (readiness?.aggregate_sync !== "ready") {
-    return <span className="shell__badge shell__badge--live">LIVE — PADER AUTHORIZED</span>;
+    const place = placeName(user);
+    return (
+      <span className="shell__badge shell__badge--live">
+        {place ? `LIVE — ${place.toUpperCase()} AUTHORIZED` : "LIVE — AUTHORIZED"}
+      </span>
+    );
   }
   return <span className="shell__badge shell__badge--live">AUTHORIZED — LIVE DATA AVAILABLE</span>;
 }

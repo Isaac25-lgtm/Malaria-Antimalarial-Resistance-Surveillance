@@ -114,7 +114,7 @@ def test_job_outlives_submission_but_logout_prevents_publication(store):
     holder.store("cookie", "officer", "never-persist-this")
     started, release, finished = Event(), Event(), Event()
 
-    def runner(*args, checkpoint):
+    def runner(*args, checkpoint, scope_name=None):
         checkpoint.save("aggregate", [])
         started.set()
         assert release.wait(5)
@@ -151,7 +151,7 @@ def test_canonical_evidence_is_retained_only_after_the_session_is_rechecked(stor
     retained: list[tuple[str, date, date, object]] = []
     canonical = ({"encounters": "server-only"}, {"coverage": "complete"})
 
-    def runner(*args, checkpoint, evidence_sink):
+    def runner(*args, checkpoint, evidence_sink, scope_name=None):
         checkpoint.check()
         evidence_sink(canonical)
         return snapshot()
@@ -180,7 +180,7 @@ def test_worker_capacity_is_bounded_and_rejected_work_is_resumable(store):
     holder.store("cookie", "officer", "never-persist-this")
     started, release = Event(), Event()
 
-    def runner(*args, checkpoint):
+    def runner(*args, checkpoint, scope_name=None):
         started.set()
         assert release.wait(5)
         return snapshot()

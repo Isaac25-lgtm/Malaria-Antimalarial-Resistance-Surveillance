@@ -14,8 +14,6 @@ from mars.integrations.dhis2.discovery.models import (
     OrganisationUnitRecord,
 )
 
-_PADER = re.compile(r"\bpader\b", re.IGNORECASE)
-
 _OPD = re.compile(
     r"\b(opd|out-?patient|hmis\s*opd|opd\s*002)\b",
     re.IGNORECASE,
@@ -78,8 +76,6 @@ def classify_unit(
 ) -> str:
     haystack = " ".join(part for part in (unit.name, unit.code, *unit.group_names) if part)
     looks_like_facility = bool(unit.leaf or _FACILITY.search(haystack))
-    if _PADER.search(haystack) and not looks_like_facility:
-        return "pader_candidate"
     if looks_like_facility:
         return "candidate_facility"
     return "organisation_unit"
@@ -93,17 +89,6 @@ def candidate_mappings(
     attributes: list[dict[str, Any]],
 ) -> list[CandidateMapping]:
     proposals: list[CandidateMapping] = []
-    for unit in units:
-        if unit.classification == "pader_candidate":
-            proposals.append(
-                CandidateMapping(
-                    kind="pader_organisation_unit",
-                    remote_id=unit.id,
-                    name=unit.name,
-                    code=unit.code,
-                    reason="Name or code contains Pader. Proposal only; not an accepted mapping.",
-                )
-            )
     for programme in programmes:
         haystack = _haystack(programme)
         if _OPD.search(haystack):

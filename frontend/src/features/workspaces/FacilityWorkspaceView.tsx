@@ -169,10 +169,10 @@ function LiveFacilityWorkspace({
   );
   return (
     <div className="page workspace">
-      <Breadcrumbs trail={[{ to: "/command-centre", label: "Pader Overview" }, { label: facility?.name ?? "Facility" }]} />
+      <Breadcrumbs trail={[{ to: "/command-centre", label: `${live.data?.scope ?? "Authorised scope"} Overview` }, { label: facility?.name ?? "Facility" }]} />
       <header className="page__header workspace__header">
         <div>
-          <p className="label">Pader live facility</p>
+          <p className="label">Live facility, {live.data?.scope ?? "authorised scope"}</p>
           <h1>{facility?.name ?? "Facility"}</h1>
           <p className="page__lede">Reported results for this authorised eRegisters facility only.</p>
         </div>

@@ -49,7 +49,6 @@ class OrganisationUnitRecord(BaseModel):
     ancestor_names: list[str] = Field(default_factory=list)
     group_names: list[str] = Field(default_factory=list)
     classification: Literal[
-        "pader_candidate",
         "candidate_facility",
         "organisation_unit",
     ] = "organisation_unit"
@@ -58,7 +57,7 @@ class OrganisationUnitRecord(BaseModel):
 class CandidateMapping(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["opd_programme", "malaria_variable", "pader_organisation_unit"]
+    kind: Literal["opd_programme", "malaria_variable"]
     remote_id: str
     name: str | None = None
     code: str | None = None
@@ -83,7 +82,9 @@ class DiscoveryReport(BaseModel):
     capture_organisation_units: list[OrganisationUnitRecord] = Field(default_factory=list)
     data_view_organisation_units: list[OrganisationUnitRecord] = Field(default_factory=list)
     tracker_search_organisation_units: list[OrganisationUnitRecord] = Field(default_factory=list)
-    pader_candidates: list[OrganisationUnitRecord] = Field(default_factory=list)
+    #: The outermost organisation units the account is assigned; every
+    #: accessible facility sits inside one of them.
+    scope_roots: list[OrganisationUnitRecord] = Field(default_factory=list)
     accessible_facilities: list[OrganisationUnitRecord] = Field(default_factory=list)
     accessible_facility_count: int | None = None
     facility_scope_counts: dict[str, int | None] = Field(default_factory=dict)

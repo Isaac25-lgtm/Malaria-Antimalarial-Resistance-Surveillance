@@ -391,7 +391,7 @@ def map_context(
 ) -> Any:
     """Return Uganda's public administrative outlines at one national grain.
 
-    Every published unit at that level is included so a Pader-scoped map can
+    Every published unit at that level is included so a district-scoped map can
     still draw the rest of the country. ``in_scope`` says whether the caller
     may open the unit. No indicator, signal, investigation or commodity value
     is attached.

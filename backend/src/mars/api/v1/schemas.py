@@ -1164,7 +1164,8 @@ class LiveDashboardSnapshot(MarsModel):
     """A real DHIS2 snapshot; it can never contain synthetic fallback values."""
 
     status: Literal["synchronized", "partial", "unavailable"]
-    scope: Literal["Pader District"]
+    #: The authorised place this snapshot describes, taken from the account.
+    scope: str = Field(min_length=1, max_length=200)
     period_start: date
     period_end: date
     synchronized_at: datetime

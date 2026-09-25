@@ -311,7 +311,7 @@ export interface paths {
          * Public administrative geometry for map context, with in-scope flags
          * @description Return Uganda's public administrative outlines at one national grain.
          *
-         *     Every published unit at that level is included so a Pader-scoped map can
+         *     Every published unit at that level is included so a district-scoped map can
          *     still draw the rest of the country. ``in_scope`` says whether the caller
          *     may open the unit. No indicator, signal, investigation or commodity value
          *     is attached.
@@ -1790,8 +1790,8 @@ export interface paths {
          * Overview
          * @description One dashboard snapshot. Every section carries its own provenance.
          *
-         *     The browser must not compute a competing indicator. Pader-scoped callers
-         *     receive a Pader title; national labelling is refused for a district scope.
+         *     The browser must not compute a competing indicator. District-scoped callers
+         *     receive their district title; national labelling is refused for a district scope.
          */
         get: operations["overview_api_v1_surveillance_overview_get"];
         put?: never;
@@ -3225,11 +3225,8 @@ export interface components {
             retrieval_complete: boolean;
             /** Retrieval Plan */
             retrieval_plan?: string | null;
-            /**
-             * Scope
-             * @constant
-             */
-            scope: "Pader District";
+            /** Scope */
+            scope: string;
             /** Snapshot Id */
             snapshot_id?: string | null;
             /** Source Updated At */

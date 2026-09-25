@@ -160,13 +160,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             from mars.services.recurrence_analysis_service import RecurrenceRunExecutor
 
             project_root = Path(__file__).resolve().parents[3]
-            mapping_path = project_root / "config" / "dhis2" / "pader-live-v1.json"
+            mapping_path = project_root / "config" / "dhis2" / "eregisters-live-v1.json"
             try:
                 mapping_version = hashlib.sha256(mapping_path.read_bytes()).hexdigest()
             except OSError as error:
                 raise RuntimeError(
                     "Live synchronization mapping is missing or unreadable: "
-                    "config/dhis2/pader-live-v1.json"
+                    "config/dhis2/eregisters-live-v1.json"
                 ) from error
             live_sync_engine, live_sync_sessions = create_session_factory(settings)
             app.state.live_sync_engine = live_sync_engine
@@ -227,6 +227,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     if settings.patient_display_key
                     else "missing",
                     "facilities": sorted(facilities, key=lambda row: row["id"]),
+                    "scope_name": _live_scope_name(live_session),
                 }
 
             app.state.live_dashboard = DurableLiveDashboardService(
@@ -329,3 +330,11 @@ def run() -> None:  # pragma: no cover - process entry point
         port=settings.port,
         log_config=None,
     )
+
+
+def _live_scope_name(live_session: Any) -> str:
+    """The authorised place a live snapshot describes, from the account itself."""
+    authorization = getattr(live_session, "authorization", None)
+    workspace = getattr(authorization, "workspace", None)
+    name = getattr(workspace, "name", None)
+    return str(name).strip() if name else "Authorised scope"

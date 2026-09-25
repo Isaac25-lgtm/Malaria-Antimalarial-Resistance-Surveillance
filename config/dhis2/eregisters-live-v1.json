@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0",
   "status": "approved",
-  "scope": "Pader District live pilot",
+  "scope": "eRegisters malaria mapping, approved during the Pader live pilot; applies to every authorised scope",
   "approved_by": "Pader live pilot data owner",
   "approved_at": "2026-09-05T08:20:00+03:00",
   "discovery_report_sha256": "1babc870469c234dbc213998c57f6f0f3c95fff470070b7f61cca97b726eb39b",

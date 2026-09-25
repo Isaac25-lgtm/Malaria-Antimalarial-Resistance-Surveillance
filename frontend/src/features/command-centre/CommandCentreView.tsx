@@ -162,7 +162,7 @@ export function CommandCentreView() {
     <div className="page overview">
       <header className="overview__header">
         <div>
-          <h1>{liveMode ? `${user?.geography_scopes[0]?.name ?? "Pader"} Overview` : (snap?.title ?? "Overview")}</h1>
+          <h1>{liveMode ? `${liveDashboard.data?.scope ?? user?.workspace?.name ?? user?.geography_scopes[0]?.name ?? "Authorised scope"} Overview` : (snap?.title ?? "Overview")}</h1>
           <p className="page__lede">
             {snap?.subtitle ?? "Malaria surveillance from routine health information systems"}
           </p>
@@ -840,8 +840,8 @@ function sourceFreshness(
 function scopeLabel(snap: Snapshot | undefined, national: boolean): string {
   if (!snap) return national ? "National" : "Assigned scope";
   if (snap.requested_scope === "national") return "National";
-  if (snap.requested_scope === "pader") return "Pader";
-  return snap.requested_scope;
+  const scope = snap.requested_scope;
+  return scope.charAt(0).toUpperCase() + scope.slice(1);
 }
 
 function priorityByUnit(snap: Snapshot | undefined): Map<string, string> {

@@ -51,24 +51,24 @@ def render_markdown(report: DiscoveryReport) -> str:
         if report.accessible_facility_count is not None
         else "indeterminate"
     )
-    lines.append(f"- Accessible Pader facility candidates: {facility_count}")
+    lines.append(f"- Accessible facility candidates: {facility_count}")
     for scope_name in ("capture", "data_view", "tracker_search"):
         count = report.facility_scope_counts.get(scope_name)
         value = str(count) if count is not None else "indeterminate"
-        lines.append(f"- Pader facilities in {scope_name} scope: {value}")
+        lines.append(f"- Facilities in {scope_name} scope: {value}")
     lines.append(f"- Authorities reported: {len(report.authorities)}")
     if report.authorities:
         authorities = ", ".join(f"`{item}`" for item in report.authorities)
         lines.append(f"- Authority identifiers: {authorities}")
-    lines.extend(["", "## Pader candidates", ""])
-    if report.pader_candidates:
-        for unit in report.pader_candidates:
+    lines.extend(["", "## Assigned organisation units", ""])
+    if report.scope_roots:
+        for unit in report.scope_roots:
             lines.append(
                 f"- `{unit.id}` {unit.name or '(unnamed)'} "
                 f"(level={unit.level if unit.level is not None else 'unknown'})"
             )
     else:
-        lines.append("No organisation unit name or code contained Pader.")
+        lines.append("The account reported no assigned organisation unit.")
     lines.extend(["", "## Candidate mappings (proposals only)", ""])
     if report.candidate_mappings:
         for item in report.candidate_mappings:

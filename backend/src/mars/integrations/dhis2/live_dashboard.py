@@ -1,4 +1,4 @@
-"""Read-only live Pader dashboard assembly from approved DHIS2 metadata.
+"""Read-only live dashboard assembly from approved DHIS2 metadata.
 
 This module is application wiring, not a surveillance rule engine. It retrieves
 reported HMIS values and the laboratory, medical-visit and medicine Tracker
@@ -90,7 +90,7 @@ def _guarded(checkpoint: SyncCheckpoint | None, operation: Callable[[], Any]) ->
 def build_live_dashboard_runner(
     settings: Settings, *, project_root: Path
 ) -> Callable[[str, str, Sequence[Mapping[str, Any]], date, date], dict[str, Any]]:
-    mapping_path = project_root / "config" / "dhis2" / "pader-live-v1.json"
+    mapping_path = project_root / "config" / "dhis2" / "eregisters-live-v1.json"
 
     def run(
         username: str,
@@ -101,6 +101,7 @@ def build_live_dashboard_runner(
         *,
         checkpoint: SyncCheckpoint | None = None,
         evidence_sink: Callable[[tuple[AdaptedEvidence, EvidenceCoverage]], None] | None = None,
+        scope_name: str = "Authorised scope",
     ) -> dict[str, Any]:
         display_key = settings.patient_display_key
         if display_key is None:
@@ -113,6 +114,7 @@ def build_live_dashboard_runner(
             )
         mapping = _load_mapping(mapping_path)
         mapping["_runtime_facilities"] = [dict(item) for item in facilities]
+        mapping["_runtime_scope_name"] = scope_name
         facility_names = {
             str(item["id"]): str(item.get("name") or item["id"])
             for item in facilities
@@ -488,13 +490,15 @@ def _load_mapping(path: Path) -> dict[str, Any]:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise LiveDashboardConfigurationError(
-            "The approved Pader live mapping is missing or unreadable"
+            "The approved eRegisters live mapping is missing or unreadable"
         ) from error
     if raw.get("schema_version") != "2.0" or raw.get("status") != "approved":
-        raise LiveDashboardConfigurationError("The Pader live mapping is absent or not approved")
+        raise LiveDashboardConfigurationError(
+            "The eRegisters live mapping is absent or not approved"
+        )
     required = ("programme_uid", "datasets", "aggregate_data_elements", "tracker")
     if any(not raw.get(key) for key in required):
-        raise LiveDashboardConfigurationError("The Pader live mapping is incomplete")
+        raise LiveDashboardConfigurationError("The eRegisters live mapping is incomplete")
     nested_requirements = {
         "datasets": ("monthly_105_opd",),
         "aggregate_data_elements": (
@@ -510,7 +514,7 @@ def _load_mapping(path: Path) -> dict[str, Any]:
     }
     tracker = raw.get("tracker")
     if not isinstance(tracker, dict):
-        raise LiveDashboardConfigurationError("The Pader live Tracker mapping is incomplete")
+        raise LiveDashboardConfigurationError("The eRegisters live Tracker mapping is incomplete")
     nested_requirements.update(
         {
             "tracker.stages": ("laboratory_tests",),
@@ -537,7 +541,7 @@ def _load_mapping(path: Path) -> dict[str, Any]:
     ]
     if missing:
         raise LiveDashboardConfigurationError(
-            "The Pader live mapping is incomplete: " + ", ".join(missing)
+            "The eRegisters live mapping is incomplete: " + ", ".join(missing)
         )
     return cast(dict[str, Any], raw)
 
@@ -716,7 +720,13 @@ def _assemble(
         ]
 
     trend = _trend_points(elements, trend_values or unique_values)
-    operational_alerts = _operational_alerts(facilities_payload, suspected, tested, confirmed)
+    operational_alerts = _operational_alerts(
+        facilities_payload,
+        suspected,
+        tested,
+        confirmed,
+        scope_name=str(mapping.get("_runtime_scope_name") or "Authorised scope"),
+    )
 
     source_moments = [moment for moment in (latest_source_update, latest_tracker_update) if moment]
     source_updated_at = max(source_moments) if source_moments else None
@@ -732,7 +742,7 @@ def _assemble(
     )
     return {
         "status": status,
-        "scope": "Pader District",
+        "scope": str(mapping.get("_runtime_scope_name") or "Authorised scope"),
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),
         "synchronized_at": synchronized_at.isoformat(),
@@ -955,6 +965,8 @@ def _operational_alerts(
     suspected: int | None,
     tested: int | None,
     confirmed: int | None,
+    *,
+    scope_name: str = "Authorised scope",
 ) -> list[dict[str, Any]]:
     alerts: list[dict[str, Any]] = []
     commodity_fields = (
@@ -984,7 +996,7 @@ def _operational_alerts(
                 "kind": "data_quality",
                 "title": "Testing denominator requires review",
                 "facility_uid": None,
-                "facility_name": "Pader District",
+                "facility_name": scope_name,
                 "status": "review",
                 "detail": (
                     f"Reported tests ({tested:,}) exceed suspected-malaria reports "
@@ -999,7 +1011,7 @@ def _operational_alerts(
                 "kind": "data_quality",
                 "title": "Malaria counts require reconciliation",
                 "facility_uid": None,
-                "facility_name": "Pader District",
+                "facility_name": scope_name,
                 "status": "review",
                 "detail": (
                     f"Reported confirmed malaria ({confirmed:,}) exceeds suspected-malaria "

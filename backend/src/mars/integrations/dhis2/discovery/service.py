@@ -124,31 +124,24 @@ def run_discovery(client: DiscoveryClient, *, origin_host: str) -> DiscoveryRepo
     capture = [_unit(item) for item in _as_units(user.get("organisationUnits"))]
     data_view = [_unit(item) for item in _as_units(user.get("dataViewOrganisationUnits"))]
     tracker_search = [_unit(item) for item in _as_units(user.get("teiSearchOrganisationUnits"))]
-    hierarchy = [_unit(item) for item in collections.get("organisation_units", [])]
-    all_units = _unique_units([*capture, *data_view, *tracker_search, *hierarchy])
-    pader_candidates = [unit for unit in all_units if unit.classification == "pader_candidate"]
-    accessible_facilities = _accessible_pader_facilities(
-        hierarchy=hierarchy,
-        pader_candidates=pader_candidates,
-        scope_roots=_unique_units([*capture, *data_view, *tracker_search]),
+    scope_roots = _outermost_units(_unique_units([*capture, *data_view, *tracker_search]))
+    # The unfiltered collection above can stop at the page cap long before it
+    # reaches an account's own units, so the units beneath each assigned root
+    # are fetched directly. The account's assignments, not a place name,
+    # decide which facilities are in scope.
+    scoped, scoped_truncated = _collect_within_roots(client, scope_roots)
+    if scoped_truncated:
+        truncated.append("organisation_units_in_scope")
+    hierarchy = _unique_units(
+        [_unit(item) for item in [*collections.get("organisation_units", []), *scoped]]
     )
+    all_units = _unique_units([*capture, *data_view, *tracker_search, *hierarchy])
+    accessible_facilities = _accessible_facilities(hierarchy=hierarchy, scope_roots=scope_roots)
     accessible_facilities = _with_ancestor_names(accessible_facilities, all_units)
     facility_scope_sets = {
-        "capture": _accessible_pader_facilities(
-            hierarchy=hierarchy,
-            pader_candidates=pader_candidates,
-            scope_roots=capture,
-        ),
-        "data_view": _accessible_pader_facilities(
-            hierarchy=hierarchy,
-            pader_candidates=pader_candidates,
-            scope_roots=data_view,
-        ),
-        "tracker_search": _accessible_pader_facilities(
-            hierarchy=hierarchy,
-            pader_candidates=pader_candidates,
-            scope_roots=tracker_search,
-        ),
+        "capture": _accessible_facilities(hierarchy=hierarchy, scope_roots=capture),
+        "data_view": _accessible_facilities(hierarchy=hierarchy, scope_roots=data_view),
+        "tracker_search": _accessible_facilities(hierarchy=hierarchy, scope_roots=tracker_search),
     }
 
     authorities = _authorities(user, auth, legacy_auth)
@@ -168,12 +161,10 @@ def run_discovery(client: DiscoveryClient, *, origin_host: str) -> DiscoveryRepo
         and record.status is CapabilityStatus.SUPPORTED_BY_VERSION_AUTHORIZATION_NOT_PROBED
     )
     access_limitations = _access_limitations(
-        pader_candidates=pader_candidates,
         truncated=truncated,
         capabilities=capabilities,
     )
     unresolved_questions = _unresolved_questions(
-        pader_candidates=pader_candidates,
         programmes=programmes,
         accessible_facilities=accessible_facilities,
     )
@@ -195,7 +186,7 @@ def run_discovery(client: DiscoveryClient, *, origin_host: str) -> DiscoveryRepo
         capture_organisation_units=capture,
         data_view_organisation_units=data_view,
         tracker_search_organisation_units=tracker_search,
-        pader_candidates=pader_candidates,
+        scope_roots=scope_roots,
         accessible_facilities=accessible_facilities,
         accessible_facility_count=len(accessible_facilities) if hierarchy_available else None,
         facility_scope_counts={
@@ -333,30 +324,58 @@ def _unique_units(units: list[OrganisationUnitRecord]) -> list[OrganisationUnitR
     return list(seen.values())
 
 
-def _accessible_pader_facilities(
+def _accessible_facilities(
     *,
     hierarchy: list[OrganisationUnitRecord],
-    pader_candidates: list[OrganisationUnitRecord],
     scope_roots: list[OrganisationUnitRecord],
 ) -> list[OrganisationUnitRecord]:
-    """Return leaf/facility units below Pader that intersect an assigned scope.
+    """Facilities inside the account's assigned organisation units.
 
-    Organisation-unit metadata sharing is not itself data access. Requiring a
-    unit to sit below both a Pader candidate and one of the user's capture,
-    data-view or tracker-search roots avoids presenting every visible metadata
-    object as an accessible facility.
+    Organisation-unit metadata sharing is not itself data access, so a unit
+    counts only when it sits inside one of the user's capture, data-view or
+    tracker-search roots. An assigned root that is itself a facility counts.
     """
-    if not pader_candidates or not scope_roots:
+    if not scope_roots:
         return []
     facilities: list[OrganisationUnitRecord] = []
-    for unit in hierarchy:
-        if unit.classification != "candidate_facility":
+    seen: set[str] = set()
+    for unit in [*hierarchy, *scope_roots]:
+        if unit.id in seen or unit.classification != "candidate_facility":
             continue
-        below_pader = any(_unit_is_within(unit, root) for root in pader_candidates)
-        inside_scope = any(_unit_is_within(unit, root) for root in scope_roots)
-        if below_pader and inside_scope:
+        if any(_unit_is_within(unit, root) for root in scope_roots):
+            seen.add(unit.id)
             facilities.append(unit)
     return sorted(facilities, key=lambda unit: ((unit.name or "").casefold(), unit.id))
+
+
+def _outermost_units(units: list[OrganisationUnitRecord]) -> list[OrganisationUnitRecord]:
+    """Drop assigned units that sit inside another assigned unit."""
+    return [
+        unit
+        for unit in units
+        if not any(other.id != unit.id and _unit_is_within(unit, other) for other in units)
+    ]
+
+
+def _collect_within_roots(
+    client: DiscoveryClient, roots: list[OrganisationUnitRecord]
+) -> tuple[list[dict[str, Any]], bool]:
+    """Every organisation unit beneath each assigned root, fetched server-side."""
+    records: list[dict[str, Any]] = []
+    truncated = False
+    for root in roots:
+        try:
+            found, was_truncated = client.collect(
+                "/api/organisationUnits", filter_expression=f"path:like:{root.id}"
+            )
+        except DiscoveryError as error:
+            logger.warning(
+                "dhis2_discovery_scope_fetch_failed", root=root.id, category=error.category.value
+            )
+            continue
+        records.extend(found)
+        truncated = truncated or was_truncated
+    return records, truncated
 
 
 def _with_ancestor_names(
@@ -481,7 +500,6 @@ def _route_is_advertised(route: str, advertised: set[str]) -> bool:
 
 def _access_limitations(
     *,
-    pader_candidates: list[OrganisationUnitRecord],
     truncated: list[str],
     capabilities: list[CapabilityRecord],
 ) -> list[str]:
@@ -490,11 +508,10 @@ def _access_limitations(
         "No source-data API authorization was tested; supported routes are "
         "metadata/version inferences.",
     ]
-    if pader_candidates:
-        limitations.append(
-            "The discovered account scope appears Pader-specific and must not be "
-            "presented as national."
-        )
+    limitations.append(
+        "Scope is limited to the account's assigned organisation units and must not "
+        "be presented as wider than that."
+    )
     if truncated:
         limitations.append(
             "One or more metadata collections reached the configured page cap and are incomplete."
@@ -513,17 +530,14 @@ def _access_limitations(
 
 def _unresolved_questions(
     *,
-    pader_candidates: list[OrganisationUnitRecord],
     programmes: list[dict[str, Any]],
     accessible_facilities: list[OrganisationUnitRecord],
 ) -> list[str]:
     questions: list[str] = []
-    if len(pader_candidates) != 1:
-        questions.append("Which organisation-unit UID is the authoritative Pader District?")
     if not programmes:
         questions.append("Which programme is the authoritative OPD/eRegister source?")
     if not accessible_facilities:
-        questions.append("Which facilities below Pader are in the approved pilot data-view scope?")
+        questions.append("No facility was found inside this account's assigned organisation units.")
     questions.extend(
         [
             "Which candidate malaria variables and option codes are approved for "

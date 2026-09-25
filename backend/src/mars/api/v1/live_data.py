@@ -1,4 +1,4 @@
-"""Controlled live-source data operations for the Pader pilot."""
+"""Controlled live-source data operations for the authorised eRegisters scope."""
 
 from __future__ import annotations
 
@@ -180,7 +180,7 @@ def export_live_dashboard(
         action=AuditAction.EXPORT_GENERATED,
         principal=principal,
         object_type="live_district_brief",
-        object_id="pader",
+        object_id="live_authorised_scope",
         context={"period_start": period_start.isoformat(), "period_end": period_end.isoformat()},
     )
     return Response(
@@ -264,7 +264,7 @@ def synchronize_live_dashboard(
         action=AuditAction.CASE_EVIDENCE_ACCESSED,
         principal=principal,
         object_type="live_dashboard_sync",
-        object_id="pader",
+        object_id="live_authorised_scope",
         context={
             "period_start": payload.period_start.isoformat(),
             "period_end": payload.period_end.isoformat(),

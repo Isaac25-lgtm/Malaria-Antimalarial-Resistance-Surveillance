@@ -410,8 +410,15 @@ class DiscoveryClient:
                 return
         logger.warning("dhis2_discovery_truncated", path=path, max_pages=self._config.max_pages)
 
-    def collect(self, path: str) -> tuple[list[dict[str, Any]], bool]:
-        """Return all pages and whether the page cap truncated the result."""
+    def collect(
+        self, path: str, *, filter_expression: str | None = None
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Return all pages and whether the page cap truncated the result.
+
+        ``filter_expression`` narrows the collection server-side, for example
+        ``path:like:<uid>`` for every unit beneath an assigned organisation
+        unit. It is refused by the route allowlist wherever it is not allowed.
+        """
         records: list[dict[str, Any]] = []
         pages_seen = 0
         collection_key = _COLLECTION_KEYS.get(path)
@@ -423,15 +430,15 @@ class DiscoveryClient:
             )
         truncated = False
         for page_number in range(1, self._config.max_pages + 1):
-            payload = self._get(
-                path,
-                {
-                    "fields": fields,
-                    "paging": "true",
-                    "pageSize": str(self._config.page_size),
-                    "page": str(page_number),
-                },
-            )
+            params = {
+                "fields": fields,
+                "paging": "true",
+                "pageSize": str(self._config.page_size),
+                "page": str(page_number),
+            }
+            if filter_expression is not None:
+                params["filter"] = filter_expression
+            payload = self._get(path, params)
             pages_seen = page_number
             items = payload.get(collection_key) or []
             if isinstance(items, list):

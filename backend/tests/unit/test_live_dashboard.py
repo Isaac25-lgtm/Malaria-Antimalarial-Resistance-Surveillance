@@ -443,7 +443,7 @@ def _runner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tracker: type) -> A
     from mars.integrations.dhis2 import live_dashboard as module
 
     (tmp_path / "config" / "dhis2").mkdir(parents=True)
-    (tmp_path / "config" / "dhis2" / "pader-live-v1.json").write_text(
+    (tmp_path / "config" / "dhis2" / "eregisters-live-v1.json").write_text(
         json.dumps(LIVE_CONFIG), encoding="utf-8"
     )
     monkeypatch.setattr(module, "Dhis2Client", _FakeAggregate)

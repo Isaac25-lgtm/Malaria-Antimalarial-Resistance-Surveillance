@@ -44,8 +44,8 @@ def overview(
 ) -> OverviewSnapshot:
     """One dashboard snapshot. Every section carries its own provenance.
 
-    The browser must not compute a competing indicator. Pader-scoped callers
-    receive a Pader title; national labelling is refused for a district scope.
+    The browser must not compute a competing indicator. District-scoped callers
+    receive their district title; national labelling is refused for a district scope.
     """
     return OverviewSnapshot.model_validate(
         service.snapshot(principal, period_start=period_start, period_end=period_end)

@@ -131,6 +131,7 @@ class DurableLiveDashboardService(LiveDashboardService):
                     facilities,
                     period_start,
                     period_end,
+                    str(context.get("scope_name") or "Authorised scope"),
                 )
                 future.add_done_callback(
                     lambda completed: self._job_done(completed, receipt["id"], token)
@@ -161,6 +162,7 @@ class DurableLiveDashboardService(LiveDashboardService):
         facilities: Sequence[Mapping[str, Any]],
         start: date,
         end: date,
+        scope_name: str = "Authorised scope",
     ) -> None:
         def active() -> bool:
             if self._closing.is_set():
@@ -171,7 +173,9 @@ class DurableLiveDashboardService(LiveDashboardService):
                 return False
 
         retained: list[Any] = []
-        extra: dict[str, Any] = {"evidence_sink": retained.append} if self.evidence_sink else {}
+        extra: dict[str, Any] = {"scope_name": scope_name}
+        if self.evidence_sink:
+            extra["evidence_sink"] = retained.append
         try:
             checkpoint = SyncCheckpoint(self.store, job_id, token, active)
             checkpoint.check()

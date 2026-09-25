@@ -451,8 +451,8 @@ class TestDiscoveryRun:
         assert all(record.probed is False for record in patient)
         assert any(item.kind == "opd_programme" for item in report.candidate_mappings)
         assert any(item.kind == "malaria_variable" for item in report.candidate_mappings)
-        assert report.pader_candidates
-        assert report.pader_candidates[0].id == "PAD1"
+        # The account's own assignment is the scope root; no place name is matched.
+        assert [unit.id for unit in report.scope_roots] == ["PAD1"]
         assert report.api_generation == "modern_tracker_preferred_legacy_deprecated"
         assert report.accessible_facility_count == 1
         assert report.accessible_facilities[0].id == "HF1"
@@ -548,13 +548,19 @@ class TestDiscoveryRun:
         body = json.loads(json_path.read_text(encoding="utf-8"))
         assert body["stop_before_patient_data"] is True
         rendered = render_markdown(report)
-        assert "Pader" in rendered
+        assert "Assigned organisation units" in rendered
+        assert "`PAD1` Pader" in rendered
 
 
 class TestClassificationIsProposalOnly:
-    def test_a_name_match_is_labelled_a_proposal(self) -> None:
+    def test_a_district_is_not_singled_out_by_name(self) -> None:
+        """Any district is an ordinary organisation unit; scope comes from assignments."""
+        for name in ("Pader District", "Gulu District", "Kitgum District"):
+            unit = compact_unit({"id": "X", "name": name, "level": 3})
+            assert unit.classification == "organisation_unit"
+
+    def test_mappings_are_labelled_proposals(self) -> None:
         unit = compact_unit({"id": "X", "name": "Pader District", "level": 3})
-        assert unit.classification == "pader_candidate"
         proposals = candidate_mappings(
             units=[unit],
             programmes=[{"id": "P", "name": "OPD Register"}],
@@ -567,3 +573,41 @@ class TestClassificationIsProposalOnly:
         unit = compact_unit({"id": "Z"})
         assert unit.name is None
         assert unit.classification == "organisation_unit"
+
+
+class TestFacilitiesComeFromTheAccountsAssignments:
+    def test_a_non_pader_district_account_gets_its_own_facilities(self) -> None:
+        """The same rule serves every district: facilities inside the assigned root."""
+        from mars.integrations.dhis2.discovery.models import OrganisationUnitRecord
+        from mars.integrations.dhis2.discovery.service import _accessible_facilities
+
+        gulu = OrganisationUnitRecord(id="GUL1", name="Gulu District", level=3, path="/UG/GUL1")
+        inside = OrganisationUnitRecord(
+            id="HFG",
+            name="Gulu RR Hospital",
+            level=5,
+            path="/UG/GUL1/SC1/HFG",
+            leaf=True,
+            classification="candidate_facility",
+        )
+        outside = OrganisationUnitRecord(
+            id="HFP",
+            name="Pajule HC IV",
+            level=5,
+            path="/UG/PAD1/SC2/HFP",
+            leaf=True,
+            classification="candidate_facility",
+        )
+        found = _accessible_facilities(hierarchy=[inside, outside], scope_roots=[gulu])
+        assert [unit.id for unit in found] == ["HFG"]
+
+    def test_units_beneath_each_assigned_root_are_requested_by_path(self) -> None:
+        transport = recording(_metadata_handler)
+        with DiscoveryClient(config(token=SECRET_TOKEN), transport=transport) as client:
+            run_discovery(client, origin_host="dhis2.example.org")
+        filters = [
+            request.url.params.get("filter")
+            for request in transport.seen  # type: ignore[attr-defined]
+            if request.url.path == "/api/organisationUnits"
+        ]
+        assert "path:like:PAD1" in filters

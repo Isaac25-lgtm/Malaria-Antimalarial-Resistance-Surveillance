@@ -3809,7 +3809,8 @@
             "title": "Retrieval Plan"
           },
           "scope": {
-            "const": "Pader District",
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Scope",
             "type": "string"
           },
@@ -9485,7 +9486,7 @@
     },
     "/api/v1/geography/map/context": {
       "get": {
-        "description": "Return Uganda's public administrative outlines at one national grain.\n\nEvery published unit at that level is included so a Pader-scoped map can\nstill draw the rest of the country. ``in_scope`` says whether the caller\nmay open the unit. No indicator, signal, investigation or commodity value\nis attached.\n\nSubcounty and finer requests are refused: those are not a context view.",
+        "description": "Return Uganda's public administrative outlines at one national grain.\n\nEvery published unit at that level is included so a district-scoped map can\nstill draw the rest of the country. ``in_scope`` says whether the caller\nmay open the unit. No indicator, signal, investigation or commodity value\nis attached.\n\nSubcounty and finer requests are refused: those are not a context view.",
         "operationId": "map_context_api_v1_geography_map_context_get",
         "parameters": [
           {
@@ -14104,7 +14105,7 @@
     },
     "/api/v1/surveillance/overview": {
       "get": {
-        "description": "One dashboard snapshot. Every section carries its own provenance.\n\nThe browser must not compute a competing indicator. Pader-scoped callers\nreceive a Pader title; national labelling is refused for a district scope.",
+        "description": "One dashboard snapshot. Every section carries its own provenance.\n\nThe browser must not compute a competing indicator. District-scoped callers\nreceive their district title; national labelling is refused for a district scope.",
         "operationId": "overview_api_v1_surveillance_overview_get",
         "parameters": [
           {
