@@ -1,17 +1,15 @@
 /**
  * Sign-in.
  *
- * Live mode: one eRegisters username and password form. Credentials go only
- * to the MARS API. Demo mode keeps the synthetic account chooser.
+ * One eRegisters username and password form. Credentials go only to the MARS
+ * API, and the account's eRegisters assignments decide what it can see.
  */
 
 import { useId, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { ApiError, api } from "../../api/client";
+import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/context";
-import { LoadingState, UnavailableState } from "../../design-system/States";
 import "./sign-in.css";
 
 interface LocationState {
@@ -19,37 +17,7 @@ interface LocationState {
 }
 
 export function SignInView() {
-  const version = useQuery({
-    queryKey: ["meta", "version"],
-    queryFn: api.version,
-    retry: false,
-    staleTime: 30_000,
-  });
-
-  if (version.isPending) {
-    return (
-      <main className="sign-in">
-        <div className="sign-in__panel">
-          <SignInHeader />
-          <LoadingState label="sign-in" rows={3} />
-        </div>
-      </main>
-    );
-  }
-
-  const data = version.data as {
-    live_login_enabled?: boolean;
-    auth_mode?: string;
-    development_auth_active?: boolean;
-    demo_mode_enabled?: boolean;
-  } | undefined;
-  const live = data?.live_login_enabled === true || data?.auth_mode === "live";
-  const demo = data?.development_auth_active === true || data?.demo_mode_enabled === true;
-
-  if (live || !demo) {
-    return <LiveSignInForm />;
-  }
-  return <DemoSignInChooser />;
+  return <LiveSignInForm />;
 }
 
 function SignInHeader() {
@@ -165,104 +133,6 @@ function LiveSignInForm() {
           </button>
           <p className="sign-in__hint">Use your authorised Ministry eRegisters account.</p>
         </form>
-        <p className="sign-in__boundary">
-          MARS signals indicate patterns requiring investigation. They do not confirm
-          antimalarial resistance.
-        </p>
-      </div>
-    </main>
-  );
-}
-
-function DemoSignInChooser() {
-  const { signInAsDevelopmentUser } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [signingIn, setSigningIn] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const users = useQuery({
-    queryKey: ["auth", "dev-users"],
-    queryFn: api.developmentUsers,
-    retry: false,
-  });
-
-  async function handleSignIn(username: string) {
-    setSigningIn(username);
-    setError(null);
-    try {
-      await signInAsDevelopmentUser(username);
-      const intended = (location.state as LocationState | null)?.from;
-      navigate(intended && intended !== "/sign-in" ? intended : "/", { replace: true });
-    } catch (caught) {
-      setError(
-        caught instanceof ApiError
-          ? (caught.problem?.detail ?? caught.message)
-          : "Sign-in failed.",
-      );
-    } finally {
-      setSigningIn(null);
-    }
-  }
-
-  return (
-    <main className="sign-in">
-      <div className="sign-in__panel">
-        <SignInHeader />
-
-        <div className="notice notice--attention">
-          <div>
-            <div className="notice__title">Development authentication</div>
-            <div>
-              No identity provider is configured for this deployment. The accounts below
-              are synthetic and exist only to exercise the access model. They are refused
-              outright in staging and production.
-            </div>
-          </div>
-        </div>
-
-        {users.isPending ? (
-          <LoadingState label="available accounts" rows={4} />
-        ) : users.isError ? (
-          <UnavailableState
-            title="Sign-in is unavailable"
-            description={
-              users.error instanceof ApiError && users.error.isUnavailable
-                ? "Development authentication is not enabled on this deployment."
-                : "The MARS API could not be reached."
-            }
-            requestId={users.error instanceof ApiError ? users.error.requestId : null}
-            onRetry={() => void users.refetch()}
-          />
-        ) : (
-          <>
-            <h2 className="sign-in__list-heading">Choose an account</h2>
-            <ul className="sign-in__users">
-              {users.data.map((user) => (
-                <li key={user.username}>
-                  <button
-                    type="button"
-                    className="sign-in__user"
-                    onClick={() => void handleSignIn(user.username)}
-                    disabled={signingIn !== null}
-                    aria-busy={signingIn === user.username}
-                  >
-                    <span className="sign-in__user-name">{user.display_name}</span>
-                    <span className="sign-in__user-role mono">{user.role}</span>
-                    <span className="sign-in__user-scope">{user.scope_description}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {error ? (
-          <p className="sign-in__error" role="alert">
-            {error}
-          </p>
-        ) : null}
-
         <p className="sign-in__boundary">
           MARS signals indicate patterns requiring investigation. They do not confirm
           antimalarial resistance.

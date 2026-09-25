@@ -3,13 +3,13 @@
  *
  * Blueprint section 070. The discipline this file encodes:
  *
- *   One accent (teal), three semantic states, everything else neutral.
+ *   One accent (blue), three semantic states, everything else neutral.
  *   Structural surfaces are never coloured - only status marks are. A KPI card
  *   is neutral even when its number is bad; that is what keeps the interface
  *   readable and stops it becoming a wall of competing colour.
  *
  * Colour carries meaning here, so it is spent sparingly:
- *   teal   - the single brand accent and the neutral analytical series
+ *   blue   - the single brand accent and the neutral analytical series
  *   amber  - attention; something needs review
  *   red    - high priority only
  *   grey   - no or insufficient data. NEVER read as "low".
@@ -19,54 +19,54 @@
   color-scheme: light;
 
   /* -- Surfaces ------------------------------------------------------- */
-  --surface-page: #f4f6f9;
+  --surface-page: #f5f6f8;
   --surface-raised: #ffffff;
-  --surface-sunken: #eef1f4;
-  --surface-inset: #fbfcfd;
-  --surface-sidebar: #0b1f33;
-  --surface-sidebar-active: #16344f;
+  --surface-sunken: #f0f2f5;
+  --surface-inset: #fafbfc;
+  --surface-sidebar: #0d2338;
+  --surface-sidebar-active: #1c3f5f;
 
   /* -- Ink ------------------------------------------------------------ */
-  --ink-primary: #12212b;
-  --ink-secondary: #4e5f66;
-  --ink-tertiary: #7c8b90;
+  --ink-primary: #16212e;
+  --ink-secondary: #4f5d6a;
+  --ink-tertiary: #7a8691;
   --ink-inverse: #ffffff;
 
   /* -- Lines ---------------------------------------------------------- */
-  --line-subtle: #e3e8e7;
-  --line-default: #d2dad8;
-  --line-strong: #b6c2bf;
+  --line-subtle: #eceff3;
+  --line-default: #e1e5ea;
+  --line-strong: #d5dbe2;
 
   /* -- Accent (the only brand colour) --------------------------------- */
-  --accent: #0b6e63;
-  --accent-hover: #095c53;
-  --accent-soft: #e4f0ed;
-  --accent-line: #9cc7bf;
+  --accent: #1f5c96;
+  --accent-hover: #184a79;
+  --accent-soft: #e9f1f8;
+  --accent-line: #c3d8ea;
   --accent-ink: #ffffff;
 
   /* -- Semantic status ------------------------------------------------ */
-  --status-priority: #96242a;
-  --status-priority-soft: #faebea;
-  --status-attention: #8a5200;
-  --status-attention-soft: #fbf1e0;
-  --status-ok: #2f6b3c;
-  --status-ok-soft: #e8f2e9;
-  --status-info: #1c5a8a;
-  --status-info-soft: #e7f0f7;
+  --status-priority: #a53227;
+  --status-priority-soft: #f9ebe9;
+  --status-attention: #9c6b12;
+  --status-attention-soft: #fbf1dd;
+  --status-ok: #2c7553;
+  --status-ok-soft: #e8f2ec;
+  --status-info: #2d74b6;
+  --status-info-soft: #e9f1f8;
 
   /* Absence of data is its own state, visually distinct from every value
      on the scale. Blueprint appendix 142: grey means no or insufficient
      data, not low risk. */
-  --status-unavailable: #8c9895;
-  --status-unavailable-soft: #eceeed;
+  --status-unavailable: #7d8894;
+  --status-unavailable-soft: #eef0f3;
 
   /* -- Focus ---------------------------------------------------------- */
-  --focus-ring: #0b6e63;
+  --focus-ring: #2d74b6;
   --focus-ring-offset: #ffffff;
 
   /* -- Typography ----------------------------------------------------- */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+    Arial, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 
   --text-2xs: 0.6875rem; /* 11px - uppercase labels */
@@ -101,8 +101,8 @@
 
   /* -- Shape ----------------------------------------------------------- */
   --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 
   /* Almost no shadow. Depth comes from a 1px border, not from a blur -
      blueprint section 070 asks for subtle borders and minimal shadows. */
@@ -110,8 +110,8 @@
   --shadow-overlay: 0 8px 24px rgb(11 31 51 / 8%);
 
   /* -- Layout ---------------------------------------------------------- */
-  --app-bar-height: 3.5rem;
-  --sidebar-width: 14.75rem;
+  --app-bar-height: 3.875rem;
+  --sidebar-width: 15.375rem;
   --content-max-width: 92rem;
 
   --duration-fast: 120ms;

@@ -39,8 +39,6 @@ UNAUTHENTICATED_ROUTES: dict[str, str] = {
         "Live eRegisters sign-in. Issues a session; does not return surveillance data."
     ),
     "/api/v1/auth/logout": "Ends the caller's own session.",
-    "/api/v1/auth/dev/users": "Development authentication; refused in protected environments.",
-    "/api/v1/auth/dev/login": "Development authentication; refused in protected environments.",
 }
 
 #: Endpoints that additionally require a sensitivity tier above aggregate.

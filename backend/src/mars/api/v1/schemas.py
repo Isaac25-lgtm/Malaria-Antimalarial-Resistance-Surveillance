@@ -69,9 +69,7 @@ class VersionResponse(MarsModel):
     api_version: str
     display_timezone: str
     ai_assistant_enabled: bool
-    demo_mode_enabled: bool
-    development_auth_active: bool
-    auth_mode: str = "demo"
+    auth_mode: str = "live"
     live_login_enabled: bool = False
     active_method_versions: list[str] = Field(
         default_factory=list,
@@ -226,30 +224,6 @@ class LiveMetadataDiscoverySummary(MarsModel):
     json_report: str | None = None
     markdown_report: str | None = None
     patient_data_retrieved: bool = False
-
-
-class DevelopmentLoginRequest(MarsModel):
-    """Request a synthetic development token. Non-production only."""
-
-    username: str = Field(min_length=1, max_length=128)
-
-
-class DevelopmentLoginResponse(MarsModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_at: datetime
-    warning: str = Field(
-        default="Synthetic development session. Not valid in staging or production.",
-    )
-
-
-class DevelopmentUserSummary(MarsModel):
-    """A selectable synthetic user, for the development sign-in screen."""
-
-    username: str
-    display_name: str
-    role: str
-    scope_description: str
 
 
 # -- Geography ------------------------------------------------------------
@@ -914,7 +888,6 @@ class OverviewSnapshot(MarsModel):
     interpretation_boundary: str
     data_mode: str
     data_mode_detail: str
-    demo_mode_enabled: bool
     requested_scope: str
     has_national_scope: bool
     reporting_period: PeriodWindow

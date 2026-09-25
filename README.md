@@ -41,16 +41,12 @@ country's full administrative geography — 146 districts, 2,653 administrative
 units — and routes national, district and facility views from the authenticated
 user's real organisation-unit scope.
 
-It runs in two clearly separated modes. They never share a process or a database.
-
-| Mode | What it is | Data |
-| --- | --- | --- |
-| **Live** | Authorised DHIS2/eRegisters integration. Scope is whatever the authenticated account actually holds | Live synchronised HMIS and Tracker data |
-| **Demonstration** | Synthetic environment for development and presentation, visibly labelled on every screen | Deterministic synthetic data |
-
-The live mode refuses the demonstration database at startup, and the API
-response schema for a live snapshot is typed `synthetic_data_used: Literal[False]`
-— the contract itself cannot carry a synthetic figure.
+It runs only against live data. Users sign in with their own eRegisters
+account, and that account's eRegisters assignments decide what they see: a
+national account sees the national workspace, a district account its own
+district. There is no demonstration or synthetic mode, and the API response
+schema for a live snapshot is typed `synthetic_data_used: Literal[False]` — the
+contract itself cannot carry a synthetic figure.
 
 **Deployment status.** This repository hosts the **source code**. It is not a
 running system, and publishing it here is not a deployment: no national
@@ -334,8 +330,9 @@ your own values — **placeholders below, never real credentials**:
 
 ```bash
 MARS_ENVIRONMENT=development
-MARS_DATABASE_URL=postgresql+psycopg://USER@HOST:5432/mars_local
-MARS_IDENTITY_DATABASE_URL=postgresql+psycopg://IDENTITY_USER@HOST:5432/mars_local
+MARS_AUTH_MODE=live
+MARS_DATABASE_URL=postgresql+psycopg://USER@HOST:5432/mars_live
+MARS_IDENTITY_DATABASE_URL=postgresql+psycopg://IDENTITY_USER@HOST:5432/mars_live
 MARS_IDENTITY_ENCRYPTION_KEY=<64 hex characters>
 MARS_IDENTITY_LINKAGE_KEY=<64 hex characters>
 ```
@@ -344,12 +341,9 @@ Passwords are supplied through `PGPASSWORD`, a `.pgpass` file or the
 orchestrator's secret store — never in a URL that appears in a process list.
 
 ```bash
-# Migrations, then geography, then the demonstration dataset
+# Migrations, then geography
 cd backend && .venv/Scripts/alembic upgrade head
 .venv/Scripts/python -m mars.ingestion.geography.cli --data-dir <repo root>
-python scripts/seed_development.py
-.venv/Scripts/python -m mars.demo.cli generate --out-dir ./demo
-.venv/Scripts/python -m mars.demo.cli register --out-dir ./demo
 
 # Run
 .venv/Scripts/uvicorn mars.main:app --reload --port 8000
@@ -368,8 +362,8 @@ npm --prefix frontend run dev          # http://127.0.0.1:5173
 ```
 
 The launcher validates the `mars_app_login` and `mars_identity_login` roles,
-optionally provisions missing restricted local roles, applies migrations through
-`0027_live_sync`, asserts the schema privilege boundary, starts
+optionally provisions missing restricted local roles, applies every migration,
+asserts the schema privilege boundary, starts
 the API on **port 8000**, waits for its OpenAPI contract to satisfy the dashboard
 schema, and only then starts the UI on **port 5173**.
 
@@ -386,10 +380,6 @@ schema, and only then starts the UI on **port 5173**.
   listener on that port.
 - The UI is never started against an API that fails the contract check.
 - Credentials are never printed.
-
-A separate `./scripts/start-mars-demo.ps1` runs the synthetic environment. The two
-launchers are isolated and the settings layer refuses to start live mode against
-the demonstration database.
 
 ---
 

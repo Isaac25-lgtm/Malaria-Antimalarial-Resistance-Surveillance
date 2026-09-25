@@ -100,7 +100,6 @@ class OverviewService:
             "interpretation_boundary": INTERPRETATION_BOUNDARY,
             "data_mode": data_mode,
             "data_mode_detail": _data_mode_detail(data_mode, last_status),
-            "demo_mode_enabled": self._settings.demo_mode_enabled,
             "requested_scope": scope["label"],
             "has_national_scope": principal.has_national_scope,
             "reporting_period": period,
@@ -223,8 +222,6 @@ class OverviewService:
         return {"title": "Overview", "label": "unscoped"}
 
     def _data_mode(self, last_status: object) -> str:
-        if self._settings.demo_mode_enabled:
-            return "synthetic"
         if last_status == IntegrationRunStatus.COMPLETED.value:
             return "live"
         return "unavailable"
@@ -390,11 +387,6 @@ def _needs_attention(
 
 
 def _data_mode_detail(mode: str, last_status: object) -> str:
-    if mode == "synthetic":
-        return (
-            "This deployment is serving synthetic demonstration data. "
-            "It is not a live Ministry feed."
-        )
     if mode == "live":
         return "A bounded source synchronisation has completed for the configured origin."
     return "No completed source synchronisation is on record" + (

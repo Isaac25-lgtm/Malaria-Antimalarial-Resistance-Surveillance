@@ -34,8 +34,8 @@ Patient synchronization, if later approved, requires explicit approval of:
 
 The first approved pull must use:
 
-- `mars_live`, never `mars_local`;
-- no copy from synthetic `mars_local`;
+- `mars_live`;
+- no copy from any other database;
 - demo mode off;
 - server-side DHIS2 secrets only;
 - Pader source scope unless a national read-only service account is issued;

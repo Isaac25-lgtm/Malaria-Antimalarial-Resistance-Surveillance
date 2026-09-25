@@ -54,10 +54,8 @@ const SNAPSHOT: Schemas["OverviewSnapshot"] = {
   subtitle: "Malaria surveillance from routine health information systems.",
   interpretation_boundary:
     "Routine surveillance data identifies patterns requiring investigation.",
-  data_mode: "synthetic",
-  data_mode_detail:
-    "This deployment is serving synthetic demonstration data. It is not a live Ministry feed.",
-  demo_mode_enabled: true,
+  data_mode: "unavailable",
+  data_mode_detail: "No completed source synchronisation is on record.",
   requested_scope: "national",
   has_national_scope: true,
   reporting_period: PERIOD,
@@ -209,7 +207,6 @@ const auth: AuthContextValue = {
     mapping_status: "mapped",
   },
   error: null,
-  signInAsDevelopmentUser: () => Promise.resolve(),
   signInWithEregisters: () => Promise.resolve(),
   signOut: () => Promise.resolve(),
   can: () => true,
@@ -273,7 +270,7 @@ describe("operational overview", () => {
     expect(
       await screen.findByRole("heading", { name: "National Overview" }, { timeout: 5_000 }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/not a live Ministry feed/i)).toBeInTheDocument();
+    expect(screen.getByText(/no synchronisation yet/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Investigations" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Commodity security" })).toBeInTheDocument();
     expect(screen.getAllByRole("article")).toHaveLength(6);
@@ -359,7 +356,6 @@ describe("operational overview", () => {
       requested_scope: "pader",
       has_national_scope: false,
       data_mode: "unavailable",
-      demo_mode_enabled: false,
       last_successful_synchronization: null,
     });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

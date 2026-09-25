@@ -120,7 +120,6 @@ function renderView() {
     status: "authenticated",
     user: null,
     error: null,
-    signInAsDevelopmentUser: () => Promise.resolve(),
     signInWithEregisters: () => Promise.resolve(),
     signOut: () => Promise.resolve(),
     can: () => false,

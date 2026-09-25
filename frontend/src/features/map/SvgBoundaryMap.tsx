@@ -57,7 +57,7 @@ export function SvgBoundaryMap({
             key={unitId}
             d={d}
             fill={typeof confirmed === "number" ? "#93c5e8" : FILL_COLOURS[fillClass] ?? FILL_COLOURS.none}
-            stroke={selected ? "#0b6e63" : "#b6c2bf"}
+            stroke={selected ? "#1f5c96" : "#d5dbe2"}
             strokeWidth={selected ? 2.2 : 0.7}
             data-unit-id={unitId}
             data-in-scope={scoped ? "true" : "false"}

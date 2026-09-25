@@ -52,9 +52,7 @@ describe("live sign-in form", () => {
       live_login_enabled: true,
       auth_mode: "live",
       development_auth_active: false,
-      demo_mode_enabled: false,
     } as never);
-    const users = vi.spyOn(api, "developmentUsers");
 
     renderLiveSignIn();
 
@@ -62,7 +60,6 @@ describe("live sign-in form", () => {
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
     expect(screen.getByText("Use your authorised Ministry eRegisters account.")).toBeInTheDocument();
     expect(screen.queryByText("Choose an account")).not.toBeInTheDocument();
-    expect(users).not.toHaveBeenCalled();
   });
 
   it("clears the password after submit and never calls DHIS2", async () => {
@@ -157,7 +154,6 @@ describe("pending live workspace", () => {
             status: "authenticated",
             user,
             error: null,
-            signInAsDevelopmentUser: () => Promise.resolve(),
             signInWithEregisters: () => Promise.resolve(),
             signOut: () => Promise.resolve(),
             can: () => false,

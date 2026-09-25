@@ -234,10 +234,9 @@ class FakeMethodRegistryService:
 def api_settings() -> Settings:
     return Settings(
         environment=Environment.LOCAL,
-        auth_mode="demo",
+        auth_mode="oidc",
+        oidc_issuer="https://issuer.test.invalid/realms/mars",
         database_url="postgresql+psycopg://mars:test@localhost:5432/mars_test",
-        dev_auth_enabled=True,
-        dev_auth_secret="test-only-secret",
         log_format="console",
         cors_allow_origins=["http://localhost:5173"],
     )

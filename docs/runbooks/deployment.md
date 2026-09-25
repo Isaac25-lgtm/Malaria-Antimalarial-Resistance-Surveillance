@@ -57,7 +57,7 @@ that fails loudly.
 
 ### Refused in a protected environment
 
-`MARS_DEV_AUTH_ENABLED` and `MARS_DEMO_MODE_ENABLED` are refused when
+Staging and production require `MARS_AUTH_MODE=oidc` with `MARS_OIDC_ISSUER`; eRegisters password sign-in is refused when
 `MARS_ENVIRONMENT` is `staging` or `production`. The application will not start.
 
 ## Reverse proxy and TLS

@@ -36,6 +36,6 @@ an API response, browser storage, or a log.
 
 ## Isolation
 
-Live mode (`MARS_AUTH_MODE=live`) requires database `mars_live` and refuses
-`mars_local`, demo mode, and development authentication. Failed live login
+Live mode (`MARS_AUTH_MODE=live`) is the default and only local mode; there is
+no demo mode or development authentication. Failed live login
 never falls back to synthetic accounts.

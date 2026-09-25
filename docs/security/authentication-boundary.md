@@ -17,11 +17,10 @@ in process memory for that session only. See `docs/security/live-sessions.md`.
 This path is refused in staging and production. Those environments still
 require Ministry OIDC (`oidc_issuer`).
 
-## Demo (`MARS_AUTH_MODE=demo`)
+## No synthetic sign-in
 
-Development authentication (`MARS_DEV_AUTH_ENABLED`) is synthetic and must
-remain visibly labelled. It is not production authentication and it is not a
-fallback for a failed live login.
+There is no development, demonstration or synthetic sign-in. A failed live
+login is a failed login; nothing falls back.
 
 ## Discovery tokens
 

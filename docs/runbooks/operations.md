@@ -1,7 +1,7 @@
 # Operations runbook
 
 Day-to-day running: data refresh, DHIS2, governance activation, monitoring, and
-the demonstration dataset.
+live data.
 
 ## Data refresh
 
@@ -102,50 +102,6 @@ request identifier.
 
 Sensitive query parameters (`token`, `access_token`, `code`, `state`, `nin`) are
 redacted before logging. Question text sent to Ask MARS is never logged.
-
-## The demonstration dataset
-
-Deterministic synthetic data, loaded through the real ingestion path so that a
-demonstration exercises the same code a real deployment runs.
-
-```bash
-python -m mars.demo.cli generate --out-dir ./demo
-python -m mars.demo.cli register --out-dir ./demo
-```
-
-`generate` writes the dataset and `register` creates its synthetic facilities.
-Load the generated batch files separately with `mars.ingestion.encounters.cli`;
-that explicit step exercises the same ingestion and quarantine path used for a
-real deployment. Both demo commands are deterministic given `--seed`, so two
-people running the same command see the same demonstration.
-
-Facilities are prefixed `DEMO-HF` and patient references `SYN`. No real patient
-data exists anywhere in this repository, and no synthetic record carries a
-coordinate — the generator does not produce one, so no demonstration can show a
-household on a map.
-
-`MARS_DEMO_MODE_ENABLED` marks every screen as carrying synthetic data. It is
-**refused in a protected environment**: a demonstration that looked like
-production is the mistake this guard prevents.
-
-### Demo reset
-
-```bash
-# Confirm which database you are pointed at before removing anything.
-psql -d "$DEMO_DB" -c "SELECT current_database()"
-
-python -m mars.demo.cli purge              # dry run: reports what it would delete
-python -m mars.demo.cli purge --confirm    # actually deletes
-python -m mars.demo.cli generate --out-dir ./demo
-python -m mars.demo.cli register --out-dir ./demo
-```
-
-`purge` without `--confirm` deletes nothing and reports what it would remove.
-
-It is scoped by the demo facility code prefix and **by nothing else** — no date
-range, no district. A purge that accepted either would eventually be pointed at
-real data, and the prefix is the only filter that cannot be aimed at a real
-facility by mistake.
 
 ## Known limitations
 

@@ -46,12 +46,12 @@ def _clear_settings_cache() -> Iterator[None]:
 
 @pytest.fixture
 def dev_settings() -> Settings:
-    """Settings for a local development deployment with synthetic auth on."""
+    """Settings for a local deployment verifying bearer tokens against a test issuer."""
     return Settings(
         environment=Environment.LOCAL,
         database_url="postgresql+psycopg://mars:test@localhost:5432/mars_test",
-        dev_auth_enabled=True,
-        dev_auth_secret="test-only-secret",
+        auth_mode="oidc",
+        oidc_issuer="https://issuer.test.invalid/realms/mars",
         log_format="console",
     )
 

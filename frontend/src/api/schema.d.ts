@@ -78,50 +78,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/dev/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Sign in as a synthetic development user
-         * @description Issue a short-lived synthetic token.
-         *
-         *     The account must already exist and be flagged synthetic. This route never
-         *     creates an account, so it cannot be used to mint a principal that the seeded
-         *     development fixture did not define.
-         */
-        post: operations["development_login_api_v1_auth_dev_login_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/dev/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Synthetic users available for development sign-in
-         * @description List the synthetic accounts a developer may sign in as.
-         */
-        get: operations["development_users_api_v1_auth_dev_users_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/auth/live/metadata-discovery": {
         parameters: {
             query?: never;
@@ -181,9 +137,9 @@ export interface paths {
         put?: never;
         /**
          * End the current session
-         * @description Invalidate a live cookie session, or record a demo logout.
+         * @description Invalidate a live cookie session, or record an OIDC logout.
          *
-         *     CSRF is required in live mode. Demo bearer logout remains a recorded event;
+         *     CSRF is required in live mode. OIDC bearer logout remains a recorded event;
          *     token drop is the client's responsibility.
          */
         post: operations["logout_api_v1_auth_logout_post"];
@@ -228,7 +184,7 @@ export interface paths {
          * Whether this browser has a MARS session
          * @description Return a sanitized session snapshot, or authenticated=false.
          *
-         *     Never 401. Live cookie sessions and demo bearer tokens both surface here
+         *     Never 401. Live cookie sessions and OIDC bearer tokens both surface here
          *     so the frontend can bootstrap without a noisy expected error.
          */
         get: operations["session_status_api_v1_auth_session_get"];
@@ -2345,48 +2301,6 @@ export interface components {
             /** Version */
             version?: string | null;
         };
-        /**
-         * DevelopmentLoginRequest
-         * @description Request a synthetic development token. Non-production only.
-         */
-        DevelopmentLoginRequest: {
-            /** Username */
-            username: string;
-        };
-        /** DevelopmentLoginResponse */
-        DevelopmentLoginResponse: {
-            /** Access Token */
-            access_token: string;
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /**
-             * Token Type
-             * @default bearer
-             */
-            token_type: string;
-            /**
-             * Warning
-             * @default Synthetic development session. Not valid in staging or production.
-             */
-            warning: string;
-        };
-        /**
-         * DevelopmentUserSummary
-         * @description A selectable synthetic user, for the development sign-in screen.
-         */
-        DevelopmentUserSummary: {
-            /** Display Name */
-            display_name: string;
-            /** Role */
-            role: string;
-            /** Scope Description */
-            scope_description: string;
-            /** Username */
-            username: string;
-        };
         /** DistrictSection */
         DistrictSection: {
             /** Availability */
@@ -4061,8 +3975,6 @@ export interface components {
             data_mode: string;
             /** Data Mode Detail */
             data_mode_detail: string;
-            /** Demo Mode Enabled */
-            demo_mode_enabled: boolean;
             districts_requiring_review: components["schemas"]["DistrictSection"];
             /** Has National Scope */
             has_national_scope: boolean;
@@ -5084,15 +4996,11 @@ export interface components {
             api_version: string;
             /**
              * Auth Mode
-             * @default demo
+             * @default live
              */
             auth_mode: string;
             /** Build Timestamp */
             build_timestamp: string | null;
-            /** Demo Mode Enabled */
-            demo_mode_enabled: boolean;
-            /** Development Auth Active */
-            development_auth_active: boolean;
             /** Display Timezone */
             display_timezone: string;
             /** Environment */
@@ -5254,59 +5162,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    development_login_api_v1_auth_dev_login_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DevelopmentLoginRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DevelopmentLoginResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    development_users_api_v1_auth_dev_users_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DevelopmentUserSummary"][];
                 };
             };
         };

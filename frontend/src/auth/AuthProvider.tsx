@@ -1,8 +1,8 @@
 /**
  * Authentication provider.
  *
- * Live sessions are an HttpOnly cookie plus an in-memory CSRF value.
- * Demo sessions may still use a memory-only bearer token.
+ * Live sessions are an HttpOnly cookie plus an in-memory CSRF value. An OIDC
+ * deployment holds its bearer token in memory only.
  * Nothing is written to localStorage or sessionStorage.
  */
 
@@ -92,16 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signInAsDevelopmentUser = useCallback(async (username: string) => {
-    queryClient.clear();
-    setError(null);
-    const session = await api.developmentLogin(username);
-    setAccessToken(session.access_token);
-    const profile = await api.currentUser();
-    setUser(profile);
-    setStatus("authenticated");
-  }, [queryClient]);
-
   const signInWithEregisters = useCallback(async (username: string, password: string) => {
     queryClient.clear();
     setError(null);
@@ -146,7 +136,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       user,
       error,
-      signInAsDevelopmentUser,
       signInWithEregisters,
       signOut,
       can,
@@ -157,7 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       user,
       error,
-      signInAsDevelopmentUser,
       signInWithEregisters,
       signOut,
       can,

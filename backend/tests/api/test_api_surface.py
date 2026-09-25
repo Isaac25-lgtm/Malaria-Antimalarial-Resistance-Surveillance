@@ -96,7 +96,7 @@ class TestErrorContract:
         assert "bearer token" in body["detail"].lower()
 
     def test_validation_failure_lists_field_errors(self, client: TestClient) -> None:
-        response = client.post("/api/v1/auth/dev/login", json={"username": ""})
+        response = client.post("/api/v1/auth/login", json={"username": "", "password": "x"})
         assert response.status_code == 422
         body = response.json()
         assert body["code"] == "validation_failed"

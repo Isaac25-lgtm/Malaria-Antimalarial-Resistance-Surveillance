@@ -63,8 +63,7 @@ services:
       MARS_REDIS_URL: redis://redis:6379/0
       MARS_LOG_LEVEL: ${MARS_LOG_LEVEL:-INFO}
       MARS_LOG_FORMAT: ${MARS_LOG_FORMAT:-console}
-      MARS_DEV_AUTH_ENABLED: ${MARS_DEV_AUTH_ENABLED:-true}
-      MARS_DEV_AUTH_SECRET: ${MARS_DEV_AUTH_SECRET:-local-development-secret-not-for-production}
+      MARS_AUTH_MODE: live
       MARS_CORS_ALLOW_ORIGINS: '["http://localhost:5173"]'
       MARS_RELEASE_VERSION: ${MARS_RELEASE_VERSION:-0.1.0}
       MARS_GIT_SHA: ${MARS_GIT_SHA:-local}

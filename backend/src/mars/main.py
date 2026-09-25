@@ -62,14 +62,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         "api_starting",
         environment=settings.environment.value,
         release_version=settings.release_version,
-        development_auth=settings.is_development_auth_active,
+        auth_mode=settings.auth_mode,
         ai_assistant_enabled=settings.ai_assistant_enabled,
     )
-    if settings.is_development_auth_active:
-        logger.warning(
-            "development_auth_active",
-            detail="Synthetic authentication is enabled. Non-production only.",
-        )
     if settings.is_live_auth_active:
         logger.warning(
             "live_auth_active",

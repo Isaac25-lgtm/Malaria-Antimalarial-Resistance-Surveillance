@@ -391,7 +391,7 @@ export function CommandCentreView() {
         </span>
         <span>{liveMode ? `Source updated: ${liveDashboard.data?.source_updated_at ? formatMoment(liveDashboard.data.source_updated_at) : "not supplied"}` : `Last updated ${formatMoment(snap?.provenance.analytics_refreshed_at ?? null)}`}</span>
         <span className={`freshness freshness--${snap?.data_mode ?? "unavailable"}`}>
-          {sourceFreshness(snap, user, liveDashboard.data)}
+          {sourceFreshness(snap, liveDashboard.data)}
         </span>
       </footer>
     </div>
@@ -823,21 +823,14 @@ function modeLine(
     return "CONNECTED — live data synchronization pending";
   }
   if (!snap) return "Loading source status.";
-  if (snap.data_mode === "synthetic") {
-    return "Development session · synthetic data · not a live Ministry feed.";
-  }
   if (snap.data_mode === "live") return snap.data_mode_detail;
   return "Source connected, no synchronisation yet.";
 }
 
 function sourceFreshness(
   snap: Snapshot | undefined,
-  user: ReturnType<typeof useAuth>["user"],
   live: Schemas["LiveDashboardSnapshot"] | null | undefined,
 ): string {
-  if (user?.is_synthetic || snap?.data_mode === "synthetic") {
-    return "Synthetic demonstration data";
-  }
   if (live?.status === "synchronized") return "Live source synchronized";
   if (live?.status === "partial") return "Partial live source data";
   if (snap?.last_successful_synchronization) return "Synchronised";

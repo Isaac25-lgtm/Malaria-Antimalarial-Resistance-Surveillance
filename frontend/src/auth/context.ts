@@ -30,7 +30,6 @@ export interface AuthContextValue {
   status: AuthStatus;
   user: CurrentUser | null;
   error: ApiError | null;
-  signInAsDevelopmentUser: (username: string) => Promise<void>;
   signInWithEregisters: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   /**

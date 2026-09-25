@@ -316,15 +316,6 @@ export const api = {
   latestLiveDashboardJob: (range?: { period_start: string; period_end: string }) =>
     request<Schemas["LiveSyncJobSummary"] | null>("/live/dashboard/jobs/latest", { query: range }),
 
-  developmentUsers: () =>
-    request<Schemas["DevelopmentUserSummary"][]>("/auth/dev/users"),
-
-  developmentLogin: (username: string) =>
-    request<Schemas["DevelopmentLoginResponse"]>("/auth/dev/login", {
-      method: "POST",
-      body: { username },
-    }),
-
   geographyOverview: () =>
     request<Schemas["GeographyOverviewResponse"]>("/geography/overview"),
 

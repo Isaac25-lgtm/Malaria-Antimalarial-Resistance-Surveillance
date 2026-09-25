@@ -11,7 +11,6 @@ from __future__ import annotations
 import enum
 from functools import lru_cache
 from typing import Literal
-from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -92,16 +91,6 @@ class Settings(BaseSettings):
     oidc_audience: str | None = None
     oidc_jwks_cache_seconds: int = Field(default=3600, ge=60)
 
-    # Development-only synthetic authentication. Guarded three ways: it must be
-    # explicitly enabled, the environment must not be protected, and the
-    # validator below refuses the combination outright.
-    dev_auth_enabled: bool = False
-    dev_auth_secret: str = Field(
-        default="dev-only-not-a-production-secret",
-        description="HMAC secret for synthetic development tokens. Never used in production.",
-    )
-    dev_auth_token_ttl_seconds: int = Field(default=28_800, ge=60)
-
     # -- Identity linkage -------------------------------------------------
     #
     # The HMAC secret that derives patient linkage tokens. Held as a SecretStr
@@ -177,16 +166,13 @@ class Settings(BaseSettings):
     # The core surveillance product must remain fully functional without it.
     ai_assistant_enabled: bool = False
 
-    # -- Demonstration data ----------------------------------------------
-    # When true the UI must visibly mark every screen as carrying synthetic
-    # data. Refused in protected environments.
-    demo_mode_enabled: bool = False
-
     # -- Runtime authentication mode -------------------------------------
-    # ``demo`` keeps synthetic development sign-in and the mars_local dataset.
-    # ``live`` is the Pader-pilot path: one eRegisters login, opaque cookie
-    # sessions, and the mars_live database. The two never share a process.
-    auth_mode: Literal["demo", "live"] = "demo"
+    # ``live`` signs users in with their own eRegisters credentials and holds
+    # an opaque cookie session; the account's eRegisters assignments decide
+    # its scope. ``oidc`` verifies Ministry identity-provider tokens and is the
+    # only mode permitted in staging and production. There is no synthetic or
+    # demonstration mode.
+    auth_mode: Literal["live", "oidc"] = "live"
 
     #: HTTPS origin of the Ministry eRegisters/DHIS2 instance used at login.
     dhis2_login_base_url: str = "https://eregisters.health.go.ug"
@@ -313,48 +299,22 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _guard_protected_environments(self) -> Settings:
         if self.environment.is_protected:
-            if self.dev_auth_enabled:
-                raise ValueError(
-                    "dev_auth_enabled must be false in staging and production. "
-                    "Synthetic authentication is a development affordance only."
-                )
-            if self.demo_mode_enabled:
-                raise ValueError("demo_mode_enabled must be false in staging and production.")
-            if self.auth_mode == "live":
-                raise ValueError(
-                    "auth_mode=live is a local DHIS2 password pilot and is not "
-                    "permitted in staging or production. Use Ministry OIDC."
-                )
             if not self.oidc_issuer:
                 raise ValueError(
                     "oidc_issuer is required in staging and production; "
                     "there is no fallback authentication path."
                 )
-        if self.auth_mode == "live":
-            if self.dev_auth_enabled:
-                raise ValueError("live mode refuses development authentication.")
-            if self.demo_mode_enabled:
-                raise ValueError("live mode refuses demo mode.")
-            database_name = _database_name(self.database_url)
-            if database_name == "mars_local":
-                raise ValueError("live mode refuses the mars_local database.")
-            if database_name != "mars_live":
+            if self.auth_mode == "live":
                 raise ValueError(
-                    "live mode requires database mars_live; "
-                    f"configured database is {database_name!r}."
+                    "auth_mode=live is a local DHIS2 password pilot and is not "
+                    "permitted in staging or production. Use Ministry OIDC."
                 )
+        if self.auth_mode == "live":
             if not self.dhis2_login_verify_tls:
                 raise ValueError("live DHIS2 login refuses to disable TLS verification.")
             if not self.cors_allow_origins:
                 raise ValueError("live mode requires cors_allow_origins for Origin checks.")
         return self
-
-    @property
-    def is_development_auth_active(self) -> bool:
-        """True only when synthetic authentication may legitimately be used."""
-        return (
-            self.auth_mode == "demo" and self.dev_auth_enabled and not self.environment.is_protected
-        )
 
     @property
     def is_live_auth_active(self) -> bool:
@@ -375,13 +335,6 @@ class Settings(BaseSettings):
     def docs_enabled(self) -> bool:
         """Interactive API docs are not exposed in protected environments."""
         return not self.environment.is_protected
-
-
-def _database_name(database_url: str) -> str:
-    """The PostgreSQL database name from a SQLAlchemy URL."""
-    normalised = database_url.replace("postgresql+psycopg", "postgresql", 1)
-    path = urlsplit(normalised).path.lstrip("/")
-    return path.split("?")[0].split("/")[0]
 
 
 @lru_cache(maxsize=1)

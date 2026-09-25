@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any
 
 from mars.core.settings import Settings
-from mars.services.overview import OverviewService
+from mars.services.overview import OverviewService, _single_district
 
 PERIOD = {"period_start": date(2026, 7, 1), "period_end": date(2026, 7, 31)}
 
@@ -39,10 +39,9 @@ class _EmptySession:
         return _Result()
 
 
-def _service(*, demo: bool = True) -> OverviewService:
+def _service() -> OverviewService:
     settings = Settings(
         database_url="postgresql+psycopg://mars:test@localhost:5432/mars_test",
-        demo_mode_enabled=demo,
     )
     return OverviewService(_EmptySession(), settings)
 
@@ -52,8 +51,8 @@ class TestOverviewDoesNotInventCoverage:
         snap = _service().snapshot(national_principal, **PERIOD)
         assert snap["title"] == "National Overview"
         assert snap["has_national_scope"] is True
-        assert snap["data_mode"] == "synthetic"
-        assert "not a live" in snap["data_mode_detail"].lower()
+        assert snap["data_mode"] == "unavailable"
+        assert "synthetic" not in snap["data_mode_detail"].lower()
 
     def test_a_pader_account_is_never_labelled_national(
         self, pader_district_principal: Any
@@ -110,6 +109,20 @@ class TestOverviewDoesNotInventCoverage:
     def test_an_unconfigured_deployment_does_not_claim_to_be_live(
         self, national_principal: Any
     ) -> None:
-        snap = _service(demo=False).snapshot(national_principal, **PERIOD)
+        snap = _service().snapshot(national_principal, **PERIOD)
         assert snap["data_mode"] == "unavailable"
         assert snap["data_mode"] != "live"
+
+
+class TestOverviewKeyMeasuresReadTheUsersDistrict:
+    def test_a_district_user_reads_their_district(self, pader_district_principal: Any) -> None:
+        scope = pader_district_principal.geography_scopes[0]
+        assert _single_district(pader_district_principal) == scope.geography_unit_id
+
+    def test_a_national_user_reads_the_national_figure(self, national_principal: Any) -> None:
+        assert _single_district(national_principal) is None
+
+    def test_a_facility_user_is_never_given_the_district_figure(
+        self, gulu_facility_principal: Any
+    ) -> None:
+        assert _single_district(gulu_facility_principal) is None

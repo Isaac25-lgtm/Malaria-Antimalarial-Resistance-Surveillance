@@ -417,8 +417,6 @@ foreach ($Url in @(
 
 $env:MARS_ENVIRONMENT = "local"
 $env:MARS_AUTH_MODE = "live"
-$env:MARS_DEV_AUTH_ENABLED = "false"
-$env:MARS_DEMO_MODE_ENABLED = "false"
 $env:MARS_DHIS2_LOGIN_BASE_URL = "https://eregisters.health.go.ug"
 $env:MARS_DHIS2_LOGIN_VERIFY_TLS = "true"
 $env:MARS_CORS_ALLOW_ORIGINS = '["http://127.0.0.1:5173","http://localhost:5173"]'

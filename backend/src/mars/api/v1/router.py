@@ -60,7 +60,4 @@ def build_v1_router(settings: Settings) -> APIRouter:
 
         router.include_router(ai_router)
 
-    if settings.is_development_auth_active:
-        router.include_router(auth.development_router)
-
     return router

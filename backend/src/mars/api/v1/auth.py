@@ -4,36 +4,28 @@
 ``{"authenticated": false}`` rather than a 401, so the browser does not log
 an expected failure.
 
-``POST /auth/login`` is the live eRegisters path. Development sign-in remains
-on ``/auth/dev/*`` and is registered only when synthetic authentication is
-active. The two never fall back into each other.
+``POST /auth/login`` is the live eRegisters path. There is no synthetic or
+development sign-in.
 """
 
 from __future__ import annotations
-
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
 from mars.api.dependencies import (
     AuditDep,
-    AuthServiceDep,
     OptionalPrincipalDep,
     PrincipalDep,
     SessionDep,
     SettingsDep,
     get_live_auth_service,
-    get_token_verifier,
     require_permissions,
 )
 from mars.api.v1.schemas import (
     AuthorisedDistrictSummary,
     CurrentUserResponse,
     DataReadinessSummary,
-    DevelopmentLoginRequest,
-    DevelopmentLoginResponse,
-    DevelopmentUserSummary,
     GeographyScopeSummary,
     LiveLoginRequest,
     LiveMetadataDiscoverySummary,
@@ -53,11 +45,10 @@ from mars.core.errors import (
 )
 from mars.core.logging import get_logger
 from mars.core.settings import Settings
-from mars.domain.enums import AuditAction, AuditOutcome
+from mars.domain.enums import AuditAction
 from mars.security.origin import assert_approved_origin
 from mars.security.permissions import Permission
 from mars.security.principal import AuthenticatedPrincipal
-from mars.security.providers import DevelopmentTokenVerifier
 from mars.security.remote_authorization import LiveAuthorizationState
 from mars.services.live_auth import attach_session_cookies, clear_session_cookies
 
@@ -77,7 +68,7 @@ def session_status(
 ) -> SessionStatusResponse:
     """Return a sanitized session snapshot, or authenticated=false.
 
-    Never 401. Live cookie sessions and demo bearer tokens both surface here
+    Never 401. Live cookie sessions and OIDC bearer tokens both surface here
     so the frontend can bootstrap without a noisy expected error.
     """
     if principal is None:
@@ -278,9 +269,9 @@ def logout(
     audit: AuditDep,
     principal: OptionalPrincipalDep,
 ) -> Response:
-    """Invalidate a live cookie session, or record a demo logout.
+    """Invalidate a live cookie session, or record an OIDC logout.
 
-    CSRF is required in live mode. Demo bearer logout remains a recorded event;
+    CSRF is required in live mode. OIDC bearer logout remains a recorded event;
     token drop is the client's responsibility.
     """
     response = Response(status_code=204, headers={"Cache-Control": "no-store"})
@@ -316,112 +307,6 @@ def logout(
             object_id=principal.session_reference,
         )
     return response
-
-
-# ---------------------------------------------------------------------------
-# Development-only routes.
-#
-# Registered by ``register_development_auth_routes`` and only when synthetic
-# authentication is active. In staging or production these paths do not exist.
-# ---------------------------------------------------------------------------
-development_router = APIRouter(tags=["auth", "development"])
-
-
-@development_router.get(
-    "/auth/dev/users",
-    response_model=list[DevelopmentUserSummary],
-    summary="Synthetic users available for development sign-in",
-)
-def development_users(
-    settings: SettingsDep, auth_service: AuthServiceDep
-) -> list[DevelopmentUserSummary]:
-    """List the synthetic accounts a developer may sign in as."""
-    if not settings.is_development_auth_active:
-        raise FeatureDisabledError("Development authentication is not enabled")
-
-    from mars.security.dev_users import DEVELOPMENT_USERS
-
-    return [
-        DevelopmentUserSummary(
-            username=spec.username,
-            display_name=spec.display_name,
-            role=spec.role.value,
-            scope_description=spec.scope_description,
-        )
-        for spec in DEVELOPMENT_USERS
-    ]
-
-
-@development_router.post(
-    "/auth/dev/login",
-    response_model=DevelopmentLoginResponse,
-    summary="Sign in as a synthetic development user",
-)
-def development_login(
-    payload: DevelopmentLoginRequest,
-    request: Request,
-    settings: SettingsDep,
-    auth_service: AuthServiceDep,
-    audit: AuditDep,
-) -> DevelopmentLoginResponse:
-    """Issue a short-lived synthetic token.
-
-    The account must already exist and be flagged synthetic. This route never
-    creates an account, so it cannot be used to mint a principal that the seeded
-    development fixture did not define.
-    """
-    if not settings.is_development_auth_active:
-        raise FeatureDisabledError("Development authentication is not enabled")
-    if settings.is_live_auth_active:
-        raise FeatureDisabledError("Development authentication is not enabled")
-
-    subject = f"{DevelopmentTokenVerifier.SUBJECT_PREFIX}{payload.username}"
-    user = auth_service.find_user_by_subject(subject)
-
-    if user is None or not user.is_synthetic or not user.is_active:
-        audit.record(
-            action=AuditAction.LOGIN_FAILED,
-            outcome=AuditOutcome.DENIED,
-            actor_kind="anonymous",
-            actor_label=payload.username,
-            reason="unknown or non-synthetic development user",
-        )
-        raise UnauthenticatedError("No synthetic development user with that username")
-
-    verifier = get_token_verifier(request, settings)
-    assert isinstance(verifier, DevelopmentTokenVerifier)
-
-    token, session_reference, expires_at = verifier.issue(
-        subject=user.subject,
-        username=user.username,
-        display_name=user.display_name,
-        email=user.email,
-    )
-
-    auth_service.record_login(user)
-    principal = auth_service.build_principal(user)
-    audit.record(
-        action=AuditAction.LOGIN_SUCCEEDED,
-        principal=principal,
-        actor_label=user.username,
-        object_type="user_session",
-        object_id=session_reference,
-        source_ip=request.client.host if request.client else None,
-        context={"auth_method": "development", "synthetic": True},
-    )
-
-    logger.info("development_login", username=user.username, synthetic=True)
-
-    return DevelopmentLoginResponse(
-        access_token=token,
-        expires_at=datetime.fromtimestamp(expires_at, tz=UTC),
-    )
-
-
-def register_development_auth_routes(app_router: APIRouter, settings: SettingsDep) -> None:
-    """Attach the development routes, but only when they are permitted."""
-    if settings.is_development_auth_active:
-        app_router.include_router(development_router)
 
 
 def _current_user_from_principal(
@@ -586,8 +471,8 @@ def _source_status(settings: Settings, *, mapping: str) -> SourceStatusSummary:
             last_sync=None,
         )
     return SourceStatusSummary(
-        mode="demo",
-        source="synthetic",
+        mode="oidc",
+        source="Ministry identity provider",
         authentication="connected",
         mapping="mapped",
         last_sync=None,

@@ -32,12 +32,11 @@ const auth: AuthContextValue = {
     facility_scope_ids: [],
     has_national_scope: true,
     auth_method: "development",
-    is_synthetic: true,
+    is_synthetic: false,
     scope_type: "national",
     mapping_status: "mapped",
   },
   error: null,
-  signInAsDevelopmentUser: () => Promise.resolve(),
   signInWithEregisters: () => Promise.resolve(),
   signOut: () => Promise.resolve(),
   can: () => true,
@@ -83,7 +82,11 @@ describe("application shell", () => {
     );
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Overview" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Investigations" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Escalations & Investigations" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Uganda, national surveillance")).toBeInTheDocument();
+    expect(screen.getByText("National surveillance workspace")).toBeInTheDocument();
     expect(screen.getByText("Ministry of Health Uganda")).toBeInTheDocument();
     expect(
       screen.getByText(/do not confirm antimalarial resistance/i),
@@ -104,7 +107,7 @@ describe("application shell", () => {
     renderShell();
 
     expect(
-      await screen.findByRole("link", { name: "Signals, 5 high-priority signals" }),
+      await screen.findByRole("link", { name: "National Signals, 5 high-priority signals" }),
     ).toBeInTheDocument();
   });
 });
@@ -223,5 +226,55 @@ describe("live source status", () => {
       },
     });
     expect(screen.getByText("LIVE — PADER AUTHORIZED")).toBeInTheDocument();
+  });
+});
+
+describe("district workspace", () => {
+  it("labels the shell with the account's own district, never national", () => {
+    vi.spyOn(api, "overview").mockResolvedValue({
+      signals_by_priority: { availability: "not_configured", items: [] },
+    } as never);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const districtAuth: AuthContextValue = {
+      ...auth,
+      user: {
+        ...auth.user!,
+        roles: ["district_hsd"],
+        display_name: "Agnes Akello",
+        has_national_scope: false,
+        scope_type: "district",
+        geography_scopes: [
+          {
+            geography_unit_id: "00000000-0000-4000-8000-000000000304",
+            preferred_code: "304",
+            level: "district",
+            name: "GULU",
+          },
+        ],
+      },
+    };
+    render(
+      <AuthContext.Provider value={districtAuth}>
+        <QueryClientProvider client={client}>
+          <MemoryRouter
+            initialEntries={["/command-centre"]}
+            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+          >
+            <Routes>
+              <Route element={<AppShell />}>
+                <Route path="/command-centre" element={<p>Overview content</p>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </AuthContext.Provider>,
+    );
+    expect(screen.getByText("GULU district, Uganda")).toBeInTheDocument();
+    expect(screen.getByText("GULU district workspace")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Investigations" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "District Administration" })).toBeInTheDocument();
+    expect(screen.queryByText(/national/i)).not.toBeInTheDocument();
+    expect(screen.getByText("District Health Officer, GULU")).toBeInTheDocument();
+    expect(screen.getByText("AA")).toBeInTheDocument();
   });
 });

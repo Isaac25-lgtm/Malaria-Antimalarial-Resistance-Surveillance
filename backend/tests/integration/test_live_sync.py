@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine, inspect, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -77,7 +78,11 @@ def test_migration_and_runtime_role_boundaries(sync_engine: Engine) -> None:
                 "'mars_analytics.live_sync_job', 'SELECT')"
             )
         )
-    assert revision == "0027_live_sync"
+    # The live-sync grants must survive every later migration, so the test
+    # checks the repository's current head rather than naming one revision.
+    config = Config(str(MIGRATIONS_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(MIGRATIONS_ROOT / "migrations"))
+    assert revision == ScriptDirectory.from_config(config).get_current_head()
     assert app_can_read is True
     assert identity_can_read is False
 

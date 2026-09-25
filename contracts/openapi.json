@@ -1260,80 +1260,6 @@
         "title": "DependencyStatus",
         "type": "object"
       },
-      "DevelopmentLoginRequest": {
-        "description": "Request a synthetic development token. Non-production only.",
-        "properties": {
-          "username": {
-            "maxLength": 128,
-            "minLength": 1,
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "username"
-        ],
-        "title": "DevelopmentLoginRequest",
-        "type": "object"
-      },
-      "DevelopmentLoginResponse": {
-        "properties": {
-          "access_token": {
-            "title": "Access Token",
-            "type": "string"
-          },
-          "expires_at": {
-            "format": "date-time",
-            "title": "Expires At",
-            "type": "string"
-          },
-          "token_type": {
-            "default": "bearer",
-            "title": "Token Type",
-            "type": "string"
-          },
-          "warning": {
-            "default": "Synthetic development session. Not valid in staging or production.",
-            "title": "Warning",
-            "type": "string"
-          }
-        },
-        "required": [
-          "access_token",
-          "expires_at"
-        ],
-        "title": "DevelopmentLoginResponse",
-        "type": "object"
-      },
-      "DevelopmentUserSummary": {
-        "description": "A selectable synthetic user, for the development sign-in screen.",
-        "properties": {
-          "display_name": {
-            "title": "Display Name",
-            "type": "string"
-          },
-          "role": {
-            "title": "Role",
-            "type": "string"
-          },
-          "scope_description": {
-            "title": "Scope Description",
-            "type": "string"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "username",
-          "display_name",
-          "role",
-          "scope_description"
-        ],
-        "title": "DevelopmentUserSummary",
-        "type": "object"
-      },
       "DistrictSection": {
         "properties": {
           "availability": {
@@ -5842,10 +5768,6 @@
             "title": "Data Mode Detail",
             "type": "string"
           },
-          "demo_mode_enabled": {
-            "title": "Demo Mode Enabled",
-            "type": "boolean"
-          },
           "districts_requiring_review": {
             "$ref": "#/components/schemas/DistrictSection"
           },
@@ -5912,7 +5834,6 @@
           "interpretation_boundary",
           "data_mode",
           "data_mode_detail",
-          "demo_mode_enabled",
           "requested_scope",
           "has_national_scope",
           "reporting_period",
@@ -8570,7 +8491,7 @@
             "type": "string"
           },
           "auth_mode": {
-            "default": "demo",
+            "default": "live",
             "title": "Auth Mode",
             "type": "string"
           },
@@ -8584,14 +8505,6 @@
               }
             ],
             "title": "Build Timestamp"
-          },
-          "demo_mode_enabled": {
-            "title": "Demo Mode Enabled",
-            "type": "boolean"
-          },
-          "development_auth_active": {
-            "title": "Development Auth Active",
-            "type": "boolean"
           },
           "display_timezone": {
             "title": "Display Timezone",
@@ -8627,9 +8540,7 @@
           "environment",
           "api_version",
           "display_timezone",
-          "ai_assistant_enabled",
-          "demo_mode_enabled",
-          "development_auth_active"
+          "ai_assistant_enabled"
         ],
         "title": "VersionResponse",
         "type": "object"
@@ -9049,76 +8960,6 @@
         ]
       }
     },
-    "/api/v1/auth/dev/login": {
-      "post": {
-        "description": "Issue a short-lived synthetic token.\n\nThe account must already exist and be flagged synthetic. This route never\ncreates an account, so it cannot be used to mint a principal that the seeded\ndevelopment fixture did not define.",
-        "operationId": "development_login_api_v1_auth_dev_login_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DevelopmentLoginRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DevelopmentLoginResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Sign in as a synthetic development user",
-        "tags": [
-          "auth",
-          "development"
-        ]
-      }
-    },
-    "/api/v1/auth/dev/users": {
-      "get": {
-        "description": "List the synthetic accounts a developer may sign in as.",
-        "operationId": "development_users_api_v1_auth_dev_users_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/DevelopmentUserSummary"
-                  },
-                  "title": "Response Development Users Api V1 Auth Dev Users Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Synthetic users available for development sign-in",
-        "tags": [
-          "auth",
-          "development"
-        ]
-      }
-    },
     "/api/v1/auth/live/metadata-discovery": {
       "get": {
         "operationId": "latest_live_metadata_discovery_api_v1_auth_live_metadata_discovery_get",
@@ -9222,7 +9063,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "Invalidate a live cookie session, or record a demo logout.\n\nCSRF is required in live mode. Demo bearer logout remains a recorded event;\ntoken drop is the client's responsibility.",
+        "description": "Invalidate a live cookie session, or record an OIDC logout.\n\nCSRF is required in live mode. OIDC bearer logout remains a recorded event;\ntoken drop is the client's responsibility.",
         "operationId": "logout_api_v1_auth_logout_post",
         "responses": {
           "204": {
@@ -9269,7 +9110,7 @@
     },
     "/api/v1/auth/session": {
       "get": {
-        "description": "Return a sanitized session snapshot, or authenticated=false.\n\nNever 401. Live cookie sessions and demo bearer tokens both surface here\nso the frontend can bootstrap without a noisy expected error.",
+        "description": "Return a sanitized session snapshot, or authenticated=false.\n\nNever 401. Live cookie sessions and OIDC bearer tokens both surface here\nso the frontend can bootstrap without a noisy expected error.",
         "operationId": "session_status_api_v1_auth_session_get",
         "responses": {
           "200": {

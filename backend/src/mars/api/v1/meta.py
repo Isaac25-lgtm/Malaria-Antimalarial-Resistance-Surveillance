@@ -65,8 +65,6 @@ def version(
         api_version="v1",
         display_timezone=DISPLAY_TIMEZONE_NAME,
         ai_assistant_enabled=settings.ai_assistant_enabled,
-        demo_mode_enabled=settings.demo_mode_enabled,
-        development_auth_active=settings.is_development_auth_active,
         auth_mode=settings.auth_mode,
         live_login_enabled=settings.is_live_auth_active,
         active_method_versions=active_methods,

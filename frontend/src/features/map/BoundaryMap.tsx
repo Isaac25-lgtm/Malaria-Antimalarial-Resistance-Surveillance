@@ -176,7 +176,7 @@ export function BoundaryMap({
         type: "line",
         source: SOURCE_ID,
         paint: {
-          "line-color": token("--accent", "#0b6e63"),
+          "line-color": token("--accent", "#1f5c96"),
           "line-width": [
             "case",
             ["boolean", ["feature-state", "selected"], false],

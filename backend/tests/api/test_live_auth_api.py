@@ -712,22 +712,19 @@ class TestLiveScopeEnforcement:
         assert body["profile"]["landing_path"] == "/no-authorised-scope"
 
 
-class TestLiveDoesNotFallBackToDemo:
-    def test_demo_app_refuses_live_login(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("MARS_AUTH_MODE", "demo")
-        monkeypatch.setenv("MARS_DEV_AUTH_ENABLED", "true")
+class TestOidcModeDoesNotAcceptPasswords:
+    def test_oidc_app_refuses_live_login(self) -> None:
         settings = Settings(
             environment=Environment.LOCAL,
-            auth_mode="demo",
-            database_url="postgresql+psycopg://mars:test@localhost:5432/mars_local",
-            dev_auth_enabled=True,
-            demo_mode_enabled=True,
+            auth_mode="oidc",
+            oidc_issuer="https://issuer.test.invalid/realms/mars",
+            database_url="postgresql+psycopg://mars:test@localhost:5432/mars_test",
             cors_allow_origins=["http://localhost:5173"],
             log_format="console",
         )
         application = create_app(settings)
-        with TestClient(application, raise_server_exceptions=False) as demo_client:
-            response = demo_client.post(
+        with TestClient(application, raise_server_exceptions=False) as oidc_client:
+            response = oidc_client.post(
                 "/api/v1/auth/login",
                 json={"username": "officer", "password": SENTINEL},
                 headers={"Origin": "http://localhost:5173", "Content-Type": "application/json"},

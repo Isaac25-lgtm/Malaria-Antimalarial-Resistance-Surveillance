@@ -7,7 +7,7 @@ Local launcher:
 ```
 
 The live UI is `http://127.0.0.1:5173`. The live API is `http://127.0.0.1:8000`.
-The database must be `mars_live`. Demo stays on separate ports and `mars_local`.
+The launcher uses the `mars_live` database. There is no demo mode.
 
 Sign in with an authorised Ministry eRegisters username and password. The
 browser posts only to MARS. MARS authenticates server-to-server against
